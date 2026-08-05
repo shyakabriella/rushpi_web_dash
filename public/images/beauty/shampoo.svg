@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460">
+  <rect width="420" height="460" fill="#fff"/>
+
+  <rect x="70" y="35" width="280" height="390" rx="18" fill="#7fbe37"/>
+  <rect x="92" y="60" width="236" height="345" rx="12" fill="#9ad944"/>
+
+  <text x="210" y="105" text-anchor="middle" font-size="31" font-weight="800" fill="#fff">
+    RUSHPI
+  </text>
+
+  <text x="210" y="145" text-anchor="middle" font-size="22" font-weight="700" fill="#155724">
+    GROW STRONG
+  </text>
+
+  <rect x="118" y="170" width="82" height="170" rx="28" fill="#dff4ac"/>
+  <rect x="220" y="170" width="82" height="170" rx="28" fill="#f2ffe0"/>
+
+  <circle cx="160" cy="245" r="34" fill="#78aa38"/>
+  <circle cx="260" cy="245" r="34" fill="#97ca4a"/>
+
+  <text x="210" y="380" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">
+    SHAMPOO + CONDITIONER
+  </text>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <rect width="500" height="500" rx="60" fill="#ffffff"/>
+  <rect x="115" y="160" width="270" height="225" rx="40" fill="#34d5d7"/>
+  <rect x="100" y="120" width="300" height="70" rx="25" fill="#475569"/>
+  <rect x="135" y="190" width="230" height="150" rx="20" fill="#67e8f9"/>
+  <text x="250" y="255" text-anchor="middle" font-size="38" font-weight="700" fill="#083344">RUSHPI</text>
+  <text x="250" y="300" text-anchor="middle" font-size="21" fill="#164e63">PREMIUM CARE</text>
+</svg>

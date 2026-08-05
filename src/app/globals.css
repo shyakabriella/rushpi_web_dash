@@ -24,3 +24,1227 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+/* RushPi header animations */
+
+@keyframes rushpi-header-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rushpi-mobile-panel {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rushpi-header-enter {
+  animation: rushpi-header-enter 500ms ease-out both;
+}
+
+.rushpi-mobile-panel {
+  animation: rushpi-mobile-panel 250ms ease-out both;
+}
+
+.rushpi-scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.rushpi-scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.rushpi-nav-chip {
+  position: relative;
+  overflow: hidden;
+}
+
+.rushpi-nav-chip::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 80%
+  );
+  transform: translateX(-140%);
+  transition: transform 500ms ease;
+}
+
+.rushpi-nav-chip:hover::after {
+  transform: translateX(140%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rushpi-header-enter,
+  .rushpi-mobile-panel {
+    animation: none;
+  }
+
+  .rushpi-nav-chip::after {
+    display: none;
+  }
+}
+
+/* Marketplace promotional banner and products carousel */
+
+@keyframes marketplace-slide-enter {
+  from {
+    opacity: 0;
+    transform: translateX(35px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes marketplace-image-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.marketplace-slide {
+  animation: marketplace-slide-enter 550ms ease-out both;
+}
+
+.marketplace-product-image {
+  animation: marketplace-image-enter 650ms ease-out both;
+}
+
+.marketplace-product-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-padding-inline: 1rem;
+}
+
+.marketplace-product-track::-webkit-scrollbar {
+  display: none;
+}
+
+.marketplace-card {
+  animation: marketplace-image-enter 600ms ease-out both;
+}
+
+.marketplace-banner::before {
+  position: absolute;
+  inset: -35%;
+  content: "";
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.65),
+      transparent 55%
+    );
+  animation: marketplace-glow 8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes marketplace-glow {
+  from {
+    transform: translate3d(-15%, -8%, 0) rotate(0deg);
+  }
+
+  to {
+    transform: translate3d(15%, 8%, 0) rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .marketplace-banner {
+    border-radius: 22px;
+  }
+
+  .marketplace-product-image:nth-child(3) {
+    display: none;
+  }
+
+  .marketplace-product-image {
+    min-height: 115px;
+  }
+
+  .marketplace-slide > div:last-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-slide,
+  .marketplace-product-image,
+  .marketplace-card,
+  .marketplace-banner::before {
+    animation: none;
+  }
+
+  .marketplace-product-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RushPi promotional mosaic */
+
+@keyframes promo-mosaic-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.promo-mosaic-card {
+  animation: promo-mosaic-enter 650ms ease-out both;
+}
+
+.promo-mosaic-card:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.promo-mosaic-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.promo-mosaic-card:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+.promo-mosaic-card:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.promo-mosaic-card::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  transition:
+    box-shadow 300ms ease,
+    background 300ms ease;
+}
+
+.promo-mosaic-card:hover::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 99, 235, 0.28),
+    0 20px 45px rgba(15, 23, 42, 0.14);
+}
+
+@media (max-width: 1023px) {
+  .promo-mosaic-card {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .promo-mosaic-card {
+    min-height: 280px;
+    border-radius: 20px;
+  }
+
+  .promo-mosaic-card h3 {
+    font-size: 1.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-mosaic-card {
+    animation: none;
+  }
+}
+
+/* Prevent middle promotional cards from overflowing */
+
+@media (min-width: 1024px) {
+  .promo-mosaic-card {
+    min-height: 0;
+  }
+
+  .promo-mosaic-card h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .promo-mosaic-card:nth-child(3) a,
+  .promo-mosaic-card:nth-child(4) a {
+    margin-top: 12px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .promo-mosaic-card:nth-child(3) > div:last-child,
+  .promo-mosaic-card:nth-child(4) > div:last-child {
+    padding: 20px;
+  }
+}
+
+/* Prevent middle promotional cards from overflowing */
+
+@media (min-width: 1024px) {
+  .promo-mosaic-card {
+    min-height: 0;
+  }
+
+  .promo-mosaic-card h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .promo-mosaic-card:nth-child(3) a,
+  .promo-mosaic-card:nth-child(4) a {
+    margin-top: 12px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .promo-mosaic-card:nth-child(3) > div:last-child,
+  .promo-mosaic-card:nth-child(4) > div:last-child {
+    padding: 20px;
+  }
+}
+
+/* RUSHPI ROLLBACKS START */
+
+.rollback-group-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 48px) / 4);
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.rollback-group-track::-webkit-scrollbar {
+  display: none;
+}
+
+.rollback-group-panel {
+  min-width: 0;
+  padding: 12px;
+  background: #f1f1f1;
+  scroll-snap-align: start;
+  border-radius: 0;
+}
+
+.rollback-product-card {
+  min-width: 0;
+  overflow: hidden;
+  background: white;
+  border-radius: 0;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.rollback-product-card:hover {
+  position: relative;
+  z-index: 2;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+}
+
+@keyframes rollback-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.rollback-group-panel {
+  animation: rollback-panel-enter 500ms ease-out both;
+}
+
+.rollback-group-panel:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.rollback-group-panel:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.rollback-group-panel:nth-child(4) {
+  animation-delay: 210ms;
+}
+
+@media (max-width: 1279px) {
+  .rollback-group-track {
+    grid-auto-columns: calc((100% - 16px) / 2);
+  }
+}
+
+@media (max-width: 767px) {
+  .rollback-group-track {
+    grid-auto-columns: 92%;
+    gap: 10px;
+  }
+
+  .rollback-group-panel {
+    padding: 8px;
+  }
+
+  .rollback-product-card > div:first-child {
+    height: 135px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rollback-group-panel {
+    animation: none;
+  }
+
+  .rollback-group-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI ROLLBACKS END */
+
+/* RushPi compact category shortcuts */
+
+.category-shortcuts-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 122px;
+  gap: 64px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  padding: 4px 26px 12px;
+}
+
+.category-shortcuts-track::-webkit-scrollbar {
+  display: none;
+}
+
+.category-shortcut-item {
+  display: flex;
+  width: 122px;
+  flex-direction: column;
+  align-items: center;
+  scroll-snap-align: start;
+  animation: category-shortcut-enter 500ms ease-out both;
+}
+
+@keyframes category-shortcut-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-shortcut-item:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.category-shortcut-item:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.category-shortcut-item:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.category-shortcut-item:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.category-shortcut-item:nth-child(6) {
+  animation-delay: 250ms;
+}
+
+@media (max-width: 1279px) {
+  .category-shortcuts-track {
+    grid-auto-columns: 112px;
+    gap: 38px;
+  }
+
+  .category-shortcut-item {
+    width: 112px;
+  }
+}
+
+@media (max-width: 767px) {
+  .category-shortcuts-track {
+    grid-auto-columns: 96px;
+    gap: 18px;
+    padding-inline: 4px;
+  }
+
+  .category-shortcut-item {
+    width: 96px;
+  }
+
+  .category-shortcut-item > div {
+    width: 88px;
+    height: 88px;
+  }
+
+  .category-shortcut-item span {
+    max-width: 96px;
+    font-size: 12px;
+    line-height: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-shortcut-item {
+    animation: none;
+  }
+
+  .category-shortcuts-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RushPi furniture spotlight */
+
+.furniture-products-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 28px) / 3);
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  padding-bottom: 10px;
+}
+
+.furniture-products-track::-webkit-scrollbar {
+  display: none;
+}
+
+.furniture-product-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  animation: furniture-card-enter 550ms ease-out both;
+}
+
+.furniture-product-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.furniture-product-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.furniture-banner {
+  animation: furniture-banner-enter 650ms ease-out both;
+}
+
+@keyframes furniture-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes furniture-banner-enter {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .furniture-products-track {
+    grid-auto-columns: 70%;
+    gap: 12px;
+  }
+
+  .furniture-product-card > div:first-child {
+    height: 190px;
+  }
+
+  .furniture-banner {
+    min-height: 330px;
+  }
+
+  .furniture-banner > div:last-child {
+    max-width: 75%;
+    padding: 24px;
+  }
+
+  .furniture-banner h3 {
+    font-size: 2.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .furniture-product-card,
+  .furniture-banner {
+    animation: none;
+  }
+
+  .furniture-products-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RushPi furniture spotlight */
+
+.furniture-products-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 28px) / 3);
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  padding-bottom: 10px;
+}
+
+.furniture-products-track::-webkit-scrollbar {
+  display: none;
+}
+
+.furniture-product-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  animation: furniture-card-enter 550ms ease-out both;
+}
+
+.furniture-product-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.furniture-product-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.furniture-banner {
+  animation: furniture-banner-enter 650ms ease-out both;
+}
+
+@keyframes furniture-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes furniture-banner-enter {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .furniture-products-track {
+    grid-auto-columns: 70%;
+    gap: 12px;
+  }
+
+  .furniture-product-card > div:first-child {
+    height: 190px;
+  }
+
+  .furniture-banner {
+    min-height: 330px;
+  }
+
+  .furniture-banner > div:last-child {
+    max-width: 75%;
+    padding: 24px;
+  }
+
+  .furniture-banner h3 {
+    font-size: 2.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .furniture-product-card,
+  .furniture-banner {
+    animation: none;
+  }
+
+  .furniture-products-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RushPi beauty bestsellers */
+
+.beauty-products-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 80px) / 6);
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  padding-bottom: 10px;
+}
+
+.beauty-products-track::-webkit-scrollbar {
+  display: none;
+}
+
+.beauty-product-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  animation: beauty-product-enter 500ms ease-out both;
+}
+
+.beauty-product-card:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.beauty-product-card:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.beauty-product-card:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.beauty-product-card:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.beauty-product-card:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@keyframes beauty-product-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1279px) {
+  .beauty-products-track {
+    grid-auto-columns: calc((100% - 48px) / 4);
+  }
+}
+
+@media (max-width: 767px) {
+  .beauty-products-track {
+    grid-auto-columns: 68%;
+    gap: 12px;
+  }
+
+  .beauty-product-card > div:first-child {
+    height: 205px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beauty-product-card {
+    animation: none;
+  }
+
+  .beauty-products-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI PATIO GARDEN START */
+
+.patio-products-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 80px) / 6);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.patio-products-track::-webkit-scrollbar {
+  display: none;
+}
+
+.patio-product-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  animation: patio-product-enter 500ms ease-out both;
+}
+
+.patio-product-card:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.patio-product-card:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.patio-product-card:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.patio-product-card:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.patio-product-card:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@keyframes patio-product-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1279px) {
+  .patio-products-track {
+    grid-auto-columns: calc((100% - 48px) / 4);
+  }
+}
+
+@media (max-width: 767px) {
+  .patio-products-track {
+    grid-auto-columns: 68%;
+    gap: 12px;
+  }
+
+  .patio-product-card > div:first-child {
+    height: 205px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patio-product-card {
+    animation: none;
+  }
+
+  .patio-products-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI PATIO GARDEN END */
+
+/* RUSHPI TRENDING SOCIAL START */
+
+.trending-social-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 32px) / 3);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.trending-social-track::-webkit-scrollbar {
+  display: none;
+}
+
+.trending-social-card {
+  min-width: 0;
+  height: 500px;
+  scroll-snap-align: start;
+  animation: trending-social-enter 600ms ease-out both;
+}
+
+.trending-social-card:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.trending-social-card:nth-child(3) {
+  animation-delay: 200ms;
+}
+
+@keyframes trending-social-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1279px) {
+  .trending-social-track {
+    grid-auto-columns: calc((100% - 16px) / 2);
+  }
+
+  .trending-social-card {
+    height: 460px;
+  }
+}
+
+@media (max-width: 767px) {
+  .trending-social-track {
+    grid-auto-columns: 88%;
+    gap: 12px;
+  }
+
+  .trending-social-card {
+    height: 430px;
+  }
+
+  .trending-social-card > a {
+    left: 20px;
+    top: 43%;
+    width: 165px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trending-social-card {
+    animation: none;
+  }
+
+  .trending-social-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI TRENDING SOCIAL END */
+
+/* RUSHPI CREATOR VIDEO STRIP START */
+
+.creator-video-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 48px) / 4);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.creator-video-track::-webkit-scrollbar {
+  display: none;
+}
+
+.creator-video-card {
+  min-width: 0;
+  height: 560px;
+  border-radius: 10px;
+  scroll-snap-align: start;
+  animation: creator-video-enter 600ms ease-out both;
+}
+
+.creator-video-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.creator-video-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.creator-video-card:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+@keyframes creator-video-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1279px) {
+  .creator-video-track {
+    grid-auto-columns: calc((100% - 16px) / 2);
+  }
+
+  .creator-video-card {
+    height: 520px;
+  }
+}
+
+@media (max-width: 767px) {
+  .creator-video-track {
+    grid-auto-columns: 84%;
+    gap: 12px;
+  }
+
+  .creator-video-card {
+    height: 500px;
+    border-radius: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creator-video-card {
+    animation: none;
+  }
+
+  .creator-video-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI CREATOR VIDEO STRIP END */
+
+/* RUSHPI FLASH DEALS START */
+
+.flash-deals-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 80px) / 6);
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.flash-deals-track::-webkit-scrollbar {
+  display: none;
+}
+
+.flash-deal-card {
+  min-width: 0;
+  scroll-snap-align: start;
+  animation: flash-deal-enter 500ms ease-out both;
+}
+
+.flash-deal-card:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.flash-deal-card:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.flash-deal-card:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.flash-deal-card:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.flash-deal-card:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@keyframes flash-deal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1279px) {
+  .flash-deals-track {
+    grid-auto-columns: calc((100% - 48px) / 4);
+  }
+}
+
+@media (max-width: 767px) {
+  .flash-deals-track {
+    grid-auto-columns: 68%;
+    gap: 12px;
+  }
+
+  .flash-deal-card > div:first-child {
+    height: 205px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash-deal-card {
+    animation: none;
+  }
+
+  .flash-deals-track {
+    scroll-behavior: auto;
+  }
+}
+
+/* RUSHPI FLASH DEALS END */
+
+/* RUSHPI CAMPUS SHOP START */
+
+.campus-shop-card {
+  animation: campus-shop-enter 600ms ease-out both;
+}
+
+.campus-shop-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.campus-shop-card:nth-child(3) {
+  animation-delay: 150ms;
+}
+
+.campus-shop-card:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+.campus-shop-card:nth-child(5) {
+  animation-delay: 290ms;
+}
+
+.campus-shop-card::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  transition:
+    box-shadow 300ms ease,
+    background 300ms ease;
+}
+
+.campus-shop-card:hover::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 99, 235, 0.28),
+    0 20px 50px rgba(15, 23, 42, 0.13);
+}
+
+@keyframes campus-shop-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1023px) {
+  .campus-shop-card {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .campus-shop-card {
+    min-height: 280px;
+    border-radius: 12px;
+  }
+
+  .campus-shop-card h3 {
+    max-width: 78%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-shop-card {
+    animation: none;
+  }
+}
+
+/* RUSHPI CAMPUS SHOP END */
+
+/* RushPi footer feedback modal */
+
+@keyframes footer-feedback-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.footer-feedback-modal {
+  animation: footer-feedback-enter 280ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-feedback-modal {
+    animation: none;
+  }
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 460">
+  <rect width="500" height="460" fill="#fff"/>
+
+  <rect x="65" y="110" width="370" height="250" fill="#dce5df"/>
+  <rect x="100" y="180" width="300" height="115" fill="#bb824f"/>
+
+  <path d="M110 190v95M150 190v95M190 190v95M230 190v95M270 190v95M310 190v95M350 190v95M390 190v95"
+        stroke="#e7b47b" stroke-width="8"/>
+
+  <rect x="90" y="295" width="320" height="30" fill="#9c683d"/>
+  <rect x="115" y="325" width="20" height="85" fill="#795131"/>
+  <rect x="365" y="325" width="20" height="85" fill="#795131"/>
+
+  <rect x="195" y="210" width="110" height="75" rx="8" fill="#f8fafc"/>
+  <path d="M215 225l35 45 35-45" fill="none" stroke="#65a30d" stroke-width="12"/>
+</svg>

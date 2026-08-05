@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460">
+  <rect width="420" height="460" fill="#fff"/>
+
+  <rect x="165" y="38" width="90" height="60" rx="12" fill="#c39b2f"/>
+  <rect x="175" y="22" width="70" height="35" rx="10" fill="#101820"/>
+
+  <rect x="85" y="95" width="250" height="330" rx="22" fill="#005b67"/>
+
+  <path d="M105 125h210v270H105z" fill="#056d78"/>
+
+  <g fill="none" stroke="#43b7bf" stroke-width="4" opacity=".65">
+    <path d="M120 150h180v220H120z"/>
+    <path d="M145 135v250M180 135v250M215 135v250M250 135v250M285 135v250"/>
+    <path d="M110 180h200M110 220h200M110 260h200M110 300h200M110 340h200"/>
+  </g>
+
+  <text x="210" y="250" text-anchor="middle" font-size="35" font-weight="800" fill="#d7b94c">
+    RUSHPI
+  </text>
+
+  <text x="210" y="290" text-anchor="middle" font-size="20" fill="#f2d86d">
+    EAU DE TOILETTE
+  </text>
+</svg>

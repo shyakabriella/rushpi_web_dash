@@ -1,0 +1,191 @@
+import {
+  Backpack as BackpackIcon,
+  BriefcaseBusiness as BriefcaseIcon,
+  LampDesk as LampIcon,
+  PackageOpen as PackageIcon,
+  Sparkles as SparklesIcon,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+
+type CampusCardProps = {
+  eyebrow: string;
+  title: string;
+  href: string;
+  image: string;
+  imageAlt: string;
+  icon: LucideIcon;
+  className?: string;
+  contentClassName?: string;
+  imageClassName?: string;
+  titleClassName?: string;
+  showButton?: boolean;
+};
+
+function CampusCard({
+  eyebrow,
+  title,
+  href,
+  image,
+  imageAlt,
+  icon: Icon,
+  className = "",
+  contentClassName = "",
+  imageClassName = "",
+  titleClassName = "",
+  showButton = false,
+}: CampusCardProps) {
+  return (
+    <article
+      className={[
+        "campus-shop-card",
+        "group relative isolate min-w-0 overflow-hidden",
+        "rounded-[16px] bg-slate-100",
+        className,
+      ].join(" ")}
+    >
+      <Image
+        src={image}
+        alt={imageAlt}
+        fill
+        className={[
+          "object-cover transition duration-700",
+          "group-hover:scale-[1.04]",
+          imageClassName,
+        ].join(" ")}
+        sizes="(max-width: 1024px) 100vw, 40vw"
+      />
+
+      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/65 to-transparent" />
+
+      <div
+        className={[
+          "relative z-10 flex h-full flex-col items-start",
+          "p-6 sm:p-7",
+          contentClassName,
+        ].join(" ")}
+      >
+        <span className="mb-3 grid size-10 place-items-center rounded-full bg-white/90 text-blue-700 shadow-sm backdrop-blur">
+          <Icon className="size-5" />
+        </span>
+
+        <p className="text-sm font-black text-blue-950 sm:text-base">
+          {eyebrow}
+        </p>
+
+        <h3
+          className={[
+            "mt-1 max-w-[90%] font-black",
+            "leading-[1.05] tracking-tight text-blue-950",
+            titleClassName || "text-2xl sm:text-3xl",
+          ].join(" ")}
+        >
+          {title}
+        </h3>
+
+        {showButton ? (
+          <Link
+            href={href}
+            className="mt-5 inline-flex rounded-full border border-slate-950 bg-white px-5 py-2.5 text-sm font-black text-slate-950 transition hover:-translate-y-1 hover:bg-slate-950 hover:text-white"
+          >
+            Shop now
+          </Link>
+        ) : (
+          <Link
+            href={href}
+            className="mt-4 text-sm font-semibold text-blue-950 underline underline-offset-4 transition hover:text-blue-700"
+          >
+            Shop now
+          </Link>
+        )}
+      </div>
+    </article>
+  );
+}
+
+export default function CampusShopMosaic() {
+  return (
+    <section className="border-t border-slate-200 bg-white px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px]">
+        <div className="mb-6">
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-600">
+            Back to school
+          </p>
+
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+            Everything for campus life
+          </h2>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[250px_250px]">
+          <CampusCard
+            eyebrow="The Campus Shop"
+            title="Storage for small spaces"
+            href="/products?category=storage"
+            image="/images/campus/small-space-storage.svg"
+            imageAlt="Storage products for small rooms"
+            icon={PackageIcon}
+            className="min-h-[430px] lg:col-span-5 lg:row-span-2 lg:h-full lg:min-h-0"
+            contentClassName="justify-start"
+            imageClassName="object-right"
+            titleClassName="text-4xl sm:text-5xl lg:text-[52px]"
+            showButton
+          />
+
+          <CampusCard
+            eyebrow="Patches, charms and more"
+            title="Customize your gear"
+            href="/products?category=accessories"
+            image="/images/campus/custom-gear.svg"
+            imageAlt="Custom bags and school accessories"
+            icon={BackpackIcon}
+            className="min-h-[250px] lg:col-span-4 lg:col-start-6 lg:row-start-1 lg:h-full lg:min-h-0"
+            contentClassName="max-w-[62%]"
+            imageClassName="object-right"
+            titleClassName="text-2xl sm:text-3xl"
+          />
+
+          <CampusCard
+            eyebrow="Lunch gear"
+            title="Lunch essentials"
+            href="/products?category=lunch"
+            image="/images/campus/lunch-gear.svg"
+            imageAlt="School lunch containers"
+            icon={BriefcaseIcon}
+            className="min-h-[280px] lg:col-span-2 lg:col-start-6 lg:row-start-2 lg:h-full lg:min-h-0"
+            contentClassName="max-w-[95%] p-5"
+            imageClassName="object-bottom"
+            titleClassName="text-xl sm:text-2xl"
+          />
+
+          <CampusCard
+            eyebrow="Teen beauty"
+            title="Beauty refresh"
+            href="/products?category=beauty"
+            image="/images/campus/teen-beauty.svg"
+            imageAlt="Teen beauty products"
+            icon={SparklesIcon}
+            className="min-h-[280px] lg:col-span-2 lg:col-start-8 lg:row-start-2 lg:h-full lg:min-h-0"
+            contentClassName="max-w-[95%] p-5"
+            imageClassName="object-bottom"
+            titleClassName="text-xl sm:text-2xl"
+          />
+
+          <CampusCard
+            eyebrow="Campus living"
+            title="Furniture for campus life"
+            href="/products?category=furniture"
+            image="/images/campus/campus-furniture.svg"
+            imageAlt="Furniture for campus rooms"
+            icon={LampIcon}
+            className="min-h-[430px] lg:col-span-3 lg:col-start-10 lg:row-span-2 lg:row-start-1 lg:h-full lg:min-h-0"
+            contentClassName="justify-start"
+            imageClassName="object-bottom"
+            titleClassName="text-3xl sm:text-4xl lg:text-[34px]"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}

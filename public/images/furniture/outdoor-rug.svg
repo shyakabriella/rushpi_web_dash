@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <rect width="500" height="500" fill="#ffffff"/>
+
+  <rect
+    x="85"
+    y="55"
+    width="330"
+    height="390"
+    fill="#c9d9df"
+  />
+
+  <g
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="8"
+    opacity=".75"
+  >
+    <path d="M105 95c45-55 90-55 135 0s90 55 135 0"/>
+    <path d="M105 155c45-55 90-55 135 0s90 55 135 0"/>
+    <path d="M105 215c45-55 90-55 135 0s90 55 135 0"/>
+    <path d="M105 275c45-55 90-55 135 0s90 55 135 0"/>
+    <path d="M105 335c45-55 90-55 135 0s90 55 135 0"/>
+    <path d="M105 395c45-55 90-55 135 0s90 55 135 0"/>
+  </g>
+</svg>

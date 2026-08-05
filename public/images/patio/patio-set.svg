@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 460">
+  <rect width="500" height="460" fill="#fff"/>
+
+  <rect y="260" width="500" height="200" fill="#d7c3a3"/>
+  <rect y="0" width="500" height="260" fill="#b9d5a9"/>
+
+  <g fill="#4b3b2f">
+    <rect x="55" y="185" width="120" height="125"/>
+    <rect x="325" y="185" width="120" height="125"/>
+  </g>
+
+  <g fill="#d29d6a">
+    <rect x="75" y="205" width="80" height="20"/>
+    <rect x="75" y="245" width="80" height="20"/>
+    <rect x="345" y="205" width="80" height="20"/>
+    <rect x="345" y="245" width="80" height="20"/>
+  </g>
+
+  <ellipse cx="250" cy="295" rx="80" ry="28" fill="#9a6d47"/>
+  <rect x="240" y="300" width="20" height="95" fill="#795337"/>
+</svg>

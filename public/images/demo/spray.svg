@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <rect width="500" height="500" rx="60" fill="#ffffff"/>
+  <rect x="180" y="125" width="140" height="310" rx="65" fill="#ec4899"/>
+  <rect x="205" y="65" width="90" height="90" rx="25" fill="#f472b6"/>
+  <rect x="195" y="210" width="110" height="110" rx="25" fill="#f9a8d4"/>
+  <text x="250" y="260" text-anchor="middle" font-size="25" font-weight="700" fill="#831843">STYLE</text>
+</svg>

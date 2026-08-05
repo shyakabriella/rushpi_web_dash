@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460">
+  <rect width="420" height="460" fill="#fff"/>
+
+  <rect x="125" y="40" width="170" height="75" rx="20" fill="#e6edf2"/>
+  <rect x="80" y="95" width="260" height="310" rx="35" fill="#f8fafc" stroke="#d4dde5" stroke-width="5"/>
+
+  <rect x="95" y="180" width="230" height="190" rx="12" fill="#fff"/>
+
+  <text x="210" y="230" text-anchor="middle" font-size="52" font-weight="600" fill="#073a70">
+    Rush
+  </text>
+
+  <text x="210" y="270" text-anchor="middle" font-size="21" font-weight="800" fill="#0f4f88">
+    MOISTURIZING
+  </text>
+
+  <text x="210" y="300" text-anchor="middle" font-size="21" font-weight="800" fill="#0f4f88">
+    CREAM
+  </text>
+
+  <rect x="125" y="320" width="170" height="12" rx="6" fill="#2f75aa"/>
+</svg>
