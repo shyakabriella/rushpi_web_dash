@@ -88,6 +88,39 @@ const sellerTerms = [
   "Applicable marketplace fees or commissions may be deducted from completed transactions.",
 ];
 
+const inputClassName = [
+  "h-[52px] w-full rounded-2xl",
+  "border border-slate-400 bg-white",
+  "px-4 text-sm font-medium text-slate-950",
+  "caret-blue-700 outline-none transition",
+  "placeholder:font-normal placeholder:text-slate-500",
+  "hover:border-slate-500",
+  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+].join(" ");
+
+const iconInputClassName = [
+  "h-[52px] w-full rounded-2xl",
+  "border border-slate-400 bg-white",
+  "pl-12 pr-4 text-sm font-medium text-slate-950",
+  "caret-blue-700 outline-none transition",
+  "placeholder:font-normal placeholder:text-slate-500",
+  "hover:border-slate-500",
+  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+].join(" ");
+
+const passwordInputClassName = [
+  "h-[52px] w-full rounded-2xl",
+  "border border-slate-400 bg-white",
+  "pl-12 pr-12 text-sm font-medium text-slate-950",
+  "caret-blue-700 outline-none transition",
+  "placeholder:font-normal placeholder:text-slate-500",
+  "hover:border-slate-500",
+  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+].join(" ");
+
+const labelClassName =
+  "text-sm font-black text-slate-950";
+
 function normalizeErrors(
   errors: RegisterResponse["errors"],
 ): Record<string, string> {
@@ -100,7 +133,8 @@ function normalizeErrors(
       ([field, value]) => [
         field,
         Array.isArray(value)
-          ? value[0] ?? "This field is invalid."
+          ? value[0] ??
+            "This field is invalid."
           : value,
       ],
     ),
@@ -133,9 +167,9 @@ export default function SellerRegisterForm() {
 
   const updateTextField = (
     event: ChangeEvent<
-      HTMLInputElement |
-      HTMLSelectElement |
-      HTMLTextAreaElement
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement
     >,
   ) => {
     const { name, value } = event.target;
@@ -154,6 +188,8 @@ export default function SellerRegisterForm() {
 
       return nextErrors;
     });
+
+    setGeneralError("");
   };
 
   const updateCheckbox = (
@@ -165,6 +201,8 @@ export default function SellerRegisterForm() {
       ...current,
       [name]: checked,
     }));
+
+    setGeneralError("");
   };
 
   const submitRegistration = async (
@@ -232,13 +270,17 @@ export default function SellerRegisterForm() {
           },
           body: JSON.stringify({
             name: formData.name.trim(),
+
             email:
               formData.email
                 .trim()
                 .toLowerCase(),
+
             phone: formData.phone.trim(),
+
             password:
               formData.password,
+
             password_confirmation:
               formData.passwordConfirmation,
 
@@ -281,10 +323,10 @@ export default function SellerRegisterForm() {
       );
 
       const payload =
-        await response
+        (await response
           .json()
-          .catch(() => null) as
-            RegisterResponse | null;
+          .catch(() => null)) as
+          RegisterResponse | null;
 
       if (!response.ok) {
         setFieldErrors(
@@ -334,7 +376,7 @@ export default function SellerRegisterForm() {
 
   if (submitted) {
     return (
-      <section className="rounded-3xl border border-emerald-200 bg-white p-6 text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-9">
+      <section className="rounded-3xl border border-emerald-300 bg-white p-6 text-center text-slate-950 shadow-[0_18px_55px_rgba(15,23,42,0.10)] sm:p-9">
         <span className="mx-auto grid size-20 place-items-center rounded-full bg-emerald-100 text-emerald-700">
           <CheckCircle2 className="size-10" />
         </span>
@@ -347,23 +389,24 @@ export default function SellerRegisterForm() {
           Seller registration submitted
         </h2>
 
-        <p className="mx-auto mt-4 max-w-lg leading-7 text-slate-600">
+        <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-slate-700">
           {successMessage}
         </p>
 
-        <div className="mt-6 rounded-2xl bg-blue-50 p-5 text-left">
+        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-left">
           <div className="flex items-start gap-3">
             <BadgeCheck className="mt-0.5 size-5 shrink-0 text-blue-700" />
 
             <div>
-              <p className="font-black text-blue-950">
+              <p className="font-black text-slate-950">
                 What happens next?
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-blue-800">
-                RushPi will review your seller information.
-                Additional verification documents may be requested
-                before your products can be published.
+              <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+                RushPi will review your seller
+                information. Additional verification
+                documents may be requested before
+                your products can be published.
               </p>
             </div>
           </div>
@@ -379,7 +422,7 @@ export default function SellerRegisterForm() {
 
           <Link
             href="/"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-6 text-sm font-black text-slate-700 transition hover:border-blue-500 hover:text-blue-700"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-slate-400 bg-white px-6 text-sm font-black text-slate-950 transition hover:border-blue-600 hover:text-blue-700"
           >
             Return to marketplace
           </Link>
@@ -391,22 +434,24 @@ export default function SellerRegisterForm() {
   return (
     <form
       onSubmit={submitRegistration}
-      className="space-y-7"
+      className="space-y-7 text-slate-950"
     >
       {generalError && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
+          aria-live="polite"
+          className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-900"
         >
           <AlertCircle className="mt-0.5 size-5 shrink-0" />
+
           <span>{generalError}</span>
         </div>
       )}
 
       {/* Personal information */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-700">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-800">
             <UserRound className="size-5" />
           </span>
 
@@ -415,21 +460,21 @@ export default function SellerRegisterForm() {
               Personal information
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Enter the details of the person responsible for
-              this seller account.
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+              Enter the details of the person
+              responsible for this seller account.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <label className="block sm:col-span-2">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Full name
             </span>
 
             <span className="relative mt-2 block">
-              <UserRound className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type="text"
@@ -438,25 +483,25 @@ export default function SellerRegisterForm() {
                 onChange={updateTextField}
                 required
                 autoComplete="name"
-                placeholder="Your full name"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm text-slate-950 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                placeholder="Enter your full name"
+                className={iconInputClassName}
               />
             </span>
 
             {fieldErrors.name && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {fieldErrors.name}
               </p>
             )}
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Email address
             </span>
 
             <span className="relative mt-2 block">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type="email"
@@ -466,24 +511,24 @@ export default function SellerRegisterForm() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className={iconInputClassName}
               />
             </span>
 
             {fieldErrors.email && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {fieldErrors.email}
               </p>
             )}
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Phone number
             </span>
 
             <span className="relative mt-2 block">
-              <Phone className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <Phone className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type="tel"
@@ -493,12 +538,12 @@ export default function SellerRegisterForm() {
                 required
                 autoComplete="tel"
                 placeholder="+250 7XX XXX XXX"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className={iconInputClassName}
               />
             </span>
 
             {fieldErrors.phone && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {fieldErrors.phone}
               </p>
             )}
@@ -507,9 +552,9 @@ export default function SellerRegisterForm() {
       </section>
 
       {/* Seller information */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-800">
             <Store className="size-5" />
           </span>
 
@@ -518,16 +563,17 @@ export default function SellerRegisterForm() {
               Seller information
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Tell RushPi whether you are registering a shop or
-              selling as an individual.
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+              Tell RushPi whether you are
+              registering a shop or selling as
+              an individual.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Seller type
             </span>
 
@@ -535,25 +581,31 @@ export default function SellerRegisterForm() {
               name="sellerType"
               value={formData.sellerType}
               onChange={updateTextField}
-              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              className={`${inputClassName} appearance-none text-slate-950`}
             >
-              <option value="shop_owner">
+              <option
+                value="shop_owner"
+                className="text-slate-950"
+              >
                 Shop or registered business
               </option>
 
-              <option value="individual_seller">
+              <option
+                value="individual_seller"
+                className="text-slate-950"
+              >
                 Individual product owner
               </option>
             </select>
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Shop or seller name
             </span>
 
             <span className="relative mt-2 block">
-              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type="text"
@@ -562,19 +614,19 @@ export default function SellerRegisterForm() {
                 onChange={updateTextField}
                 required
                 placeholder="Example: Kigali Digital Store"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className={iconInputClassName}
               />
             </span>
 
             {fieldErrors.shop_name && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {fieldErrors.shop_name}
               </p>
             )}
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Business registration number
             </span>
 
@@ -582,7 +634,8 @@ export default function SellerRegisterForm() {
               type="text"
               name="businessRegistrationNumber"
               value={
-                formData.businessRegistrationNumber
+                formData
+                  .businessRegistrationNumber
               }
               onChange={updateTextField}
               required={
@@ -595,11 +648,12 @@ export default function SellerRegisterForm() {
                   ? "Required for registered businesses"
                   : "Optional for individual sellers"
               }
-              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              className={`mt-2 ${inputClassName}`}
             />
 
-            {fieldErrors.business_registration_number && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+            {fieldErrors
+              .business_registration_number && (
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {
                   fieldErrors
                     .business_registration_number
@@ -609,7 +663,7 @@ export default function SellerRegisterForm() {
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Tax identification number
             </span>
 
@@ -617,21 +671,22 @@ export default function SellerRegisterForm() {
               type="text"
               name="taxIdentificationNumber"
               value={
-                formData.taxIdentificationNumber
+                formData
+                  .taxIdentificationNumber
               }
               onChange={updateTextField}
-              placeholder="Optional TIN number"
-              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              placeholder="Enter TIN number when available"
+              className={`mt-2 ${inputClassName}`}
             />
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               City or district
             </span>
 
             <span className="relative mt-2 block">
-              <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type="text"
@@ -639,14 +694,14 @@ export default function SellerRegisterForm() {
                 value={formData.city}
                 onChange={updateTextField}
                 required
-                placeholder="Kigali"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                placeholder="Example: Kigali"
+                className={iconInputClassName}
               />
             </span>
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Business address
             </span>
 
@@ -657,17 +712,17 @@ export default function SellerRegisterForm() {
               onChange={updateTextField}
               required
               placeholder="Street, sector or marketplace"
-              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+              className={`mt-2 ${inputClassName}`}
             />
           </label>
 
           <label className="block sm:col-span-2">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Products you plan to sell
             </span>
 
             <span className="relative mt-2 block">
-              <PackageCheck className="pointer-events-none absolute left-4 top-4 size-5 text-slate-400" />
+              <PackageCheck className="pointer-events-none absolute left-4 top-4 size-5 text-slate-600" />
 
               <textarea
                 name="productCategories"
@@ -678,17 +733,17 @@ export default function SellerRegisterForm() {
                 required
                 rows={4}
                 placeholder="Example: mobile phones, laptops, accessories and home electronics"
-                className="w-full resize-none rounded-2xl border border-slate-300 bg-white py-3 pl-12 pr-4 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className="w-full resize-none rounded-2xl border border-slate-400 bg-white py-3 pl-12 pr-4 text-sm font-medium leading-6 text-slate-950 caret-blue-700 outline-none transition placeholder:font-normal placeholder:text-slate-500 hover:border-slate-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
               />
             </span>
           </label>
         </div>
       </section>
 
-      {/* Password */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      {/* Account security */}
+      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
             <LockKeyhole className="size-5" />
           </span>
 
@@ -697,21 +752,21 @@ export default function SellerRegisterForm() {
               Account security
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Create a secure password containing at least
-              eight characters.
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+              Create a secure password containing
+              at least eight characters.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Password
             </span>
 
             <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type={
@@ -726,7 +781,7 @@ export default function SellerRegisterForm() {
                 minLength={8}
                 autoComplete="new-password"
                 placeholder="Minimum 8 characters"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-12 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className={passwordInputClassName}
               />
 
               <button
@@ -736,7 +791,7 @@ export default function SellerRegisterForm() {
                     (current) => !current,
                   )
                 }
-                className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100"
+                className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
                 aria-label={
                   showPassword
                     ? "Hide password"
@@ -752,19 +807,19 @@ export default function SellerRegisterForm() {
             </span>
 
             {fieldErrors.password && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {fieldErrors.password}
               </p>
             )}
           </label>
 
           <label className="block">
-            <span className="text-sm font-black text-slate-800">
+            <span className={labelClassName}>
               Confirm password
             </span>
 
             <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
 
               <input
                 type={
@@ -774,19 +829,21 @@ export default function SellerRegisterForm() {
                 }
                 name="passwordConfirmation"
                 value={
-                  formData.passwordConfirmation
+                  formData
+                    .passwordConfirmation
                 }
                 onChange={updateTextField}
                 required
                 minLength={8}
                 autoComplete="new-password"
                 placeholder="Repeat your password"
-                className="h-[52px] w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-sm outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                className={iconInputClassName}
               />
             </span>
 
-            {fieldErrors.password_confirmation && (
-              <p className="mt-2 text-xs font-semibold text-red-600">
+            {fieldErrors
+              .password_confirmation && (
+              <p className="mt-2 text-xs font-bold text-red-700">
                 {
                   fieldErrors
                     .password_confirmation
@@ -797,8 +854,8 @@ export default function SellerRegisterForm() {
         </div>
       </section>
 
-      {/* Terms */}
-      <section className="rounded-3xl border border-blue-200 bg-blue-50/60 p-5 sm:p-7">
+      {/* Terms and conditions */}
+      <section className="rounded-3xl border border-blue-300 bg-blue-50 p-5 text-slate-950 sm:p-7">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white">
             <FileCheck2 className="size-5" />
@@ -809,22 +866,22 @@ export default function SellerRegisterForm() {
               Seller terms and conditions
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Review these requirements before submitting your
-              seller application.
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+              Review these requirements before
+              submitting your seller application.
             </p>
           </div>
         </div>
 
-        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-100 bg-white p-5">
+        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-200 bg-white p-5 text-slate-950">
           <ol className="space-y-4">
             {sellerTerms.map(
               (term, index) => (
                 <li
                   key={term}
-                  className="flex items-start gap-3 text-sm leading-6 text-slate-600"
+                  className="flex items-start gap-3 text-sm font-medium leading-6 text-slate-800"
                 >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-700">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-800">
                     {index + 1}
                   </span>
 
@@ -836,7 +893,7 @@ export default function SellerRegisterForm() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
             <input
               type="checkbox"
               name="termsAccepted"
@@ -845,16 +902,16 @@ export default function SellerRegisterForm() {
               }
               onChange={updateCheckbox}
               required
-              className="mt-1 size-4 shrink-0 accent-blue-700"
+              className="mt-1 size-5 shrink-0 accent-blue-700"
             />
 
-            <span className="text-sm leading-6 text-slate-700">
-              I have read and accept the RushPi seller terms and
-              conditions.
+            <span className="text-sm font-semibold leading-6 text-slate-900">
+              I have read and accept the
+              RushPi seller terms and conditions.
             </span>
           </label>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
             <input
               type="checkbox"
               name="informationConfirmed"
@@ -864,12 +921,13 @@ export default function SellerRegisterForm() {
               }
               onChange={updateCheckbox}
               required
-              className="mt-1 size-4 shrink-0 accent-blue-700"
+              className="mt-1 size-5 shrink-0 accent-blue-700"
             />
 
-            <span className="text-sm leading-6 text-slate-700">
-              I confirm that the information provided in this
-              application is accurate and can be verified by
+            <span className="text-sm font-semibold leading-6 text-slate-900">
+              I confirm that the information
+              provided in this application is
+              accurate and can be verified by
               RushPi.
             </span>
           </label>
@@ -883,7 +941,7 @@ export default function SellerRegisterForm() {
           !formData.termsAccepted ||
           !formData.informationConfirmed
         }
-        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:text-white disabled:shadow-none"
       >
         {submitting ? (
           <>
@@ -898,7 +956,7 @@ export default function SellerRegisterForm() {
         )}
       </button>
 
-      <p className="text-center text-sm text-slate-600">
+      <p className="text-center text-sm font-medium text-slate-800">
         Already registered?{" "}
         <Link
           href="/login"

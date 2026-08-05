@@ -44,7 +44,7 @@ const sellerBenefits = [
 
 export default function RegisterPage() {
   return (
-    <main className="min-h-screen bg-[#f4f7ff]">
+    <main className="min-h-screen bg-[#f4f7ff] text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
         {/* Seller information panel */}
         <aside className="relative overflow-hidden bg-gradient-to-b from-[#0754d8] to-[#113bad] px-6 py-8 text-white sm:px-8 lg:sticky lg:top-0 lg:h-screen lg:px-9 lg:py-10">
@@ -132,7 +132,7 @@ export default function RegisterPage() {
         </aside>
 
         {/* Registration form */}
-        <section className="px-4 py-8 sm:px-6 lg:px-10 lg:py-12 xl:px-14">
+        <section className="px-4 py-8 text-slate-950 sm:px-6 lg:px-10 lg:py-12 xl:px-14">
           <div className="mx-auto w-full max-w-[920px]">
             <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
@@ -144,7 +144,7 @@ export default function RegisterPage() {
                   Register as a seller
                 </h2>
 
-                <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+                <p className="mt-3 max-w-2xl leading-7 text-slate-700">
                   Complete the form below. RushPi may request
                   identification or business documents during
                   verification.
