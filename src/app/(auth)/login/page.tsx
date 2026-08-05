@@ -199,7 +199,7 @@ export default function LoginPage() {
               <div className="h-px flex-1 bg-slate-200" />
 
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                New to RushPi?
+                Want to sell on RushPi?
               </span>
 
               <div className="h-px flex-1 bg-slate-200" />
@@ -209,7 +209,7 @@ export default function LoginPage() {
               href="/register"
               className="mt-6 inline-flex h-13 w-full items-center justify-center rounded-full border-2 border-blue-700 bg-white px-6 text-sm font-black text-blue-700 transition hover:bg-blue-50"
             >
-              Create a RushPi account
+              Register as a seller
             </Link>
 
             <div className="mt-8 flex items-center justify-center gap-2 text-center text-xs leading-5 text-slate-500">
