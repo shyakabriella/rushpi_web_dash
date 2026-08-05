@@ -58,6 +58,13 @@ type RegisterResponse = {
     string,
     string | string[]
   >;
+  data?: {
+    token?: string;
+    access_token?: string;
+  } | Record<
+    string,
+    string | string[]
+  >;
 };
 
 const initialFormData: SellerFormData = {
@@ -248,19 +255,8 @@ export default function SellerRegisterForm() {
     setSubmitting(true);
 
     try {
-      const baseUrl =
-        process.env
-          .NEXT_PUBLIC_API_BASE_URL
-          ?.replace(/\/+$/, "");
-
-      if (!baseUrl) {
-        throw new Error(
-          "NEXT_PUBLIC_API_BASE_URL is not configured.",
-        );
-      }
-
       const response = await fetch(
-        `${baseUrl}/register`,
+        "/api/auth/register",
         {
           method: "POST",
           headers: {
