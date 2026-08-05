@@ -1,3 +1,5 @@
+import DashboardShell from "@/components/dashboard/dashboard-shell";
+
 type SellerLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
@@ -6,8 +8,8 @@ export default function SellerLayout({
   children,
 }: SellerLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-100">
+    <DashboardShell>
       {children}
-    </div>
+    </DashboardShell>
   );
 }
