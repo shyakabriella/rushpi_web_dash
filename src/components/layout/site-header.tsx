@@ -2,6 +2,8 @@
 
 import {
   ChevronDown,
+  CircleDollarSign,
+  Handshake,
   Heart,
   MapPin,
   Menu,
@@ -9,6 +11,7 @@ import {
   Search,
   ShoppingCart,
   Sparkles,
+  Store,
   Truck,
   UserRound,
   X,
@@ -48,7 +51,7 @@ const navigationItems = [
     href: "/products?sort=price_asc",
   },
   {
-    label: "Verified Sellers",
+    label: "Verified Partners",
     href: "/products",
   },
 ];
@@ -191,22 +194,103 @@ export default function SiteHeader() {
 
           {/* Desktop actions */}
           <div className="ml-auto hidden shrink-0 items-center gap-1 xl:flex">
-            <Link
-              href="/products"
-              className="group flex items-center gap-2 rounded-2xl px-3 py-2 transition hover:bg-white/10"
-            >
-              <Heart className="size-5 transition group-hover:scale-110 group-hover:fill-white" />
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-2xl px-3 py-2 transition hover:bg-white/10">
+                <Handshake className="size-5 transition group-hover:scale-110" />
 
-              <span>
-                <span className="block text-xs text-blue-100">
-                  Reorder
+                <span>
+                  <span className="block text-xs text-blue-100">
+                    Sell, deal or earn
+                  </span>
+
+                  <span className="block text-sm font-bold">
+                    Earn with RushPi
+                  </span>
                 </span>
 
-                <span className="block text-sm font-bold">
-                  My items
-                </span>
-              </span>
-            </Link>
+                <ChevronDown className="size-4 transition group-open:rotate-180" />
+              </summary>
+
+              <div className="absolute right-0 top-[calc(100%+12px)] z-[70] w-[340px] rounded-3xl border border-slate-200 bg-white p-3 text-slate-950 shadow-2xl">
+                <div className="px-3 pb-3 pt-2">
+                  <p className="font-black text-slate-950">
+                    Become a RushPi partner
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Choose how you want to participate and earn
+                    through the marketplace.
+                  </p>
+                </div>
+
+                <Link
+                  href="/register?role=seller"
+                  className="flex items-start gap-3 rounded-2xl p-3 transition hover:bg-blue-50"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700">
+                    <Store className="size-5" />
+                  </span>
+
+                  <span>
+                    <span className="block text-sm font-black text-slate-900">
+                      Sell your products
+                    </span>
+
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      For shop owners and people who own products.
+                    </span>
+                  </span>
+                </Link>
+
+                <Link
+                  href="/register?role=dealer"
+                  className="flex items-start gap-3 rounded-2xl p-3 transition hover:bg-violet-50"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
+                    <Handshake className="size-5" />
+                  </span>
+
+                  <span>
+                    <span className="block text-sm font-black text-slate-900">
+                      Make business deals
+                    </span>
+
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      Connect buyers and sellers as a Deal Partner.
+                    </span>
+                  </span>
+                </Link>
+
+                <Link
+                  href="/register?role=commissioner"
+                  className="flex items-start gap-3 rounded-2xl p-3 transition hover:bg-emerald-50"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <CircleDollarSign className="size-5" />
+                  </span>
+
+                  <span>
+                    <span className="block text-sm font-black text-slate-900">
+                      Earn sales commission
+                    </span>
+
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      Sell for shops and earn commission as an agent.
+                    </span>
+                  </span>
+                </Link>
+
+                <div className="my-2 border-t border-slate-100" />
+
+                <Link
+                  href="/login"
+                  className="flex items-center gap-3 rounded-2xl p-3 text-sm font-black text-blue-700 transition hover:bg-blue-50"
+                >
+                  <UserRound className="size-5" />
+                  Partner sign in
+                </Link>
+              </div>
+            </details>
 
             <Link
               href="/login"
@@ -313,19 +397,55 @@ export default function SiteHeader() {
               </Link>
 
               <Link
-                href="/seller/dashboard"
+                href="/register?role=seller"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-3 rounded-2xl bg-white/10 p-4 transition hover:bg-white/20"
               >
-                <PackageCheck className="size-5" />
+                <Store className="size-5 text-amber-300" />
 
                 <span>
                   <span className="block text-sm font-bold">
-                    Seller Center
+                    Sell products
                   </span>
 
                   <span className="block text-xs text-blue-100">
-                    Manage products
+                    For shops and product owners
+                  </span>
+                </span>
+              </Link>
+
+              <Link
+                href="/register?role=dealer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-2xl bg-white/10 p-4 transition hover:bg-white/20"
+              >
+                <Handshake className="size-5 text-cyan-200" />
+
+                <span>
+                  <span className="block text-sm font-bold">
+                    Make deals
+                  </span>
+
+                  <span className="block text-xs text-blue-100">
+                    Join as a Deal Partner
+                  </span>
+                </span>
+              </Link>
+
+              <Link
+                href="/register?role=commissioner"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-2xl bg-white/10 p-4 transition hover:bg-white/20"
+              >
+                <CircleDollarSign className="size-5 text-emerald-200" />
+
+                <span>
+                  <span className="block text-sm font-bold">
+                    Earn commission
+                  </span>
+
+                  <span className="block text-xs text-blue-100">
+                    Join as a Commission Agent
                   </span>
                 </span>
               </Link>
@@ -396,10 +516,10 @@ export default function SiteHeader() {
 
             <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
               <Link
-                href="/seller/dashboard"
+                href="/register"
                 className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
               >
-                Seller Center
+                Earn with RushPi
               </Link>
 
               <Link

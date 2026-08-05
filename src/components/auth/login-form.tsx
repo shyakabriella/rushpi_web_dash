@@ -204,15 +204,13 @@ export default function LoginForm() {
         getUserRole(user);
 
       if (role.includes("admin")) {
-        router.replace(
-          "/admin/dashboard",
-        );
-      } else if (
-        role.includes("seller")
-      ) {
-        router.replace(
-          "/seller/dashboard",
-        );
+        router.replace("/admin/dashboard");
+      } else if (role.includes("seller")) {
+        router.replace("/seller/dashboard");
+      } else if (role.includes("dealer")) {
+        router.replace("/dealer/dashboard");
+      } else if (role.includes("commissioner")) {
+        router.replace("/commissioner/dashboard");
       } else {
         router.replace("/");
       }

@@ -1,5 +1,8 @@
 "use client";
 
+import type { DashboardRole } from "@/types/dashboard";
+import { dashboardRoleInformation } from "@/config/dashboard-navigation";
+
 import {
   Bell,
   ChevronDown,
@@ -10,11 +13,15 @@ import Link from "next/link";
 
 type DashboardNavbarProps = {
   onMenuClick: () => void;
+  role: DashboardRole;
 };
 
 export default function DashboardNavbar({
   onMenuClick,
+  role,
 }: DashboardNavbarProps) {
+  const roleInformation =
+    dashboardRoleInformation[role];
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div className="flex h-20 items-center gap-4 px-4 sm:px-6 xl:px-8">
@@ -29,11 +36,11 @@ export default function DashboardNavbar({
 
         <div className="hidden sm:block">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
-            Seller dashboard
+            {roleInformation.label} dashboard
           </p>
 
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Manage your RushPi marketplace
+            {roleInformation.description}
           </p>
         </div>
 
@@ -72,11 +79,11 @@ export default function DashboardNavbar({
 
               <span className="hidden min-w-0 text-left xl:block">
                 <span className="block truncate text-sm font-black text-slate-900">
-                  RushPi Store
+                  {roleInformation.accountName}
                 </span>
 
                 <span className="block truncate text-xs text-slate-500">
-                  Seller account
+                  {roleInformation.label} account
                 </span>
               </span>
 

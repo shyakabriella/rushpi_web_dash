@@ -1,14 +1,14 @@
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 
-type SellerLayoutProps = Readonly<{
+type CommissionerLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
-export default function SellerLayout({
+export default function CommissionerLayout({
   children,
-}: SellerLayoutProps) {
+}: CommissionerLayoutProps) {
   return (
-    <DashboardShell role="seller">
+    <DashboardShell role="commissioner">
       {children}
     </DashboardShell>
   );

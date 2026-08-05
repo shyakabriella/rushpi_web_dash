@@ -2,91 +2,40 @@
 
 import {
   BadgeCheck,
-  BarChart3,
-  FileImage,
-  Gauge,
   HelpCircle,
-  LayoutDashboard,
   LogOut,
-  PackageSearch,
-  Settings,
-  ShoppingBag,
-  Store,
-  Warehouse,
   X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import {
+  dashboardNavigation,
+  dashboardRoleInformation,
+} from "@/config/dashboard-navigation";
+import type { DashboardRole } from "@/types/dashboard";
+
 type DashboardSidebarProps = {
   open: boolean;
   onClose: () => void;
+  role: DashboardRole;
 };
-
-const primaryLinks = [
-  {
-    label: "Dashboard",
-    href: "/seller/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Products",
-    href: "/seller/products",
-    icon: PackageSearch,
-  },
-  {
-    label: "Inventory",
-    href: "/seller/inventory",
-    icon: Warehouse,
-  },
-  {
-    label: "Product media",
-    href: "/seller/media",
-    icon: FileImage,
-  },
-  {
-    label: "Orders",
-    href: "/seller/orders",
-    icon: ShoppingBag,
-  },
-  {
-    label: "Analytics",
-    href: "/seller/analytics",
-    icon: BarChart3,
-  },
-];
-
-const accountLinks = [
-  {
-    label: "Seller profile",
-    href: "/seller/profile",
-    icon: Store,
-  },
-  {
-    label: "Verification",
-    href: "/seller/verification",
-    icon: BadgeCheck,
-  },
-  {
-    label: "Settings",
-    href: "/seller/settings",
-    icon: Settings,
-  },
-  {
-    label: "Help center",
-    href: "/seller/help",
-    icon: HelpCircle,
-  },
-];
 
 export default function DashboardSidebar({
   open,
   onClose,
+  role,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
 
-  const isActive = (href: string) => {
+  const navigation =
+    dashboardNavigation[role];
+
+  const roleInformation =
+    dashboardRoleInformation[role];
+
+  const isActive = (href: string): boolean => {
     return (
       pathname === href ||
       pathname.startsWith(`${href}/`)
@@ -100,15 +49,15 @@ export default function DashboardSidebar({
           type="button"
           onClick={onClose}
           className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
-          aria-label="Close dashboard menu"
+          aria-label="Close dashboard navigation"
         />
       )}
 
       <aside
         className={[
           "fixed inset-y-0 left-0 z-50 flex w-[270px] flex-col",
-          "bg-gradient-to-b from-[#0754d8] to-[#113bad] text-white",
-          "shadow-[20px_0_45px_rgba(15,23,42,0.14)]",
+          "bg-gradient-to-b from-[#0754d8] to-[#113bad]",
+          "text-white shadow-[20px_0_45px_rgba(15,23,42,0.14)]",
           "transition-transform duration-300 lg:translate-x-0",
           open
             ? "translate-x-0"
@@ -131,7 +80,7 @@ export default function DashboardSidebar({
               </span>
 
               <span className="block text-xs text-blue-200">
-                Seller Center
+                {roleInformation.label} Center
               </span>
             </span>
           </Link>
@@ -146,115 +95,94 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        <div className="dashboard-sidebar-scroll flex-1 overflow-y-auto px-4 py-6">
-          <div className="mb-3 px-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-200">
-              Marketplace
-            </p>
-          </div>
+        <div className="dashboard-sidebar-scroll flex-1 overflow-y-auto px-4 py-5">
+          {navigation.map((group) => (
+            <div
+              key={group.title}
+              className="mb-7"
+            >
+              <p className="mb-3 px-3 text-[11px] font-black uppercase tracking-[0.2em] text-blue-200">
+                {group.title}
+              </p>
 
-          <nav className="space-y-1.5">
-            {primaryLinks.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
+              <nav className="space-y-1.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active =
+                    isActive(item.href);
 
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={onClose}
-                  className={[
-                    "group flex items-center gap-3 rounded-2xl px-3 py-3",
-                    "text-sm font-bold transition duration-200",
-                    active
-                      ? "bg-white text-blue-700 shadow-lg"
-                      : "text-blue-50 hover:bg-white/12 hover:text-white",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "grid size-9 shrink-0 place-items-center rounded-xl transition",
-                      active
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-white/10 text-blue-100 group-hover:bg-white/15",
-                    ].join(" ")}
-                  >
-                    <Icon className="size-5" />
-                  </span>
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={[
+                        "group flex items-center gap-3 rounded-2xl px-3 py-3",
+                        "text-sm font-bold transition duration-200",
+                        active
+                          ? "bg-white text-blue-700 shadow-lg"
+                          : "text-blue-50 hover:bg-white/10 hover:text-white",
+                      ].join(" ")}
+                    >
+                      <span
+                        className={[
+                          "grid size-9 shrink-0 place-items-center rounded-xl",
+                          active
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-white/10 text-blue-100 group-hover:bg-white/15",
+                        ].join(" ")}
+                      >
+                        <Icon className="size-5" />
+                      </span>
 
-                  <span>{link.label}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.label}
+                      </span>
 
-                  {active && (
-                    <span className="ml-auto size-2 rounded-full bg-blue-600" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+                      {active && (
+                        <span className="size-2 shrink-0 rounded-full bg-blue-600" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
 
-          <div className="mb-3 mt-8 px-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-200">
-              Account
-            </p>
-          </div>
+          <Link
+            href="/help"
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-blue-50 transition hover:bg-white/10"
+          >
+            <span className="grid size-9 place-items-center rounded-xl bg-white/10">
+              <HelpCircle className="size-5" />
+            </span>
 
-          <nav className="space-y-1.5">
-            {accountLinks.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={onClose}
-                  className={[
-                    "group flex items-center gap-3 rounded-2xl px-3 py-3",
-                    "text-sm font-bold transition duration-200",
-                    active
-                      ? "bg-white text-blue-700 shadow-lg"
-                      : "text-blue-50 hover:bg-white/12 hover:text-white",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "grid size-9 shrink-0 place-items-center rounded-xl",
-                      active
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-white/10 text-blue-100",
-                    ].join(" ")}
-                  >
-                    <Icon className="size-5" />
-                  </span>
-
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+            Help center
+          </Link>
         </div>
 
         <div className="border-t border-white/15 p-4">
-          <div className="mb-4 rounded-2xl bg-white/10 p-4 backdrop-blur">
+          <div className="mb-3 rounded-2xl bg-white/10 p-4 backdrop-blur">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-full bg-emerald-400 text-sm font-black text-emerald-950">
-                RS
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400 text-sm font-black text-emerald-950">
+                {roleInformation.shortName}
               </span>
 
               <div className="min-w-0">
                 <p className="truncate text-sm font-black">
-                  RushPi Store
+                  {roleInformation.accountName}
                 </p>
 
                 <p className="truncate text-xs text-blue-200">
-                  Approved seller
+                  {roleInformation.description}
                 </p>
               </div>
             </div>
 
             <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/15 px-3 py-2 text-xs text-emerald-100">
               <BadgeCheck className="size-4" />
-              Verification active
+              {roleInformation.label} access
             </div>
           </div>
 
