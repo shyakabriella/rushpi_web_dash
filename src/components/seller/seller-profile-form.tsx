@@ -1,1480 +1,2797 @@
 "use client";
 
 import {
-  AlertCircle,
-  ArrowRight,
   BadgeCheck,
+  BarChart3,
   Building2,
+  Camera,
   CheckCircle2,
-  Eye,
-  EyeOff,
-  FileCheck2,
+  Clock3,
+  FileText,
+  ImageIcon,
   LoaderCircle,
-  LockKeyhole,
   Mail,
   MapPin,
-  PackageCheck,
+  MessageCircle,
   Phone,
+  RefreshCw,
+  Save,
   ShieldCheck,
+  ShoppingBag,
+  Star,
   Store,
-  UserRound,
+  TriangleAlert,
+  Upload,
 } from "lucide-react";
-import Link from "next/link";
+
 import {
   type ChangeEvent,
+  type ComponentType,
   type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
-type SellerType =
-  | "shop_owner"
-  | "individual_seller";
+/* =========================================================
+ * TYPES
+ * ======================================================= */
 
-type SellerFormData = {
-  name: string;
-  email: string;
+type SellerAddress = {
+  id?: number;
+
+  country?: string | null;
+  province?: string | null;
+  district?: string | null;
+  sector?: string | null;
+
+  address?: string | null;
+  address_line?: string | null;
+
+  is_default?: boolean;
+};
+
+type SellerProfile = {
+  id: number;
+  public_id?: string | null;
+
+  /* Requested seller profile fields */
+  business_name?: string | null;
+  store_name?: string | null;
+
+  logo?: string | null;
+  logo_url?: string | null;
+
+  cover_image?: string | null;
+  cover_image_url?: string | null;
+
+  description?: string | null;
+
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+
+  business_type?: string | null;
+
+  registration_number?: string | null;
+  tin_number?: string | null;
+
+  country?: string | null;
+  province?: string | null;
+  district?: string | null;
+  sector?: string | null;
+  address?: string | null;
+
+  verification_status?: string | null;
+  seller_status?: string | null;
+
+  average_rating?: number | string | null;
+  total_reviews?: number | null;
+
+  total_orders?: number | null;
+  completed_orders?: number | null;
+
+  response_rate?: number | string | null;
+  response_time?: number | string | null;
+
+  return_policy?: string | null;
+  warranty_policy?: string | null;
+
+  created_at?: string | null;
+  updated_at?: string | null;
+
+  /*
+   * Existing RushPi backend aliases.
+   * Keep these while backend naming is being migrated.
+   */
+  legal_business_name?: string | null;
+  trading_name?: string | null;
+
+  business_phone?: string | null;
+  business_email?: string | null;
+
+  tax_identification_number?: string | null;
+
+  status?: string | null;
+
+  addresses?: SellerAddress[];
+};
+
+type SellerProfileFormData = {
+  businessName: string;
+  storeName: string;
+
+  description: string;
+
   phone: string;
+  whatsapp: string;
+  email: string;
 
-  sellerType: SellerType;
-  shopName: string;
+  businessType: string;
 
-  businessRegistrationNumber: string;
-  taxIdentificationNumber: string;
+  registrationNumber: string;
+  tinNumber: string;
 
-  city: string;
+  country: string;
+  province: string;
+  district: string;
+  sector: string;
   address: string;
 
-  productCategories: string;
-
-  password: string;
-  passwordConfirmation: string;
-
-  termsAccepted: boolean;
-  informationConfirmed: boolean;
+  returnPolicy: string;
+  warrantyPolicy: string;
 };
 
-type RegisterResponseData = {
-  token?: string;
-  access_token?: string;
+type ValidationErrors = Record<
+  string,
+  string | string[]
+>;
 
-  user?: {
-    id?: number;
-    name?: string;
-    email?: string;
-    phone?: string | null;
-    role?: string;
-    status?: string;
-  };
-
-  seller_profile?: {
-    id?: number;
-    public_id?: string;
-
-    legal_business_name?: string;
-    trading_name?: string;
-
-    status?: string;
-  };
-};
-
-type RegisterResponse = {
+type ApiEnvelope<T> = {
   success?: boolean;
   message?: string;
-
-  token?: string;
-  access_token?: string;
-
-  data?: RegisterResponseData;
-
-  errors?: Record<
-    string,
-    string | string[]
-  >;
+  data?: T;
+  errors?: ValidationErrors;
 };
 
-const initialFormData: SellerFormData = {
-  name: "",
-  email: "",
+class ApiRequestError extends Error {
+  status: number;
+  errors: ValidationErrors;
+
+  constructor(
+    message: string,
+    status: number,
+    errors: ValidationErrors = {},
+  ) {
+    super(message);
+
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
+/* =========================================================
+ * CONFIG
+ * ======================================================= */
+
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://rushpi.asyncafrica.com/api"
+).replace(/\/+$/, "");
+
+const STORAGE_BASE_URL = (
+  process.env.NEXT_PUBLIC_STORAGE_URL ??
+  "https://rushpi.asyncafrica.com/storage"
+).replace(/\/+$/, "");
+
+/* =========================================================
+ * FORM DEFAULTS
+ * ======================================================= */
+
+const initialFormData: SellerProfileFormData = {
+  businessName: "",
+  storeName: "",
+
+  description: "",
+
   phone: "",
+  whatsapp: "",
+  email: "",
 
-  sellerType: "shop_owner",
-  shopName: "",
+  businessType: "shop_owner",
 
-  businessRegistrationNumber: "",
-  taxIdentificationNumber: "",
+  registrationNumber: "",
+  tinNumber: "",
 
-  city: "Kigali",
+  country: "Rwanda",
+  province: "",
+  district: "",
+  sector: "",
   address: "",
 
-  productCategories: "",
-
-  password: "",
-  passwordConfirmation: "",
-
-  termsAccepted: false,
-  informationConfirmed: false,
+  returnPolicy: "",
+  warrantyPolicy: "",
 };
 
-const sellerTerms = [
-  "I will provide accurate personal, business and contact information.",
-  "I will only list products that I own or am legally authorized to sell.",
-  "I will not list counterfeit, stolen, prohibited or misleading products.",
-  "I will keep product prices, descriptions and stock information accurate.",
-  "I will process confirmed orders and communicate honestly with customers.",
-  "I will follow RushPi return, refund, payment and marketplace policies.",
-  "RushPi may review, reject, restrict or suspend seller accounts that violate marketplace policies.",
-  "Applicable RushPi marketplace fees or commissions may be deducted from completed transactions.",
-];
+/* =========================================================
+ * STYLES
+ * ======================================================= */
 
 const inputClassName = [
-  "mt-2 h-[52px] w-full rounded-2xl",
+  "mt-2 h-12 w-full rounded-xl",
   "border border-slate-300 bg-white",
   "px-4 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-400",
+  "outline-none transition",
+  "placeholder:text-slate-400",
   "hover:border-slate-400",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
-].join(" ");
-
-const iconInputClassName = [
-  "mt-2 h-[52px] w-full rounded-2xl",
-  "border border-slate-300 bg-white",
-  "pl-12 pr-4 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-400",
-  "hover:border-slate-400",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
-].join(" ");
-
-const passwordInputClassName = [
-  "mt-2 h-[52px] w-full rounded-2xl",
-  "border border-slate-300 bg-white",
-  "pl-12 pr-12 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-400",
-  "hover:border-slate-400",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+  "focus:border-blue-600",
+  "focus:ring-4 focus:ring-blue-100",
+  "disabled:cursor-not-allowed",
+  "disabled:bg-slate-100",
+  "disabled:text-slate-500",
 ].join(" ");
 
 const textareaClassName = [
-  "mt-2 w-full resize-none rounded-2xl",
+  "mt-2 min-h-32 w-full resize-y rounded-xl",
   "border border-slate-300 bg-white",
-  "px-4 py-3 text-sm font-medium leading-6 text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-400",
+  "px-4 py-3",
+  "text-sm font-medium leading-6 text-slate-950",
+  "outline-none transition",
+  "placeholder:text-slate-400",
   "hover:border-slate-400",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+  "focus:border-blue-600",
+  "focus:ring-4 focus:ring-blue-100",
+  "disabled:cursor-not-allowed",
+  "disabled:bg-slate-100",
+  "disabled:text-slate-500",
 ].join(" ");
 
 const labelClassName =
-  "text-sm font-black text-slate-900";
+  "text-sm font-black text-slate-800";
 
-function normalizeErrors(
-  errors: RegisterResponse["errors"],
-): Record<string, string> {
-  if (!errors) {
-    return {};
-  }
+/* =========================================================
+ * HELPERS
+ * ======================================================= */
 
-  return Object.fromEntries(
-    Object.entries(errors).map(
-      ([field, value]) => [
-        field,
-        Array.isArray(value)
-          ? value[0] ??
-            "This field is invalid."
-          : value,
-      ],
-    ),
-  );
-}
-
-function FieldError({
-  error,
-}: {
-  error?: string;
-}) {
-  if (!error) {
+function getAccessToken(): string | null {
+  if (
+    typeof window === "undefined"
+  ) {
     return null;
   }
 
-  return (
-    <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-red-700">
-      <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+  const tokenKeys = [
+    "rushpi_token",
+    "token",
+    "access_token",
+    "auth_token",
+  ];
 
-      <span>{error}</span>
-    </p>
+  for (const key of tokenKeys) {
+    const localToken =
+      window.localStorage.getItem(
+        key,
+      );
+
+    if (localToken) {
+      return localToken;
+    }
+
+    const sessionToken =
+      window.sessionStorage.getItem(
+        key,
+      );
+
+    if (sessionToken) {
+      return sessionToken;
+    }
+  }
+
+  return null;
+}
+
+async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<ApiEnvelope<T>> {
+  const token = getAccessToken();
+
+  if (!token) {
+    throw new ApiRequestError(
+      "Your login session was not found. Please sign in again.",
+      401,
+    );
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}${path}`,
+    {
+      ...options,
+
+      headers: {
+        Accept: "application/json",
+
+        Authorization:
+          `Bearer ${token}`,
+
+        ...options.headers,
+      },
+
+      cache: "no-store",
+    },
+  );
+
+  const raw =
+    await response.text();
+
+  let payload:
+    ApiEnvelope<T>;
+
+  try {
+    const parsed =
+      raw
+        ? JSON.parse(raw)
+        : {};
+
+    /*
+     * Support APIs that return
+     * an array/object directly.
+     */
+    if (
+      Array.isArray(parsed)
+    ) {
+      payload = {
+        data: parsed as T,
+      };
+    } else if (
+      parsed &&
+      typeof parsed ===
+        "object" &&
+      "data" in parsed
+    ) {
+      payload =
+        parsed as ApiEnvelope<T>;
+    } else {
+      payload = {
+        ...parsed,
+        data:
+          parsed as T,
+      };
+    }
+  } catch {
+    throw new ApiRequestError(
+      `The server returned an invalid response. HTTP ${response.status}.`,
+      response.status,
+    );
+  }
+
+  if (!response.ok) {
+    throw new ApiRequestError(
+      payload.message ??
+        "The request could not be completed.",
+      response.status,
+      payload.errors ?? {},
+    );
+  }
+
+  return payload;
+}
+
+function firstError(
+  errors: ValidationErrors,
+  ...fields: string[]
+): string | null {
+  for (const field of fields) {
+    const value =
+      errors[field];
+
+    if (!value) {
+      continue;
+    }
+
+    if (
+      Array.isArray(value)
+    ) {
+      return (
+        value[0] ??
+        "This field is invalid."
+      );
+    }
+
+    return value;
+  }
+
+  return null;
+}
+
+function normalizeStatus(
+  value?: string | null,
+): string {
+  return (
+    value
+      ?.trim()
+      .toLowerCase() ??
+    ""
   );
 }
 
-export default function SellerRegisterForm() {
+function formatStatus(
+  value?: string | null,
+): string {
+  if (!value) {
+    return "Not available";
+  }
+
+  return value
+    .replaceAll("_", " ")
+    .replace(
+      /\b\w/g,
+      (character) =>
+        character.toUpperCase(),
+    );
+}
+
+function statusClassName(
+  value?: string | null,
+): string {
+  const status =
+    normalizeStatus(value);
+
+  if (
+    [
+      "verified",
+      "approved",
+      "active",
+    ].includes(status)
+  ) {
+    return [
+      "border-emerald-200",
+      "bg-emerald-50",
+      "text-emerald-700",
+    ].join(" ");
+  }
+
+  if (
+    [
+      "pending",
+      "pending_verification",
+      "under_review",
+    ].includes(status)
+  ) {
+    return [
+      "border-blue-200",
+      "bg-blue-50",
+      "text-blue-700",
+    ].join(" ");
+  }
+
+  if (
+    [
+      "rejected",
+      "blocked",
+      "suspended",
+    ].includes(status)
+  ) {
+    return [
+      "border-red-200",
+      "bg-red-50",
+      "text-red-700",
+    ].join(" ");
+  }
+
+  if (
+    status === "draft"
+  ) {
+    return [
+      "border-amber-200",
+      "bg-amber-50",
+      "text-amber-700",
+    ].join(" ");
+  }
+
+  return [
+    "border-slate-200",
+    "bg-slate-50",
+    "text-slate-700",
+  ].join(" ");
+}
+
+function formatDate(
+  value?: string | null,
+): string {
+  if (!value) {
+    return "—";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    },
+  ).format(date);
+}
+
+function formatRating(
+  value?:
+    | number
+    | string
+    | null,
+): string {
+  const rating =
+    Number(value ?? 0);
+
+  if (
+    Number.isNaN(rating)
+  ) {
+    return "0.0";
+  }
+
+  return rating.toFixed(1);
+}
+
+function formatPercentage(
+  value?:
+    | number
+    | string
+    | null,
+): string {
+  const percentage =
+    Number(value ?? 0);
+
+  if (
+    Number.isNaN(
+      percentage,
+    )
+  ) {
+    return "0%";
+  }
+
+  return `${Math.round(
+    percentage,
+  )}%`;
+}
+
+function formatResponseTime(
+  value?:
+    | number
+    | string
+    | null,
+): string {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "—";
+  }
+
+  const numeric =
+    Number(value);
+
+  if (
+    Number.isNaN(numeric)
+  ) {
+    return String(value);
+  }
+
+  if (numeric < 60) {
+    return `${numeric} min`;
+  }
+
+  const hours =
+    numeric / 60;
+
+  return `${hours.toFixed(
+    hours % 1 === 0
+      ? 0
+      : 1,
+  )} hr`;
+}
+
+function resolveImageUrl(
+  value?:
+    | string
+    | null,
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (
+    value.startsWith(
+      "http://",
+    ) ||
+    value.startsWith(
+      "https://",
+    ) ||
+    value.startsWith(
+      "blob:",
+    ) ||
+    value.startsWith(
+      "data:",
+    )
+  ) {
+    return value;
+  }
+
+  const cleanPath =
+    value
+      .replace(
+        /^\/+/,
+        "",
+      )
+      .replace(
+        /^storage\//,
+        "",
+      );
+
+  return `${STORAGE_BASE_URL}/${cleanPath}`;
+}
+
+/* =========================================================
+ * MAIN COMPONENT
+ * ======================================================= */
+
+export default function SellerProfileForm() {
+  const [
+    profile,
+    setProfile,
+  ] =
+    useState<SellerProfile | null>(
+      null,
+    );
+
   const [
     formData,
     setFormData,
-  ] = useState<SellerFormData>(
-    initialFormData,
-  );
+  ] =
+    useState<SellerProfileFormData>(
+      initialFormData,
+    );
 
   const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
+    logoFile,
+    setLogoFile,
+  ] =
+    useState<File | null>(
+      null,
+    );
 
   const [
-    submitting,
-    setSubmitting,
-  ] = useState(false);
+    coverImageFile,
+    setCoverImageFile,
+  ] =
+    useState<File | null>(
+      null,
+    );
 
   const [
-    generalError,
-    setGeneralError,
-  ] = useState("");
+    logoPreview,
+    setLogoPreview,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const [
-    fieldErrors,
-    setFieldErrors,
-  ] = useState<
-    Record<string, string>
-  >({});
+    coverImagePreview,
+    setCoverImagePreview,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const [
-    submitted,
-    setSubmitted,
-  ] = useState(false);
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] =
+    useState(false);
+
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
+  const [
+    errors,
+    setErrors,
+  ] =
+    useState<ValidationErrors>(
+      {},
+    );
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState("");
 
   const [
     successMessage,
     setSuccessMessage,
-  ] = useState("");
+  ] =
+    useState("");
 
-  const progress = useMemo(() => {
-    const importantFields = [
-      formData.name,
-      formData.email,
-      formData.phone,
-      formData.shopName,
-      formData.city,
-      formData.address,
-      formData.productCategories,
-      formData.password,
-      formData.passwordConfirmation,
-    ];
+  /* =======================================================
+   * PROFILE STATUS
+   * ===================================================== */
 
-    let completed =
-      importantFields.filter(
-        (value) =>
-          value.trim().length > 0,
-      ).length;
+  const verificationStatus =
+    profile
+      ?.verification_status ??
+    (
+      profile?.status ===
+      "pending_verification"
+        ? "pending_verification"
+        : "draft"
+    );
 
-    if (formData.termsAccepted) {
-      completed++;
+  const sellerStatus =
+    profile?.seller_status ??
+    profile?.status ??
+    "draft";
+
+  const editable =
+    ![
+      "blocked",
+      "suspended",
+      "rejected",
+    ].includes(
+      normalizeStatus(
+        sellerStatus,
+      ),
+    );
+
+  /* =======================================================
+   * POPULATE FORM
+   * ===================================================== */
+
+  const populateForm =
+    useCallback(
+      (
+        seller:
+          SellerProfile,
+      ) => {
+        const defaultAddress =
+          seller.addresses?.find(
+            (item) =>
+              item.is_default,
+          ) ??
+          seller.addresses?.[0];
+
+        setFormData({
+          businessName:
+            seller.business_name ??
+            seller
+              .legal_business_name ??
+            "",
+
+          storeName:
+            seller.store_name ??
+            seller.trading_name ??
+            "",
+
+          description:
+            seller.description ??
+            "",
+
+          phone:
+            seller.phone ??
+            seller.business_phone ??
+            "",
+
+          whatsapp:
+            seller.whatsapp ??
+            "",
+
+          email:
+            seller.email ??
+            seller.business_email ??
+            "",
+
+          businessType:
+            seller.business_type ??
+            "shop_owner",
+
+          registrationNumber:
+            seller
+              .registration_number ??
+            "",
+
+          tinNumber:
+            seller.tin_number ??
+            seller
+              .tax_identification_number ??
+            "",
+
+          country:
+            seller.country ??
+            defaultAddress
+              ?.country ??
+            "Rwanda",
+
+          province:
+            seller.province ??
+            defaultAddress
+              ?.province ??
+            "",
+
+          district:
+            seller.district ??
+            defaultAddress
+              ?.district ??
+            "",
+
+          sector:
+            seller.sector ??
+            defaultAddress
+              ?.sector ??
+            "",
+
+          address:
+            seller.address ??
+            defaultAddress
+              ?.address ??
+            defaultAddress
+              ?.address_line ??
+            "",
+
+          returnPolicy:
+            seller
+              .return_policy ??
+            "",
+
+          warrantyPolicy:
+            seller
+              .warranty_policy ??
+            "",
+        });
+
+        setLogoPreview(
+          resolveImageUrl(
+            seller.logo_url ??
+              seller.logo,
+          ),
+        );
+
+        setCoverImagePreview(
+          resolveImageUrl(
+            seller
+              .cover_image_url ??
+              seller
+                .cover_image,
+          ),
+        );
+
+        setLogoFile(null);
+
+        setCoverImageFile(
+          null,
+        );
+      },
+      [],
+    );
+
+  /* =======================================================
+   * LOAD PROFILE
+   * ===================================================== */
+
+  const loadProfile =
+    useCallback(
+      async (
+        refresh = false,
+      ) => {
+        if (refresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        try {
+          const response =
+            await apiRequest<
+              SellerProfile[]
+            >(
+              "/seller/profiles",
+            );
+
+          const profiles =
+            response.data ??
+            [];
+
+          const seller =
+            profiles[0];
+
+          if (!seller) {
+            setProfile(null);
+
+            setFormData(
+              initialFormData,
+            );
+
+            setLogoPreview(
+              null,
+            );
+
+            setCoverImagePreview(
+              null,
+            );
+
+            return;
+          }
+
+          setProfile(seller);
+
+          populateForm(
+            seller,
+          );
+        } catch (error) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Seller profile could not be loaded.",
+          );
+        } finally {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      },
+      [populateForm],
+    );
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  /* =======================================================
+   * PROFILE COMPLETION
+   * ===================================================== */
+
+  const profileCompletion =
+    useMemo(() => {
+      const values = [
+        formData.businessName,
+        formData.storeName,
+        formData.description,
+
+        formData.phone,
+        formData.whatsapp,
+        formData.email,
+
+        formData.businessType,
+
+        formData.registrationNumber,
+        formData.tinNumber,
+
+        formData.country,
+        formData.province,
+        formData.district,
+        formData.sector,
+        formData.address,
+
+        formData.returnPolicy,
+        formData.warrantyPolicy,
+      ];
+
+      let completed =
+        values.filter(
+          (value) =>
+            value
+              .trim()
+              .length > 0,
+        ).length;
+
+      if (logoPreview) {
+        completed++;
+      }
+
+      if (
+        coverImagePreview
+      ) {
+        completed++;
+      }
+
+      const total =
+        values.length + 2;
+
+      return Math.round(
+        (completed /
+          total) *
+          100,
+      );
+    }, [
+      formData,
+      logoPreview,
+      coverImagePreview,
+    ]);
+
+  /* =======================================================
+   * UPDATE FIELD
+   * ===================================================== */
+
+  function updateField<
+    K extends keyof SellerProfileFormData,
+  >(
+    field: K,
+    value:
+      SellerProfileFormData[K],
+  ) {
+    setFormData(
+      (current) => ({
+        ...current,
+
+        [field]:
+          value,
+      }),
+    );
+
+    setErrors(
+      (current) => {
+        const next = {
+          ...current,
+        };
+
+        const fieldMap:
+          Partial<
+            Record<
+              keyof SellerProfileFormData,
+              string[]
+            >
+          > = {
+          businessName: [
+            "business_name",
+            "legal_business_name",
+          ],
+
+          storeName: [
+            "store_name",
+            "trading_name",
+          ],
+
+          description: [
+            "description",
+          ],
+
+          phone: [
+            "phone",
+            "business_phone",
+          ],
+
+          whatsapp: [
+            "whatsapp",
+          ],
+
+          email: [
+            "email",
+            "business_email",
+          ],
+
+          businessType: [
+            "business_type",
+          ],
+
+          registrationNumber:
+            [
+              "registration_number",
+            ],
+
+          tinNumber: [
+            "tin_number",
+            "tax_identification_number",
+          ],
+
+          country: [
+            "country",
+            "address.country",
+          ],
+
+          province: [
+            "province",
+            "address.province",
+          ],
+
+          district: [
+            "district",
+            "address.district",
+          ],
+
+          sector: [
+            "sector",
+            "address.sector",
+          ],
+
+          address: [
+            "address",
+            "address.address_line",
+          ],
+
+          returnPolicy: [
+            "return_policy",
+          ],
+
+          warrantyPolicy: [
+            "warranty_policy",
+          ],
+        };
+
+        const errorKeys =
+          fieldMap[field] ??
+          [String(field)];
+
+        for (
+          const key of errorKeys
+        ) {
+          delete next[key];
+        }
+
+        return next;
+      },
+    );
+
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  /* =======================================================
+   * IMAGE UPLOAD
+   * ===================================================== */
+
+  function handleImageChange(
+    event:
+      ChangeEvent<HTMLInputElement>,
+    type:
+      | "logo"
+      | "cover",
+  ) {
+    const file =
+      event.target
+        .files?.[0];
+
+    if (!file) {
+      return;
     }
 
     if (
-      formData.informationConfirmed
+      !file.type.startsWith(
+        "image/",
+      )
     ) {
-      completed++;
+      setErrorMessage(
+        "Please select a valid image.",
+      );
+
+      return;
     }
 
-    return Math.round(
-      (completed /
-        (importantFields.length +
-          2)) *
-        100,
-    );
-  }, [formData]);
+    const maximumSize =
+      5 * 1024 * 1024;
 
-  function clearFieldError(
-    frontendName: string,
-  ) {
-    const backendFieldMap:
-      Record<string, string[]> = {
-      name: ["name"],
+    if (
+      file.size >
+      maximumSize
+    ) {
+      setErrorMessage(
+        "The image must not exceed 5 MB.",
+      );
 
-      email: ["email"],
+      return;
+    }
 
-      phone: ["phone"],
+    const preview =
+      URL.createObjectURL(
+        file,
+      );
 
-      sellerType: [
-        "seller_type",
-      ],
+    if (
+      type === "logo"
+    ) {
+      setLogoFile(file);
 
-      shopName: [
-        "shop_name",
-      ],
+      setLogoPreview(
+        preview,
+      );
+    } else {
+      setCoverImageFile(
+        file,
+      );
 
-      businessRegistrationNumber:
-        [
-          "business_registration_number",
-        ],
+      setCoverImagePreview(
+        preview,
+      );
+    }
 
-      taxIdentificationNumber:
-        [
-          "tax_identification_number",
-        ],
-
-      city: ["city"],
-
-      address: ["address"],
-
-      productCategories: [
-        "product_categories",
-      ],
-
-      password: ["password"],
-
-      passwordConfirmation: [
-        "password_confirmation",
-      ],
-
-      termsAccepted: [
-        "terms_accepted",
-      ],
-
-      informationConfirmed: [
-        "information_confirmed",
-      ],
-    };
-
-    setFieldErrors((current) => {
-      const next = {
-        ...current,
-      };
-
-      const fields =
-        backendFieldMap[
-          frontendName
-        ] ?? [frontendName];
-
-      for (const field of fields) {
-        delete next[field];
-      }
-
-      return next;
-    });
+    setErrorMessage("");
+    setSuccessMessage("");
   }
 
-  function updateTextField(
-    event: ChangeEvent<
-      | HTMLInputElement
-      | HTMLSelectElement
-      | HTMLTextAreaElement
-    >,
-  ) {
-    const {
-      name,
-      value,
-    } = event.target;
+  /* =======================================================
+   * SAVE PROFILE
+   * ===================================================== */
 
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
-
-    clearFieldError(name);
-    setGeneralError("");
-  }
-
-  function updateCheckbox(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    const {
-      name,
-      checked,
-    } = event.target;
-
-    setFormData((current) => ({
-      ...current,
-      [name]: checked,
-    }));
-
-    clearFieldError(name);
-    setGeneralError("");
-  }
-
-  async function submitRegistration(
+  async function handleSubmit(
     event:
       FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    if (submitting) {
-      return;
-    }
-
-    setGeneralError("");
-    setFieldErrors({});
-
     if (
-      formData.password !==
-      formData.passwordConfirmation
+      saving ||
+      !editable
     ) {
-      setFieldErrors({
-        password_confirmation:
-          "The password confirmation does not match.",
-      });
-
       return;
     }
 
-    if (!formData.termsAccepted) {
-      setGeneralError(
-        "You must accept the RushPi seller terms and conditions.",
-      );
-
-      return;
-    }
-
-    if (
-      !formData
-        .informationConfirmed
-    ) {
-      setGeneralError(
-        "Please confirm that the information you provided is correct.",
-      );
-
-      return;
-    }
-
-    setSubmitting(true);
+    setSaving(true);
+    setErrors({});
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
-      const requestBody = {
-        name:
-          formData.name.trim(),
+      const body =
+        new FormData();
 
-        email:
-          formData.email
-            .trim()
-            .toLowerCase(),
+      /*
+       * ===================================================
+       * NEW PROFILE FIELD NAMES
+       * =================================================
+       */
 
-        phone:
-          formData.phone.trim(),
+      body.append(
+        "business_name",
+        formData
+          .businessName
+          .trim(),
+      );
 
-        password:
-          formData.password,
+      body.append(
+        "store_name",
+        formData
+          .storeName
+          .trim(),
+      );
 
-        password_confirmation:
-          formData
-            .passwordConfirmation,
+      body.append(
+        "description",
+        formData
+          .description
+          .trim(),
+      );
 
-        role: "seller",
+      body.append(
+        "phone",
+        formData
+          .phone
+          .trim(),
+      );
 
-        seller_type:
-          formData.sellerType,
+      body.append(
+        "whatsapp",
+        formData
+          .whatsapp
+          .trim(),
+      );
 
-        shop_name:
-          formData.shopName.trim(),
+      body.append(
+        "email",
+        formData
+          .email
+          .trim()
+          .toLowerCase(),
+      );
 
-        business_registration_number:
-          formData
-            .businessRegistrationNumber
-            .trim(),
+      body.append(
+        "business_type",
+        formData.businessType,
+      );
 
-        tax_identification_number:
-          formData
-            .taxIdentificationNumber
-            .trim(),
+      body.append(
+        "registration_number",
+        formData
+          .registrationNumber
+          .trim(),
+      );
 
-        city:
-          formData.city.trim(),
+      body.append(
+        "tin_number",
+        formData
+          .tinNumber
+          .trim(),
+      );
 
-        address:
-          formData.address.trim(),
+      body.append(
+        "country",
+        formData
+          .country
+          .trim(),
+      );
 
-        product_categories:
-          formData
-            .productCategories
-            .trim(),
+      body.append(
+        "province",
+        formData
+          .province
+          .trim(),
+      );
 
-        terms_accepted:
-          formData.termsAccepted,
+      body.append(
+        "district",
+        formData
+          .district
+          .trim(),
+      );
 
-        information_confirmed:
-          formData
-            .informationConfirmed,
-      };
+      body.append(
+        "sector",
+        formData
+          .sector
+          .trim(),
+      );
 
-      const response =
-        await fetch(
-          "/api/auth/register",
-          {
-            method: "POST",
+      body.append(
+        "address",
+        formData
+          .address
+          .trim(),
+      );
 
-            headers: {
-              Accept:
-                "application/json",
+      body.append(
+        "return_policy",
+        formData
+          .returnPolicy
+          .trim(),
+      );
 
-              "Content-Type":
-                "application/json",
-            },
+      body.append(
+        "warranty_policy",
+        formData
+          .warrantyPolicy
+          .trim(),
+      );
 
-            body:
-              JSON.stringify(
-                requestBody,
-              ),
-          },
+      /*
+       * ===================================================
+       * EXISTING BACKEND COMPATIBILITY
+       * =================================================
+       */
+
+      body.append(
+        "legal_business_name",
+        formData
+          .businessName
+          .trim(),
+      );
+
+      body.append(
+        "trading_name",
+        formData
+          .storeName
+          .trim(),
+      );
+
+      body.append(
+        "business_phone",
+        formData
+          .phone
+          .trim(),
+      );
+
+      body.append(
+        "business_email",
+        formData
+          .email
+          .trim()
+          .toLowerCase(),
+      );
+
+      body.append(
+        "tax_identification_number",
+        formData
+          .tinNumber
+          .trim(),
+      );
+
+      /*
+       * ===================================================
+       * ADDRESS RELATIONSHIP
+       * =================================================
+       */
+
+      body.append(
+        "address[country]",
+        formData
+          .country
+          .trim(),
+      );
+
+      body.append(
+        "address[province]",
+        formData
+          .province
+          .trim(),
+      );
+
+      body.append(
+        "address[district]",
+        formData
+          .district
+          .trim(),
+      );
+
+      body.append(
+        "address[sector]",
+        formData
+          .sector
+          .trim(),
+      );
+
+      body.append(
+        "address[address_line]",
+        formData
+          .address
+          .trim(),
+      );
+
+      /*
+       * Images
+       */
+
+      if (logoFile) {
+        body.append(
+          "logo",
+          logoFile,
         );
-
-      const payload =
-        (await response
-          .json()
-          .catch(() => null)) as
-          RegisterResponse | null;
-
-      if (!response.ok) {
-        setFieldErrors(
-          normalizeErrors(
-            payload?.errors,
-          ),
-        );
-
-        setGeneralError(
-          payload?.message ??
-            "Registration failed. Please review your information and try again.",
-        );
-
-        return;
       }
 
-      const token =
-        payload?.token ??
-        payload?.access_token ??
-        payload?.data?.token ??
-        payload?.data
-          ?.access_token;
+      if (
+        coverImageFile
+      ) {
+        body.append(
+          "cover_image",
+          coverImageFile,
+        );
+      }
 
-      if (token) {
-        window.localStorage.setItem(
-          "rushpi_token",
-          token,
+      let response:
+        ApiEnvelope<SellerProfile>;
+
+      if (profile) {
+        const profileKey =
+          profile.public_id ??
+          profile.id;
+
+        /*
+         * Laravel multipart PATCH:
+         * send POST with _method.
+         */
+        body.append(
+          "_method",
+          "PATCH",
+        );
+
+        response =
+          await apiRequest<
+            SellerProfile
+          >(
+            `/seller/profiles/${encodeURIComponent(
+              String(
+                profileKey,
+              ),
+            )}`,
+            {
+              method:
+                "POST",
+
+              body,
+            },
+          );
+      } else {
+        response =
+          await apiRequest<
+            SellerProfile
+          >(
+            "/seller/profiles",
+            {
+              method:
+                "POST",
+
+              body,
+            },
+          );
+      }
+
+      if (
+        response.data
+      ) {
+        setProfile(
+          response.data,
+        );
+
+        populateForm(
+          response.data,
+        );
+      } else {
+        await loadProfile(
+          true,
         );
       }
 
       setSuccessMessage(
-        payload?.message ??
-          "Your RushPi seller account was created successfully.",
-      );
-
-      setSubmitted(true);
-
-      setFormData(
-        initialFormData,
+        response.message ??
+          "Seller profile saved successfully.",
       );
     } catch (error) {
-      setGeneralError(
-        error instanceof Error
-          ? error.message
-          : "A connection error occurred. Please try again.",
-      );
+      if (
+        error instanceof
+        ApiRequestError
+      ) {
+        setErrors(
+          error.errors,
+        );
+
+        setErrorMessage(
+          error.message,
+        );
+      } else {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Seller profile could not be saved.",
+        );
+      }
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   }
 
-  if (submitted) {
+  /* =======================================================
+   * LOADING
+   * ===================================================== */
+
+  if (loading) {
     return (
-      <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 px-6 py-10 text-center text-white sm:px-9">
-          <span className="mx-auto grid size-20 place-items-center rounded-full bg-white/15 ring-1 ring-white/30">
-            <CheckCircle2 className="size-10" />
-          </span>
+      <div className="flex min-h-[500px] items-center justify-center">
+        <div className="text-center">
+          <LoaderCircle className="mx-auto size-9 animate-spin text-blue-700" />
 
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-emerald-100">
-            Account created
-          </p>
-
-          <h2 className="mt-3 text-3xl font-black tracking-tight">
-            Welcome to RushPi
-          </h2>
-
-          <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-emerald-50">
-            {successMessage}
+          <p className="mt-3 text-sm font-bold text-slate-600">
+            Loading seller
+            profile...
           </p>
         </div>
-
-        <div className="p-6 sm:p-9">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-            <div className="flex items-start gap-3">
-              <BadgeCheck className="mt-0.5 size-6 shrink-0 text-blue-700" />
-
-              <div>
-                <p className="font-black text-slate-950">
-                  Complete your
-                  seller profile
-                </p>
-
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
-                  Sign in to your
-                  RushPi seller
-                  account and
-                  complete your
-                  business profile
-                  before publishing
-                  products.
-                </p>
-
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
-                  You will be able
-                  to add your store
-                  logo, cover image,
-                  business
-                  description,
-                  WhatsApp number,
-                  business
-                  location, return
-                  policy, warranty
-                  policy and
-                  verification
-                  documents.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-slate-700" />
-
-              <div>
-                <p className="font-black text-slate-950">
-                  Seller
-                  verification
-                </p>
-
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  RushPi may
-                  review your
-                  seller details
-                  and verification
-                  documents before
-                  your store is
-                  fully activated.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-black text-white transition hover:bg-blue-800"
-            >
-              Sign in and continue
-
-              <ArrowRight className="size-4" />
-            </Link>
-
-            <Link
-              href="/"
-              className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-black text-slate-800 transition hover:bg-slate-50"
-            >
-              Return to marketplace
-            </Link>
-          </div>
-        </div>
-      </section>
+      </div>
     );
   }
 
+  /* =======================================================
+   * PAGE
+   * ===================================================== */
+
   return (
-    <form
-      onSubmit={
-        submitRegistration
-      }
-      className="space-y-6 text-slate-950"
-    >
-      {/* Header */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6 pb-12">
+      {/* ================================================
+       * PAGE HEADER
+       * ============================================== */}
+
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700">
+            <Store className="size-4" />
+
+            Seller center
+          </div>
+
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+            Seller profile
+          </h1>
+
+          <p className="mt-2 max-w-3xl leading-7 text-slate-600">
+            Complete your business
+            information, store
+            appearance, contact
+            details, location and
+            customer policies.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            void loadProfile(
+              true,
+            )
+          }
+          disabled={
+            refreshing
+          }
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <RefreshCw
+            className={`size-4 ${
+              refreshing
+                ? "animate-spin"
+                : ""
+            }`}
+          />
+
+          Refresh profile
+        </button>
+      </div>
+
+      {/* ================================================
+       * STORE COVER + LOGO
+       * ============================================== */}
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-blue-700 sm:h-64">
+          {coverImagePreview ? (
+            <img
+              src={
+                coverImagePreview
+              }
+              alt="Store cover"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="grid h-full place-items-center text-white/70">
+              <div className="text-center">
+                <ImageIcon className="mx-auto size-11" />
+
+                <p className="mt-3 text-sm font-bold">
+                  Add your store
+                  cover image
+                </p>
+              </div>
+            </div>
+          )}
+
+          {editable && (
+            <label className="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/95 px-4 py-2 text-xs font-black text-slate-800 shadow-lg transition hover:bg-white">
+              <Camera className="size-4" />
+
+              Cover image
+
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(
+                  event,
+                ) =>
+                  handleImageChange(
+                    event,
+                    "cover",
+                  )
+                }
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="relative px-5 pb-7 sm:px-7">
+          <div className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end">
+            <div className="relative size-28 shrink-0 overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-lg">
+              {logoPreview ? (
+                <img
+                  src={
+                    logoPreview
+                  }
+                  alt="Store logo"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="grid h-full place-items-center text-slate-400">
+                  <Store className="size-10" />
+                </div>
+              )}
+
+              {editable && (
+                <label className="absolute bottom-2 right-2 grid size-8 cursor-pointer place-items-center rounded-lg bg-blue-700 text-white shadow-lg">
+                  <Upload className="size-4" />
+
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(
+                      event,
+                    ) =>
+                      handleImageChange(
+                        event,
+                        "logo",
+                      )
+                    }
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="flex-1 pb-1">
+              <h2 className="text-2xl font-black text-slate-950">
+                {formData.storeName ||
+                  "Your RushPi Store"}
+              </h2>
+
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                {formData
+                  .businessName ||
+                  "Complete your business information"}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pb-1">
+              <StatusBadge
+                icon={BadgeCheck}
+                label="Verification"
+                value={
+                  verificationStatus
+                }
+              />
+
+              <StatusBadge
+                icon={ShieldCheck}
+                label="Seller"
+                value={
+                  sellerStatus
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================
+       * PROFILE COMPLETION
+       * ============================================== */}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-5">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">
-              Seller
-              registration
-            </p>
+            <h3 className="font-black text-slate-950">
+              Profile completion
+            </h3>
 
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Create your seller
-              account
-            </h2>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-              Start with your
-              account and basic
-              business details.
-              After signing in,
-              complete your full
-              RushPi store
-              profile.
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Complete your seller
+              profile to increase
+              customer trust and
+              prepare your store for
+              verification.
             </p>
           </div>
 
-          <div className="hidden size-16 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700 sm:grid">
-            <Store className="size-7" />
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-center justify-between gap-4">
-          <span className="text-xs font-bold text-slate-500">
-            Registration
-            completion
-          </span>
-
-          <span className="text-sm font-black text-blue-700">
-            {progress}%
+          <span className="text-2xl font-black text-blue-700">
+            {profileCompletion}%
           </span>
         </div>
 
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
           <div
-            className="h-full rounded-full bg-blue-700 transition-all duration-300"
+            className="h-full rounded-full bg-blue-700 transition-all duration-500"
             style={{
               width:
-                `${progress}%`,
+                `${profileCompletion}%`,
             }}
           />
         </div>
       </section>
 
-      {/* General error */}
-      {generalError && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-800"
-        >
-          <AlertCircle className="mt-0.5 size-5 shrink-0" />
+      {/* ================================================
+       * SELLER PERFORMANCE
+       * ============================================== */}
+
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <BarChart3 className="size-5 text-blue-700" />
+
+          <h2 className="text-lg font-black text-slate-950">
+            Seller performance
+          </h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <MetricCard
+            icon={Star}
+            title="Average rating"
+            value={formatRating(
+              profile?.average_rating,
+            )}
+            subtitle={`${profile?.total_reviews ?? 0} reviews`}
+          />
+
+          <MetricCard
+            icon={MessageCircle}
+            title="Total reviews"
+            value={String(
+              profile
+                ?.total_reviews ??
+                0,
+            )}
+            subtitle="Customer reviews"
+          />
+
+          <MetricCard
+            icon={ShoppingBag}
+            title="Total orders"
+            value={String(
+              profile
+                ?.total_orders ??
+                0,
+            )}
+            subtitle="Orders received"
+          />
+
+          <MetricCard
+            icon={CheckCircle2}
+            title="Completed"
+            value={String(
+              profile
+                ?.completed_orders ??
+                0,
+            )}
+            subtitle="Completed orders"
+          />
+
+          <MetricCard
+            icon={MessageCircle}
+            title="Response rate"
+            value={formatPercentage(
+              profile
+                ?.response_rate,
+            )}
+            subtitle="Customer responses"
+          />
+
+          <MetricCard
+            icon={Clock3}
+            title="Response time"
+            value={formatResponseTime(
+              profile
+                ?.response_time,
+            )}
+            subtitle="Average response"
+          />
+        </div>
+      </section>
+
+      {/* ================================================
+       * SUCCESS / ERROR
+       * ============================================== */}
+
+      {successMessage && (
+        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
 
           <span>
-            {generalError}
+            {successMessage}
           </span>
         </div>
       )}
 
-      {/* Account owner */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-700">
-            <UserRound className="size-5" />
+      {errorMessage && (
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0" />
+
+          <span>
+            {errorMessage}
           </span>
-
-          <div>
-            <h3 className="text-lg font-black text-slate-950">
-              Account owner
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Enter the
-              information of the
-              person responsible
-              for this seller
-              account.
-            </p>
-          </div>
         </div>
+      )}
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {/* Full name */}
-          <label className="block sm:col-span-2">
-            <span
-              className={
-                labelClassName
-              }
+      {/* ================================================
+       * EDITABLE PROFILE
+       * ============================================== */}
+
+      <form
+        onSubmit={
+          handleSubmit
+        }
+        className="space-y-6"
+      >
+        {/* ============================================
+         * BUSINESS / STORE IDENTITY
+         * ========================================== */}
+
+        <ProfileSection
+          icon={Store}
+          title="Store identity"
+          description="Business and store information that identifies your seller account."
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field
+              label="Business name"
+              required
+              error={firstError(
+                errors,
+                "business_name",
+                "legal_business_name",
+              )}
             >
-              Full name
-            </span>
-
-            <div className="relative">
-              <UserRound className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
               <input
                 type="text"
-                name="name"
-                value={
-                  formData.name
-                }
-                onChange={
-                  updateTextField
-                }
                 required
-                autoComplete="name"
-                placeholder="Enter your full name"
+                disabled={!editable}
+                value={
+                  formData
+                    .businessName
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "businessName",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Official business name"
                 className={
-                  iconInputClassName
+                  inputClassName
                 }
               />
-            </div>
+            </Field>
 
-            <FieldError
-              error={
-                fieldErrors.name
-              }
-            />
-          </label>
-
-          {/* Email */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
+            <Field
+              label="Store name"
+              required
+              error={firstError(
+                errors,
+                "store_name",
+                "trading_name",
+              )}
             >
-              Email address
-            </span>
-
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
               <input
-                type="email"
-                name="email"
-                value={
-                  formData.email
-                }
-                onChange={
-                  updateTextField
-                }
+                type="text"
                 required
-                autoComplete="email"
-                placeholder="you@example.com"
+                disabled={!editable}
+                value={
+                  formData
+                    .storeName
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "storeName",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Name customers see"
                 className={
-                  iconInputClassName
+                  inputClassName
                 }
               />
-            </div>
+            </Field>
 
-            <FieldError
-              error={
-                fieldErrors.email
-              }
-            />
-          </label>
-
-          {/* Phone */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
+            <Field
+              label="Business type"
+              required
+              error={firstError(
+                errors,
+                "business_type",
+              )}
             >
-              Phone number
-            </span>
+              <select
+                disabled={!editable}
+                value={
+                  formData
+                    .businessType
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "businessType",
+                    event.target
+                      .value,
+                  )
+                }
+                className={`${inputClassName} appearance-none`}
+              >
+                <option value="shop_owner">
+                  Shop / Registered
+                  business
+                </option>
 
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
+                <option value="individual_seller">
+                  Individual seller
+                </option>
+              </select>
+            </Field>
 
+            <Field
+              label="Registration number"
+              error={firstError(
+                errors,
+                "registration_number",
+              )}
+            >
+              <input
+                type="text"
+                disabled={!editable}
+                value={
+                  formData
+                    .registrationNumber
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "registrationNumber",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Business registration number"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <Field
+              label="TIN number"
+              error={firstError(
+                errors,
+                "tin_number",
+                "tax_identification_number",
+              )}
+            >
+              <input
+                type="text"
+                disabled={!editable}
+                value={
+                  formData
+                    .tinNumber
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "tinNumber",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Tax identification number"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field
+                label="Store description"
+                error={firstError(
+                  errors,
+                  "description",
+                )}
+              >
+                <textarea
+                  disabled={!editable}
+                  value={
+                    formData
+                      .description
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    updateField(
+                      "description",
+                      event.target
+                        .value,
+                    )
+                  }
+                  placeholder="Describe your business, products, brands and customer service..."
+                  className={
+                    textareaClassName
+                  }
+                />
+              </Field>
+            </div>
+          </div>
+        </ProfileSection>
+
+        {/* ============================================
+         * CONTACT INFORMATION
+         * ========================================== */}
+
+        <ProfileSection
+          icon={Phone}
+          title="Contact information"
+          description="Contact details for RushPi and your customers."
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field
+              label="Phone number"
+              required
+              error={firstError(
+                errors,
+                "phone",
+                "business_phone",
+              )}
+            >
               <input
                 type="tel"
-                name="phone"
+                required
+                disabled={!editable}
                 value={
                   formData.phone
                 }
-                onChange={
-                  updateTextField
-                }
-                required
-                autoComplete="tel"
-                placeholder="+250 7XX XXX XXX"
-                className={
-                  iconInputClassName
-                }
-              />
-            </div>
-
-            <FieldError
-              error={
-                fieldErrors.phone
-              }
-            />
-          </label>
-        </div>
-      </section>
-
-      {/* Store information */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700">
-            <Store className="size-5" />
-          </span>
-
-          <div>
-            <h3 className="text-lg font-black text-slate-950">
-              Store
-              information
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Provide the basic
-              information needed
-              to create your
-              seller store.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {/* Seller type */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Seller type
-            </span>
-
-            <select
-              name="sellerType"
-              value={
-                formData.sellerType
-              }
-              onChange={
-                updateTextField
-              }
-              className={`${inputClassName} appearance-none`}
-            >
-              <option value="shop_owner">
-                Shop /
-                registered
-                business
-              </option>
-
-              <option value="individual_seller">
-                Individual
-                seller
-              </option>
-            </select>
-
-            <FieldError
-              error={
-                fieldErrors
-                  .seller_type
-              }
-            />
-          </label>
-
-          {/* Store name */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Store name
-            </span>
-
-            <div className="relative">
-              <Building2 className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
-              <input
-                type="text"
-                name="shopName"
-                value={
-                  formData.shopName
-                }
-                onChange={
-                  updateTextField
-                }
-                required
-                placeholder="Example: Kigali Digital Store"
-                className={
-                  iconInputClassName
-                }
-              />
-            </div>
-
-            <FieldError
-              error={
-                fieldErrors
-                  .shop_name
-              }
-            />
-          </label>
-
-          {/* Registration number */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Business
-              registration
-              number
-            </span>
-
-            <input
-              type="text"
-              name="businessRegistrationNumber"
-              value={
-                formData
-                  .businessRegistrationNumber
-              }
-              onChange={
-                updateTextField
-              }
-              required={
-                formData.sellerType ===
-                "shop_owner"
-              }
-              placeholder={
-                formData.sellerType ===
-                "shop_owner"
-                  ? "Required for registered businesses"
-                  : "Optional for individual sellers"
-              }
-              className={
-                inputClassName
-              }
-            />
-
-            <FieldError
-              error={
-                fieldErrors
-                  .business_registration_number
-              }
-            />
-          </label>
-
-          {/* TIN */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              TIN
-            </span>
-
-            <input
-              type="text"
-              name="taxIdentificationNumber"
-              value={
-                formData
-                  .taxIdentificationNumber
-              }
-              onChange={
-                updateTextField
-              }
-              placeholder="Tax identification number"
-              className={
-                inputClassName
-              }
-            />
-
-            <FieldError
-              error={
-                fieldErrors
-                  .tax_identification_number
-              }
-            />
-          </label>
-
-          {/* City */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              City / district
-            </span>
-
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
-              <input
-                type="text"
-                name="city"
-                value={
-                  formData.city
-                }
-                onChange={
-                  updateTextField
-                }
-                required
-                placeholder="Example: Kigali"
-                className={
-                  iconInputClassName
-                }
-              />
-            </div>
-
-            <FieldError
-              error={
-                fieldErrors.city
-              }
-            />
-          </label>
-
-          {/* Address */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Business address
-            </span>
-
-            <input
-              type="text"
-              name="address"
-              value={
-                formData.address
-              }
-              onChange={
-                updateTextField
-              }
-              required
-              placeholder="Street, sector or marketplace"
-              className={
-                inputClassName
-              }
-            />
-
-            <FieldError
-              error={
-                fieldErrors.address
-              }
-            />
-          </label>
-
-          {/* Products */}
-          <label className="block sm:col-span-2">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Products you plan
-              to sell
-            </span>
-
-            <div className="relative">
-              <PackageCheck className="pointer-events-none absolute left-4 top-6 size-5 text-slate-400" />
-
-              <textarea
-                name="productCategories"
-                value={
-                  formData
-                    .productCategories
-                }
-                onChange={
-                  updateTextField
-                }
-                required
-                rows={4}
-                placeholder="Example: phones, laptops, TVs, accessories and other electronics"
-                className={`${textareaClassName} pl-12`}
-              />
-            </div>
-
-            <FieldError
-              error={
-                fieldErrors
-                  .product_categories
-              }
-            />
-          </label>
-        </div>
-      </section>
-
-      {/* Security */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
-            <LockKeyhole className="size-5" />
-          </span>
-
-          <div>
-            <h3 className="text-lg font-black text-slate-950">
-              Account
-              security
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Create a secure
-              password for your
-              RushPi seller
-              account.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          {/* Password */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Password
-            </span>
-
-            <div className="relative">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
-              <input
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
-                name="password"
-                value={
-                  formData.password
-                }
-                onChange={
-                  updateTextField
-                }
-                required
-                minLength={8}
-                autoComplete="new-password"
-                placeholder="Minimum 8 characters"
-                className={
-                  passwordInputClassName
-                }
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword(
-                    (current) =>
-                      !current,
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "phone",
+                    event.target
+                      .value,
                   )
                 }
-                className="absolute right-2 top-1/2 mt-1 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
-                aria-label={
-                  showPassword
-                    ? "Hide password"
-                    : "Show password"
-                }
-              >
-                {showPassword ? (
-                  <EyeOff className="size-5" />
-                ) : (
-                  <Eye className="size-5" />
-                )}
-              </button>
-            </div>
-
-            <FieldError
-              error={
-                fieldErrors.password
-              }
-            />
-          </label>
-
-          {/* Confirm */}
-          <label className="block">
-            <span
-              className={
-                labelClassName
-              }
-            >
-              Confirm password
-            </span>
-
-            <div className="relative">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
-              <input
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
-                name="passwordConfirmation"
-                value={
-                  formData
-                    .passwordConfirmation
-                }
-                onChange={
-                  updateTextField
-                }
-                required
-                minLength={8}
-                autoComplete="new-password"
-                placeholder="Repeat your password"
+                placeholder="+250 7XX XXX XXX"
                 className={
-                  iconInputClassName
+                  inputClassName
                 }
               />
+            </Field>
+
+            <Field
+              label="WhatsApp number"
+              error={firstError(
+                errors,
+                "whatsapp",
+              )}
+            >
+              <input
+                type="tel"
+                disabled={!editable}
+                value={
+                  formData
+                    .whatsapp
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "whatsapp",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="+250 7XX XXX XXX"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field
+                label="Business email"
+                required
+                error={firstError(
+                  errors,
+                  "email",
+                  "business_email",
+                )}
+              >
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
+
+                  <input
+                    type="email"
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData.email
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "email",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="store@example.com"
+                    className={`${inputClassName} pl-12`}
+                  />
+                </div>
+              </Field>
+            </div>
+          </div>
+        </ProfileSection>
+
+        {/* ============================================
+         * LOCATION
+         * ========================================== */}
+
+        <ProfileSection
+          icon={MapPin}
+          title="Business location"
+          description="Complete the physical location of your store or business."
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field
+              label="Country"
+              required
+              error={firstError(
+                errors,
+                "country",
+                "address.country",
+              )}
+            >
+              <input
+                required
+                disabled={!editable}
+                value={
+                  formData
+                    .country
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "country",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Rwanda"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <Field
+              label="Province / City"
+              required
+              error={firstError(
+                errors,
+                "province",
+                "address.province",
+              )}
+            >
+              <input
+                required
+                disabled={!editable}
+                value={
+                  formData
+                    .province
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "province",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Kigali"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <Field
+              label="District"
+              required
+              error={firstError(
+                errors,
+                "district",
+                "address.district",
+              )}
+            >
+              <input
+                required
+                disabled={!editable}
+                value={
+                  formData
+                    .district
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "district",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Gasabo"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <Field
+              label="Sector"
+              required
+              error={firstError(
+                errors,
+                "sector",
+                "address.sector",
+              )}
+            >
+              <input
+                required
+                disabled={!editable}
+                value={
+                  formData
+                    .sector
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "sector",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Remera"
+                className={
+                  inputClassName
+                }
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field
+                label="Business address"
+                required
+                error={firstError(
+                  errors,
+                  "address",
+                  "address.address_line",
+                )}
+              >
+                <input
+                  required
+                  disabled={
+                    !editable
+                  }
+                  value={
+                    formData
+                      .address
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    updateField(
+                      "address",
+                      event.target
+                        .value,
+                    )
+                  }
+                  placeholder="Street, building, shop number or location description"
+                  className={
+                    inputClassName
+                  }
+                />
+              </Field>
+            </div>
+          </div>
+        </ProfileSection>
+
+        {/* ============================================
+         * POLICIES
+         * ========================================== */}
+
+        <ProfileSection
+          icon={FileText}
+          title="Store policies"
+          description="Explain your return and warranty conditions to customers."
+        >
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Field
+              label="Return policy"
+              error={firstError(
+                errors,
+                "return_policy",
+              )}
+            >
+              <textarea
+                disabled={!editable}
+                value={
+                  formData
+                    .returnPolicy
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "returnPolicy",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Example: Products may be returned within 7 days if unused and in original condition..."
+                className={
+                  textareaClassName
+                }
+              />
+            </Field>
+
+            <Field
+              label="Warranty policy"
+              error={firstError(
+                errors,
+                "warranty_policy",
+              )}
+            >
+              <textarea
+                disabled={!editable}
+                value={
+                  formData
+                    .warrantyPolicy
+                }
+                onChange={(
+                  event,
+                ) =>
+                  updateField(
+                    "warrantyPolicy",
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Example: Products include manufacturer warranty where applicable..."
+                className={
+                  textareaClassName
+                }
+              />
+            </Field>
+          </div>
+        </ProfileSection>
+
+        {/* ============================================
+         * SYSTEM CONTROLLED INFORMATION
+         * ========================================== */}
+
+        <ProfileSection
+          icon={ShieldCheck}
+          title="Seller account status"
+          description="These values are controlled automatically by RushPi and cannot be changed by the seller."
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <ReadOnlyItem
+              label="Verification status"
+              value={formatStatus(
+                verificationStatus,
+              )}
+            />
+
+            <ReadOnlyItem
+              label="Seller status"
+              value={formatStatus(
+                sellerStatus,
+              )}
+            />
+
+            <ReadOnlyItem
+              label="Created at"
+              value={formatDate(
+                profile
+                  ?.created_at,
+              )}
+            />
+
+            <ReadOnlyItem
+              label="Updated at"
+              value={formatDate(
+                profile
+                  ?.updated_at,
+              )}
+            />
+          </div>
+        </ProfileSection>
+
+        {/* ============================================
+         * SAVE
+         * ========================================== */}
+
+        {editable ? (
+          <div className="sticky bottom-4 z-30 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-black text-slate-950">
+                Save seller profile
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Save your business,
+                store, location and
+                policy information.
+              </p>
             </div>
 
-            <FieldError
-              error={
-                fieldErrors
-                  .password_confirmation
-              }
-            />
-          </label>
-        </div>
-      </section>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <>
+                  <LoaderCircle className="size-5 animate-spin" />
 
-      {/* Terms */}
-      <section className="rounded-3xl border border-blue-200 bg-blue-50 p-5 sm:p-7">
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white">
-            <FileCheck2 className="size-5" />
-          </span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="size-5" />
 
-          <div>
-            <h3 className="text-lg font-black text-slate-950">
-              Seller terms
-              and conditions
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Review the
-              marketplace rules
-              before creating
-              your seller
-              account.
-            </p>
+                  Save profile
+                </>
+              )}
+            </button>
           </div>
-        </div>
-
-        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-100 bg-white p-5">
-          <ol className="space-y-4">
-            {sellerTerms.map(
-              (
-                term,
-                index,
-              ) => (
-                <li
-                  key={term}
-                  className="flex items-start gap-3 text-sm font-medium leading-6 text-slate-700"
-                >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-700">
-                    {index + 1}
-                  </span>
-
-                  <span>
-                    {term}
-                  </span>
-                </li>
-              ),
-            )}
-          </ol>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {/* Terms acceptance */}
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4 transition hover:border-blue-300">
-            <input
-              type="checkbox"
-              name="termsAccepted"
-              checked={
-                formData
-                  .termsAccepted
-              }
-              onChange={
-                updateCheckbox
-              }
-              required
-              className="mt-1 size-5 shrink-0 accent-blue-700"
-            />
-
-            <span className="text-sm font-semibold leading-6 text-slate-800">
-              I have read and
-              accept the RushPi
-              seller terms and
-              conditions.
-            </span>
-          </label>
-
-          <FieldError
-            error={
-              fieldErrors
-                .terms_accepted
-            }
-          />
-
-          {/* Confirmation */}
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4 transition hover:border-blue-300">
-            <input
-              type="checkbox"
-              name="informationConfirmed"
-              checked={
-                formData
-                  .informationConfirmed
-              }
-              onChange={
-                updateCheckbox
-              }
-              required
-              className="mt-1 size-5 shrink-0 accent-blue-700"
-            />
-
-            <span className="text-sm font-semibold leading-6 text-slate-800">
-              I confirm that
-              the information I
-              have provided is
-              correct and may be
-              verified by
-              RushPi.
-            </span>
-          </label>
-
-          <FieldError
-            error={
-              fieldErrors
-                .information_confirmed
-            }
-          />
-        </div>
-      </section>
-
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={
-          submitting ||
-          !formData
-            .termsAccepted ||
-          !formData
-            .informationConfirmed
-        }
-        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-slate-400 disabled:shadow-none"
-      >
-        {submitting ? (
-          <>
-            <LoaderCircle className="size-5 animate-spin" />
-
-            Creating seller
-            account...
-          </>
         ) : (
-          <>
-            <Store className="size-5" />
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <div className="flex items-start gap-3 text-red-800">
+              <TriangleAlert className="mt-0.5 size-5 shrink-0" />
 
-            Create seller
-            account
+              <div>
+                <p className="font-black">
+                  Profile editing is
+                  disabled
+                </p>
 
-            <ArrowRight className="size-4" />
-          </>
+                <p className="mt-1 text-sm leading-6">
+                  This seller account
+                  currently has status{" "}
+                  <strong>
+                    {formatStatus(
+                      sellerStatus,
+                    )}
+                  </strong>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>
         )}
-      </button>
+      </form>
+    </div>
+  );
+}
 
-      {/* Existing account */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
-        <p className="text-sm font-medium text-slate-700">
-          Already have a
-          seller account?{" "}
+/* =========================================================
+ * PROFILE SECTION
+ * ======================================================= */
 
-          <Link
-            href="/login"
-            className="font-black text-blue-700 underline underline-offset-4 transition hover:text-blue-900"
-          >
-            Sign in
-          </Link>
-        </p>
+type ProfileSectionProps = {
+  icon: ComponentType<{
+    className?: string;
+  }>;
+
+  title: string;
+  description: string;
+
+  children: ReactNode;
+};
+
+function ProfileSection({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: ProfileSectionProps) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-start gap-3 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700">
+          <Icon className="size-5" />
+        </span>
+
+        <div>
+          <h2 className="font-black text-slate-950">
+            {title}
+          </h2>
+
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            {description}
+          </p>
+        </div>
       </div>
-    </form>
+
+      <div className="p-5 sm:p-6">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+ * FIELD
+ * ======================================================= */
+
+type FieldProps = {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+
+  children: ReactNode;
+};
+
+function Field({
+  label,
+  required = false,
+  error,
+  children,
+}: FieldProps) {
+  return (
+    <label className="block">
+      <span
+        className={
+          labelClassName
+        }
+      >
+        {label}
+
+        {required && (
+          <span className="ml-1 text-red-600">
+            *
+          </span>
+        )}
+      </span>
+
+      {children}
+
+      {error && (
+        <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-red-600">
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+
+          <span>
+            {error}
+          </span>
+        </p>
+      )}
+    </label>
+  );
+}
+
+/* =========================================================
+ * METRIC CARD
+ * ======================================================= */
+
+type MetricCardProps = {
+  icon: ComponentType<{
+    className?: string;
+  }>;
+
+  title: string;
+  value: string;
+  subtitle: string;
+};
+
+function MetricCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+}: MetricCardProps) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            {title}
+          </p>
+
+          <p className="mt-2 truncate text-2xl font-black text-slate-950">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {subtitle}
+          </p>
+        </div>
+
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700">
+          <Icon className="size-5" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+ * STATUS BADGE
+ * ======================================================= */
+
+type StatusBadgeProps = {
+  icon: ComponentType<{
+    className?: string;
+  }>;
+
+  label: string;
+
+  value?:
+    | string
+    | null;
+};
+
+function StatusBadge({
+  icon: Icon,
+  label,
+  value,
+}: StatusBadgeProps) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-2",
+        "rounded-full border",
+        "px-3 py-2",
+        "text-xs font-black",
+        statusClassName(
+          value,
+        ),
+      ].join(" ")}
+    >
+      <Icon className="size-4" />
+
+      {label}:{" "}
+
+      {formatStatus(
+        value,
+      )}
+    </span>
+  );
+}
+
+/* =========================================================
+ * READ ONLY ITEM
+ * ======================================================= */
+
+type ReadOnlyItemProps = {
+  label: string;
+  value: string;
+};
+
+function ReadOnlyItem({
+  label,
+  value,
+}: ReadOnlyItemProps) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 font-black text-slate-950">
+        {value}
+      </p>
+    </div>
   );
 }
