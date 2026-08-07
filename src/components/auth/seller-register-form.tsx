@@ -45,23 +45,35 @@ type SellerFormData = {
   informationConfirmed: boolean;
 };
 
+type RegisterResponseData = {
+  token?: string;
+  access_token?: string;
+
+  user?: {
+    id?: number;
+    name?: string;
+    email?: string;
+    phone?: string | null;
+    role?: string;
+    status?: string;
+  };
+
+  seller_profile?: {
+    id?: number;
+    public_id?: string;
+    legal_business_name?: string;
+    trading_name?: string;
+    status?: string;
+  };
+};
+
 type RegisterResponse = {
   success?: boolean;
   message?: string;
   token?: string;
   access_token?: string;
-  data?: {
-    token?: string;
-    access_token?: string;
-  };
+  data?: RegisterResponseData;
   errors?: Record<
-    string,
-    string | string[]
-  >;
-  data?: {
-    token?: string;
-    access_token?: string;
-  } | Record<
     string,
     string | string[]
   >;
