@@ -1,5 +1,6 @@
 import type { DashboardRole } from "@/types/dashboard";
 import type { LucideIcon } from "lucide-react";
+
 import {
   BadgeCheck,
   Banknote,
@@ -12,6 +13,7 @@ import {
   FileText,
   Handshake,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   PackageSearch,
   ReceiptText,
@@ -81,6 +83,12 @@ export const dashboardNavigation: Record<
   DashboardRole,
   DashboardNavigationGroup[]
 > = {
+  /*
+  |--------------------------------------------------------------------------
+  | ADMIN
+  |--------------------------------------------------------------------------
+  */
+
   admin: [
     {
       title: "Overview",
@@ -92,6 +100,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "People",
       items: [
@@ -117,6 +126,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Marketplace",
       items: [
@@ -147,6 +157,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "System",
       items: [
@@ -164,6 +175,12 @@ export const dashboardNavigation: Record<
     },
   ],
 
+  /*
+  |--------------------------------------------------------------------------
+  | SELLER
+  |--------------------------------------------------------------------------
+  */
+
   seller: [
     {
       title: "Overview",
@@ -175,8 +192,9 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
-      title: "Catalog",
+      title: "Store",
       items: [
         {
           label: "Products",
@@ -193,13 +211,9 @@ export const dashboardNavigation: Record<
           href: "/seller/media",
           icon: FileImage,
         },
-        {
-          label: "Return policies",
-          href: "/seller/return-policies",
-          icon: FileText,
-        },
       ],
     },
+
     {
       title: "Sales",
       items: [
@@ -220,14 +234,10 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Account",
       items: [
-        {
-          label: "Seller profile",
-          href: "/seller/profile",
-          icon: Store,
-        },
         {
           label: "Verification",
           href: "/seller/verification",
@@ -240,7 +250,24 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
+    {
+      title: "Support",
+      items: [
+        {
+          label: "Help center",
+          href: "/seller/help",
+          icon: LifeBuoy,
+        },
+      ],
+    },
   ],
+
+  /*
+  |--------------------------------------------------------------------------
+  | DEALER
+  |--------------------------------------------------------------------------
+  */
 
   dealer: [
     {
@@ -253,6 +280,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Commerce",
       items: [
@@ -278,6 +306,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Earnings",
       items: [
@@ -298,6 +327,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Account",
       items: [
@@ -320,6 +350,12 @@ export const dashboardNavigation: Record<
     },
   ],
 
+  /*
+  |--------------------------------------------------------------------------
+  | COMMISSIONER
+  |--------------------------------------------------------------------------
+  */
+
   commissioner: [
     {
       title: "Overview",
@@ -331,6 +367,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Operations",
       items: [
@@ -361,6 +398,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Finance",
       items: [
@@ -386,6 +424,7 @@ export const dashboardNavigation: Record<
         },
       ],
     },
+
     {
       title: "Account",
       items: [
