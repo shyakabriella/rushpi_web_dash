@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  ArrowRight,
   BadgeCheck,
   Building2,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   MapPin,
   PackageCheck,
   Phone,
+  ShieldCheck,
   Store,
   UserRound,
 } from "lucide-react";
@@ -21,6 +23,7 @@ import Link from "next/link";
 import {
   type ChangeEvent,
   type FormEvent,
+  useMemo,
   useState,
 } from "react";
 
@@ -32,15 +35,21 @@ type SellerFormData = {
   name: string;
   email: string;
   phone: string;
+
   sellerType: SellerType;
   shopName: string;
+
   businessRegistrationNumber: string;
   taxIdentificationNumber: string;
+
   city: string;
   address: string;
+
   productCategories: string;
+
   password: string;
   passwordConfirmation: string;
+
   termsAccepted: boolean;
   informationConfirmed: boolean;
 };
@@ -61,8 +70,10 @@ type RegisterResponseData = {
   seller_profile?: {
     id?: number;
     public_id?: string;
+
     legal_business_name?: string;
     trading_name?: string;
+
     status?: string;
   };
 };
@@ -71,26 +82,11 @@ type RegisterResponse = {
   success?: boolean;
   message?: string;
 
-  /*
-   * Support APIs that return the token
-   * directly at the root level.
-   */
   token?: string;
   access_token?: string;
 
-  /*
-   * RushPi may also return the token,
-   * user and seller profile inside data.
-   *
-   * IMPORTANT:
-   * There is only ONE data property here.
-   */
   data?: RegisterResponseData;
 
-  /*
-   * Laravel validation errors belong
-   * under errors, not data.
-   */
   errors?: Record<
     string,
     string | string[]
@@ -101,62 +97,78 @@ const initialFormData: SellerFormData = {
   name: "",
   email: "",
   phone: "",
+
   sellerType: "shop_owner",
   shopName: "",
+
   businessRegistrationNumber: "",
   taxIdentificationNumber: "",
+
   city: "Kigali",
   address: "",
+
   productCategories: "",
+
   password: "",
   passwordConfirmation: "",
+
   termsAccepted: false,
   informationConfirmed: false,
 };
 
 const sellerTerms = [
-  "I will provide correct personal, business and contact information.",
+  "I will provide accurate personal, business and contact information.",
   "I will only list products that I own or am legally authorized to sell.",
   "I will not list counterfeit, stolen, prohibited or misleading products.",
-  "I will keep product prices, descriptions and available stock accurate.",
+  "I will keep product prices, descriptions and stock information accurate.",
   "I will process confirmed orders and communicate honestly with customers.",
   "I will follow RushPi return, refund, payment and marketplace policies.",
-  "RushPi may review, reject or suspend accounts involved in fraud or policy violations.",
-  "Applicable marketplace fees or commissions may be deducted from completed transactions.",
+  "RushPi may review, reject, restrict or suspend seller accounts that violate marketplace policies.",
+  "Applicable RushPi marketplace fees or commissions may be deducted from completed transactions.",
 ];
 
 const inputClassName = [
-  "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
+  "mt-2 h-[52px] w-full rounded-2xl",
+  "border border-slate-300 bg-white",
   "px-4 text-sm font-medium text-slate-950",
   "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-400",
   "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
 ].join(" ");
 
 const iconInputClassName = [
-  "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
+  "mt-2 h-[52px] w-full rounded-2xl",
+  "border border-slate-300 bg-white",
   "pl-12 pr-4 text-sm font-medium text-slate-950",
   "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-400",
   "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
 ].join(" ");
 
 const passwordInputClassName = [
-  "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
+  "mt-2 h-[52px] w-full rounded-2xl",
+  "border border-slate-300 bg-white",
   "pl-12 pr-12 text-sm font-medium text-slate-950",
   "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-400",
+  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+].join(" ");
+
+const textareaClassName = [
+  "mt-2 w-full resize-none rounded-2xl",
+  "border border-slate-300 bg-white",
+  "px-4 py-3 text-sm font-medium leading-6 text-slate-950",
+  "caret-blue-700 outline-none transition",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-400",
   "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
 ].join(" ");
 
 const labelClassName =
-  "text-sm font-black text-slate-950";
+  "text-sm font-black text-slate-900";
 
 function normalizeErrors(
   errors: RegisterResponse["errors"],
@@ -178,133 +190,213 @@ function normalizeErrors(
   );
 }
 
+function FieldError({
+  error,
+}: {
+  error?: string;
+}) {
+  if (!error) {
+    return null;
+  }
+
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-red-700">
+      <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+
+      <span>{error}</span>
+    </p>
+  );
+}
+
 export default function SellerRegisterForm() {
-  const [formData, setFormData] =
-    useState<SellerFormData>(
-      initialFormData,
-    );
+  const [
+    formData,
+    setFormData,
+  ] = useState<SellerFormData>(
+    initialFormData,
+  );
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
 
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
 
-  const [generalError, setGeneralError] =
-    useState("");
+  const [
+    generalError,
+    setGeneralError,
+  ] = useState("");
 
-  const [fieldErrors, setFieldErrors] =
-    useState<Record<string, string>>({});
+  const [
+    fieldErrors,
+    setFieldErrors,
+  ] = useState<
+    Record<string, string>
+  >({});
 
-  const [submitted, setSubmitted] =
-    useState(false);
+  const [
+    submitted,
+    setSubmitted,
+  ] = useState(false);
 
   const [
     successMessage,
     setSuccessMessage,
   ] = useState("");
 
-  const updateTextField = (
+  const progress = useMemo(() => {
+    const importantFields = [
+      formData.name,
+      formData.email,
+      formData.phone,
+      formData.shopName,
+      formData.city,
+      formData.address,
+      formData.productCategories,
+      formData.password,
+      formData.passwordConfirmation,
+    ];
+
+    let completed =
+      importantFields.filter(
+        (value) =>
+          value.trim().length > 0,
+      ).length;
+
+    if (formData.termsAccepted) {
+      completed++;
+    }
+
+    if (
+      formData.informationConfirmed
+    ) {
+      completed++;
+    }
+
+    return Math.round(
+      (completed /
+        (importantFields.length +
+          2)) *
+        100,
+    );
+  }, [formData]);
+
+  function clearFieldError(
+    frontendName: string,
+  ) {
+    const backendFieldMap:
+      Record<string, string[]> = {
+      name: ["name"],
+
+      email: ["email"],
+
+      phone: ["phone"],
+
+      sellerType: [
+        "seller_type",
+      ],
+
+      shopName: [
+        "shop_name",
+      ],
+
+      businessRegistrationNumber:
+        [
+          "business_registration_number",
+        ],
+
+      taxIdentificationNumber:
+        [
+          "tax_identification_number",
+        ],
+
+      city: ["city"],
+
+      address: ["address"],
+
+      productCategories: [
+        "product_categories",
+      ],
+
+      password: ["password"],
+
+      passwordConfirmation: [
+        "password_confirmation",
+      ],
+
+      termsAccepted: [
+        "terms_accepted",
+      ],
+
+      informationConfirmed: [
+        "information_confirmed",
+      ],
+    };
+
+    setFieldErrors((current) => {
+      const next = {
+        ...current,
+      };
+
+      const fields =
+        backendFieldMap[
+          frontendName
+        ] ?? [frontendName];
+
+      for (const field of fields) {
+        delete next[field];
+      }
+
+      return next;
+    });
+  }
+
+  function updateTextField(
     event: ChangeEvent<
       | HTMLInputElement
       | HTMLSelectElement
       | HTMLTextAreaElement
     >,
-  ) => {
-    const { name, value } =
-      event.target;
+  ) {
+    const {
+      name,
+      value,
+    } = event.target;
 
     setFormData((current) => ({
       ...current,
       [name]: value,
     }));
 
-    setFieldErrors((current) => {
-      const nextErrors = {
-        ...current,
-      };
-
-      delete nextErrors[name];
-
-      /*
-       * Frontend uses camelCase while
-       * Laravel validation uses snake_case.
-       */
-      const backendFieldMap:
-        Record<string, string> = {
-          sellerType: "seller_type",
-          shopName: "shop_name",
-
-          businessRegistrationNumber:
-            "business_registration_number",
-
-          taxIdentificationNumber:
-            "tax_identification_number",
-
-          productCategories:
-            "product_categories",
-
-          passwordConfirmation:
-            "password_confirmation",
-        };
-
-      const backendField =
-        backendFieldMap[name];
-
-      if (backendField) {
-        delete nextErrors[
-          backendField
-        ];
-      }
-
-      return nextErrors;
-    });
-
+    clearFieldError(name);
     setGeneralError("");
-  };
+  }
 
-  const updateCheckbox = (
+  function updateCheckbox(
     event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const { name, checked } =
-      event.target;
+  ) {
+    const {
+      name,
+      checked,
+    } = event.target;
 
     setFormData((current) => ({
       ...current,
       [name]: checked,
     }));
 
+    clearFieldError(name);
     setGeneralError("");
+  }
 
-    setFieldErrors((current) => {
-      const nextErrors = {
-        ...current,
-      };
-
-      if (
-        name === "termsAccepted"
-      ) {
-        delete nextErrors[
-          "terms_accepted"
-        ];
-      }
-
-      if (
-        name ===
-        "informationConfirmed"
-      ) {
-        delete nextErrors[
-          "information_confirmed"
-        ];
-      }
-
-      return nextErrors;
-    });
-  };
-
-  const submitRegistration = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
+  async function submitRegistration(
+    event:
+      FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (submitting) {
@@ -335,7 +427,8 @@ export default function SellerRegisterForm() {
     }
 
     if (
-      !formData.informationConfirmed
+      !formData
+        .informationConfirmed
     ) {
       setGeneralError(
         "Please confirm that the information you provided is correct.",
@@ -347,75 +440,82 @@ export default function SellerRegisterForm() {
     setSubmitting(true);
 
     try {
-      const response = await fetch(
-        "/api/auth/register",
-        {
-          method: "POST",
+      const requestBody = {
+        name:
+          formData.name.trim(),
 
-          headers: {
-            Accept: "application/json",
+        email:
+          formData.email
+            .trim()
+            .toLowerCase(),
 
-            "Content-Type":
-              "application/json",
+        phone:
+          formData.phone.trim(),
+
+        password:
+          formData.password,
+
+        password_confirmation:
+          formData
+            .passwordConfirmation,
+
+        role: "seller",
+
+        seller_type:
+          formData.sellerType,
+
+        shop_name:
+          formData.shopName.trim(),
+
+        business_registration_number:
+          formData
+            .businessRegistrationNumber
+            .trim(),
+
+        tax_identification_number:
+          formData
+            .taxIdentificationNumber
+            .trim(),
+
+        city:
+          formData.city.trim(),
+
+        address:
+          formData.address.trim(),
+
+        product_categories:
+          formData
+            .productCategories
+            .trim(),
+
+        terms_accepted:
+          formData.termsAccepted,
+
+        information_confirmed:
+          formData
+            .informationConfirmed,
+      };
+
+      const response =
+        await fetch(
+          "/api/auth/register",
+          {
+            method: "POST",
+
+            headers: {
+              Accept:
+                "application/json",
+
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify(
+                requestBody,
+              ),
           },
-
-          body: JSON.stringify({
-            name:
-              formData.name.trim(),
-
-            email:
-              formData.email
-                .trim()
-                .toLowerCase(),
-
-            phone:
-              formData.phone.trim(),
-
-            password:
-              formData.password,
-
-            password_confirmation:
-              formData
-                .passwordConfirmation,
-
-            role: "seller",
-
-            seller_type:
-              formData.sellerType,
-
-            shop_name:
-              formData.shopName.trim(),
-
-            business_registration_number:
-              formData
-                .businessRegistrationNumber
-                .trim(),
-
-            tax_identification_number:
-              formData
-                .taxIdentificationNumber
-                .trim(),
-
-            city:
-              formData.city.trim(),
-
-            address:
-              formData.address.trim(),
-
-            product_categories:
-              formData
-                .productCategories
-                .trim(),
-
-            terms_accepted:
-              formData.termsAccepted,
-
-            information_confirmed:
-              formData
-                .informationConfirmed,
-          }),
-        },
-      );
+        );
 
       const payload =
         (await response
@@ -442,7 +542,8 @@ export default function SellerRegisterForm() {
         payload?.token ??
         payload?.access_token ??
         payload?.data?.token ??
-        payload?.data?.access_token;
+        payload?.data
+          ?.access_token;
 
       if (token) {
         window.localStorage.setItem(
@@ -470,64 +571,108 @@ export default function SellerRegisterForm() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }
 
   if (submitted) {
     return (
-      <section className="rounded-3xl border border-emerald-300 bg-white p-6 text-center text-slate-950 shadow-[0_18px_55px_rgba(15,23,42,0.10)] sm:p-9">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-          <CheckCircle2 className="size-10" />
-        </span>
+      <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 px-6 py-10 text-center text-white sm:px-9">
+          <span className="mx-auto grid size-20 place-items-center rounded-full bg-white/15 ring-1 ring-white/30">
+            <CheckCircle2 className="size-10" />
+          </span>
 
-        <p className="mt-6 text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
-          Account created
-        </p>
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-emerald-100">
+            Account created
+          </p>
 
-        <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-          Seller registration successful
-        </h2>
+          <h2 className="mt-3 text-3xl font-black tracking-tight">
+            Welcome to RushPi
+          </h2>
 
-        <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-slate-700">
-          {successMessage}
-        </p>
-
-        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-left">
-          <div className="flex items-start gap-3">
-            <BadgeCheck className="mt-0.5 size-5 shrink-0 text-blue-700" />
-
-            <div>
-              <p className="font-black text-slate-950">
-                Complete your seller
-                profile next
-              </p>
-
-              <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-                Sign in to your RushPi
-                seller account and
-                complete your business
-                profile, address and
-                verification information
-                before publishing
-                products.
-              </p>
-            </div>
-          </div>
+          <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-emerald-50">
+            {successMessage}
+          </p>
         </div>
 
-        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link
-            href="/login"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-blue-700 px-6 text-sm font-black text-white transition hover:bg-blue-800"
-          >
-            Continue to sign in
-          </Link>
+        <div className="p-6 sm:p-9">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+            <div className="flex items-start gap-3">
+              <BadgeCheck className="mt-0.5 size-6 shrink-0 text-blue-700" />
 
-          <Link
-            href="/"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-slate-400 bg-white px-6 text-sm font-black text-slate-950 transition hover:border-blue-600 hover:text-blue-700"
-          >
-            Return to marketplace
-          </Link>
+              <div>
+                <p className="font-black text-slate-950">
+                  Complete your
+                  seller profile
+                </p>
+
+                <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
+                  Sign in to your
+                  RushPi seller
+                  account and
+                  complete your
+                  business profile
+                  before publishing
+                  products.
+                </p>
+
+                <p className="mt-2 text-sm font-medium leading-6 text-slate-700">
+                  You will be able
+                  to add your store
+                  logo, cover image,
+                  business
+                  description,
+                  WhatsApp number,
+                  business
+                  location, return
+                  policy, warranty
+                  policy and
+                  verification
+                  documents.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-slate-700" />
+
+              <div>
+                <p className="font-black text-slate-950">
+                  Seller
+                  verification
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  RushPi may
+                  review your
+                  seller details
+                  and verification
+                  documents before
+                  your store is
+                  fully activated.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/login"
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-black text-white transition hover:bg-blue-800"
+            >
+              Sign in and continue
+
+              <ArrowRight className="size-4" />
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-black text-slate-800 transition hover:bg-slate-50"
+            >
+              Return to marketplace
+            </Link>
+          </div>
         </div>
       </section>
     );
@@ -535,14 +680,69 @@ export default function SellerRegisterForm() {
 
   return (
     <form
-      onSubmit={submitRegistration}
-      className="space-y-7 text-slate-950"
+      onSubmit={
+        submitRegistration
+      }
+      className="space-y-6 text-slate-950"
     >
+      {/* Header */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">
+              Seller
+              registration
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              Create your seller
+              account
+            </h2>
+
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+              Start with your
+              account and basic
+              business details.
+              After signing in,
+              complete your full
+              RushPi store
+              profile.
+            </p>
+          </div>
+
+          <div className="hidden size-16 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700 sm:grid">
+            <Store className="size-7" />
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-4">
+          <span className="text-xs font-bold text-slate-500">
+            Registration
+            completion
+          </span>
+
+          <span className="text-sm font-black text-blue-700">
+            {progress}%
+          </span>
+        </div>
+
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-blue-700 transition-all duration-300"
+            style={{
+              width:
+                `${progress}%`,
+            }}
+          />
+        </div>
+      </section>
+
+      {/* General error */}
       {generalError && (
         <div
           role="alert"
           aria-live="polite"
-          className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-900"
+          className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-800"
         >
           <AlertCircle className="mt-0.5 size-5 shrink-0" />
 
@@ -552,27 +752,30 @@ export default function SellerRegisterForm() {
         </div>
       )}
 
-      {/* Personal information */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      {/* Account owner */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-800">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-700">
             <UserRound className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
-              Personal information
-            </h2>
+            <h3 className="text-lg font-black text-slate-950">
+              Account owner
+            </h3>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-              Enter the details of
-              the person responsible
-              for this seller account.
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Enter the
+              information of the
+              person responsible
+              for this seller
+              account.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          {/* Full name */}
           <label className="block sm:col-span-2">
             <span
               className={
@@ -582,13 +785,15 @@ export default function SellerRegisterForm() {
               Full name
             </span>
 
-            <span className="relative mt-2 block">
-              <UserRound className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type="text"
                 name="name"
-                value={formData.name}
+                value={
+                  formData.name
+                }
                 onChange={
                   updateTextField
                 }
@@ -599,17 +804,16 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors.name && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors.name
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.name
+              }
+            />
           </label>
 
+          {/* Email */}
           <label className="block">
             <span
               className={
@@ -619,8 +823,8 @@ export default function SellerRegisterForm() {
               Email address
             </span>
 
-            <span className="relative mt-2 block">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type="email"
@@ -638,17 +842,16 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors.email && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors.email
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.email
+              }
+            />
           </label>
 
+          {/* Phone */}
           <label className="block">
             <span
               className={
@@ -658,8 +861,8 @@ export default function SellerRegisterForm() {
               Phone number
             </span>
 
-            <span className="relative mt-2 block">
-              <Phone className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type="tel"
@@ -677,41 +880,41 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors.phone && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors.phone
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.phone
+              }
+            />
           </label>
         </div>
       </section>
 
-      {/* Seller information */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      {/* Store information */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-800">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700">
             <Store className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
-              Seller information
-            </h2>
+            <h3 className="text-lg font-black text-slate-950">
+              Store
+              information
+            </h3>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-              Tell RushPi whether
-              you are registering a
-              shop or selling as an
-              individual.
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Provide the basic
+              information needed
+              to create your
+              seller store.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          {/* Seller type */}
           <label className="block">
             <span
               className={
@@ -729,46 +932,40 @@ export default function SellerRegisterForm() {
               onChange={
                 updateTextField
               }
-              className={`${inputClassName} mt-2 appearance-none text-slate-950`}
+              className={`${inputClassName} appearance-none`}
             >
-              <option
-                value="shop_owner"
-                className="text-slate-950"
-              >
-                Shop or registered
+              <option value="shop_owner">
+                Shop /
+                registered
                 business
               </option>
 
-              <option
-                value="individual_seller"
-                className="text-slate-950"
-              >
-                Individual product
-                owner
+              <option value="individual_seller">
+                Individual
+                seller
               </option>
             </select>
 
-            {fieldErrors.seller_type && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .seller_type
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .seller_type
+              }
+            />
           </label>
 
+          {/* Store name */}
           <label className="block">
             <span
               className={
                 labelClassName
               }
             >
-              Shop or seller name
+              Store name
             </span>
 
-            <span className="relative mt-2 block">
-              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <Building2 className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type="text"
@@ -785,25 +982,25 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors.shop_name && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .shop_name
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .shop_name
+              }
+            />
           </label>
 
+          {/* Registration number */}
           <label className="block">
             <span
               className={
                 labelClassName
               }
             >
-              Business registration
+              Business
+              registration
               number
             </span>
 
@@ -827,28 +1024,27 @@ export default function SellerRegisterForm() {
                   ? "Required for registered businesses"
                   : "Optional for individual sellers"
               }
-              className={`mt-2 ${inputClassName}`}
+              className={
+                inputClassName
+              }
             />
 
-            {fieldErrors
-              .business_registration_number && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .business_registration_number
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .business_registration_number
+              }
+            />
           </label>
 
+          {/* TIN */}
           <label className="block">
             <span
               className={
                 labelClassName
               }
             >
-              Tax identification
-              number
+              TIN
             </span>
 
             <input
@@ -861,32 +1057,32 @@ export default function SellerRegisterForm() {
               onChange={
                 updateTextField
               }
-              placeholder="Enter TIN number when available"
-              className={`mt-2 ${inputClassName}`}
+              placeholder="Tax identification number"
+              className={
+                inputClassName
+              }
             />
 
-            {fieldErrors
-              .tax_identification_number && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .tax_identification_number
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .tax_identification_number
+              }
+            />
           </label>
 
+          {/* City */}
           <label className="block">
             <span
               className={
                 labelClassName
               }
             >
-              City or district
+              City / district
             </span>
 
-            <span className="relative mt-2 block">
-              <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type="text"
@@ -903,17 +1099,16 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors.city && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors.city
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.city
+              }
+            />
           </label>
 
+          {/* Address */}
           <label className="block">
             <span
               className={
@@ -934,30 +1129,31 @@ export default function SellerRegisterForm() {
               }
               required
               placeholder="Street, sector or marketplace"
-              className={`mt-2 ${inputClassName}`}
+              className={
+                inputClassName
+              }
             />
 
-            {fieldErrors.address && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors.address
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.address
+              }
+            />
           </label>
 
+          {/* Products */}
           <label className="block sm:col-span-2">
             <span
               className={
                 labelClassName
               }
             >
-              Products you plan to
-              sell
+              Products you plan
+              to sell
             </span>
 
-            <span className="relative mt-2 block">
-              <PackageCheck className="pointer-events-none absolute left-4 top-4 size-5 text-slate-600" />
+            <div className="relative">
+              <PackageCheck className="pointer-events-none absolute left-4 top-6 size-5 text-slate-400" />
 
               <textarea
                 name="productCategories"
@@ -970,45 +1166,45 @@ export default function SellerRegisterForm() {
                 }
                 required
                 rows={4}
-                placeholder="Example: mobile phones, laptops, accessories and home electronics"
-                className="w-full resize-none rounded-2xl border border-slate-400 bg-white py-3 pl-12 pr-4 text-sm font-medium leading-6 text-slate-950 caret-blue-700 outline-none transition placeholder:font-normal placeholder:text-slate-500 hover:border-slate-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+                placeholder="Example: phones, laptops, TVs, accessories and other electronics"
+                className={`${textareaClassName} pl-12`}
               />
-            </span>
+            </div>
 
-            {fieldErrors
-              .product_categories && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .product_categories
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .product_categories
+              }
+            />
           </label>
         </div>
       </section>
 
-      {/* Account security */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      {/* Security */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
             <LockKeyhole className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
-              Account security
-            </h2>
+            <h3 className="text-lg font-black text-slate-950">
+              Account
+              security
+            </h3>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+            <p className="mt-1 text-sm leading-6 text-slate-600">
               Create a secure
-              password containing at
-              least eight characters.
+              password for your
+              RushPi seller
+              account.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          {/* Password */}
           <label className="block">
             <span
               className={
@@ -1018,8 +1214,8 @@ export default function SellerRegisterForm() {
               Password
             </span>
 
-            <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type={
@@ -1051,7 +1247,7 @@ export default function SellerRegisterForm() {
                       !current,
                   )
                 }
-                className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+                className="absolute right-2 top-1/2 mt-1 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
                 aria-label={
                   showPassword
                     ? "Hide password"
@@ -1064,18 +1260,16 @@ export default function SellerRegisterForm() {
                   <Eye className="size-5" />
                 )}
               </button>
-            </span>
+            </div>
 
-            {fieldErrors.password && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .password
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors.password
+              }
+            />
           </label>
 
+          {/* Confirm */}
           <label className="block">
             <span
               className={
@@ -1085,8 +1279,8 @@ export default function SellerRegisterForm() {
               Confirm password
             </span>
 
-            <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+            <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
 
               <input
                 type={
@@ -1110,52 +1304,53 @@ export default function SellerRegisterForm() {
                   iconInputClassName
                 }
               />
-            </span>
+            </div>
 
-            {fieldErrors
-              .password_confirmation && (
-              <p className="mt-2 text-xs font-bold text-red-700">
-                {
-                  fieldErrors
-                    .password_confirmation
-                }
-              </p>
-            )}
+            <FieldError
+              error={
+                fieldErrors
+                  .password_confirmation
+              }
+            />
           </label>
         </div>
       </section>
 
-      {/* Terms and conditions */}
-      <section className="rounded-3xl border border-blue-300 bg-blue-50 p-5 text-slate-950 sm:p-7">
+      {/* Terms */}
+      <section className="rounded-3xl border border-blue-200 bg-blue-50 p-5 sm:p-7">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white">
             <FileCheck2 className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
-              Seller terms and
-              conditions
-            </h2>
+            <h3 className="text-lg font-black text-slate-950">
+              Seller terms
+              and conditions
+            </h3>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-              Review these
-              requirements before
-              submitting your seller
-              registration.
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Review the
+              marketplace rules
+              before creating
+              your seller
+              account.
             </p>
           </div>
         </div>
 
-        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-200 bg-white p-5 text-slate-950">
+        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-100 bg-white p-5">
           <ol className="space-y-4">
             {sellerTerms.map(
-              (term, index) => (
+              (
+                term,
+                index,
+              ) => (
                 <li
                   key={term}
-                  className="flex items-start gap-3 text-sm font-medium leading-6 text-slate-800"
+                  className="flex items-start gap-3 text-sm font-medium leading-6 text-slate-700"
                 >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-800">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-700">
                     {index + 1}
                   </span>
 
@@ -1168,8 +1363,9 @@ export default function SellerRegisterForm() {
           </ol>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
+        <div className="mt-5 space-y-3">
+          {/* Terms acceptance */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4 transition hover:border-blue-300">
             <input
               type="checkbox"
               name="termsAccepted"
@@ -1184,7 +1380,7 @@ export default function SellerRegisterForm() {
               className="mt-1 size-5 shrink-0 accent-blue-700"
             />
 
-            <span className="text-sm font-semibold leading-6 text-slate-900">
+            <span className="text-sm font-semibold leading-6 text-slate-800">
               I have read and
               accept the RushPi
               seller terms and
@@ -1192,17 +1388,15 @@ export default function SellerRegisterForm() {
             </span>
           </label>
 
-          {fieldErrors
-            .terms_accepted && (
-            <p className="text-xs font-bold text-red-700">
-              {
-                fieldErrors
-                  .terms_accepted
-              }
-            </p>
-          )}
+          <FieldError
+            error={
+              fieldErrors
+                .terms_accepted
+            }
+          />
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
+          {/* Confirmation */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-100 bg-white p-4 transition hover:border-blue-300">
             <input
               type="checkbox"
               name="informationConfirmed"
@@ -1217,61 +1411,70 @@ export default function SellerRegisterForm() {
               className="mt-1 size-5 shrink-0 accent-blue-700"
             />
 
-            <span className="text-sm font-semibold leading-6 text-slate-900">
-              I confirm that the
-              information provided
-              in this registration
-              is accurate and can be
-              verified by RushPi.
+            <span className="text-sm font-semibold leading-6 text-slate-800">
+              I confirm that
+              the information I
+              have provided is
+              correct and may be
+              verified by
+              RushPi.
             </span>
           </label>
 
-          {fieldErrors
-            .information_confirmed && (
-            <p className="text-xs font-bold text-red-700">
-              {
-                fieldErrors
-                  .information_confirmed
-              }
-            </p>
-          )}
+          <FieldError
+            error={
+              fieldErrors
+                .information_confirmed
+            }
+          />
         </div>
       </section>
 
+      {/* Submit */}
       <button
         type="submit"
         disabled={
           submitting ||
-          !formData.termsAccepted ||
+          !formData
+            .termsAccepted ||
           !formData
             .informationConfirmed
         }
-        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:text-white disabled:shadow-none"
+        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-slate-400 disabled:shadow-none"
       >
         {submitting ? (
           <>
             <LoaderCircle className="size-5 animate-spin" />
+
             Creating seller
             account...
           </>
         ) : (
           <>
             <Store className="size-5" />
-            Create seller account
+
+            Create seller
+            account
+
+            <ArrowRight className="size-4" />
           </>
         )}
       </button>
 
-      <p className="text-center text-sm font-medium text-slate-800">
-        Already registered?{" "}
+      {/* Existing account */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+        <p className="text-sm font-medium text-slate-700">
+          Already have a
+          seller account?{" "}
 
-        <Link
-          href="/login"
-          className="font-black text-blue-700 underline underline-offset-4 hover:text-blue-900"
-        >
-          Sign in to your account
-        </Link>
-      </p>
+          <Link
+            href="/login"
+            className="font-black text-blue-700 underline underline-offset-4 transition hover:text-blue-900"
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }
