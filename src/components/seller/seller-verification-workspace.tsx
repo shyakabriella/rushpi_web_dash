@@ -765,6 +765,61 @@ export default function SellerVerificationWorkspace() {
         setErrorMessage("");
 
         try {
+          /*
+           * Load document requirements independently from the seller
+           * application so the Document type selector is always usable.
+           */
+          const requirementsResponse =
+            await apiRequest<
+              SellerDocumentRequirement[]
+            >(
+              "/seller/document-requirements",
+            );
+
+          const activeRequirements =
+            Array.isArray(
+              requirementsResponse.data,
+            )
+              ? requirementsResponse.data
+                  .filter(
+                    (item) =>
+                      item.is_active !== false,
+                  )
+                  .sort(
+                    (a, b) =>
+                      Number(a.sort_order ?? 0) -
+                      Number(b.sort_order ?? 0),
+                  )
+              : [];
+
+          setRequirements(
+            activeRequirements,
+          );
+
+          setUploadForm(
+            (current) => {
+              const currentStillExists =
+                activeRequirements.some(
+                  (item) =>
+                    item.key ===
+                    current.documentType,
+                );
+
+              if (
+                currentStillExists
+              ) {
+                return current;
+              }
+
+              return {
+                ...current,
+                documentType:
+                  activeRequirements[0]?.key ??
+                  "",
+              };
+            },
+          );
+
           const profilesResponse =
             await apiRequest<
               SellerProfile[]
@@ -794,10 +849,6 @@ export default function SellerVerificationWorkspace() {
             );
 
             setDocuments(
-              [],
-            );
-
-            setRequirements(
               [],
             );
 
@@ -845,10 +896,6 @@ export default function SellerVerificationWorkspace() {
               [],
             );
 
-            setRequirements(
-              [],
-            );
-
             return;
           }
 
@@ -872,49 +919,6 @@ export default function SellerVerificationWorkspace() {
                   [],
           );
 
-          const activeRequirements =
-            Array.isArray(
-              documentsResponse.requirements,
-            )
-              ? documentsResponse.requirements
-                  .filter(
-                    (item) =>
-                      item.is_active !== false,
-                  )
-                  .sort(
-                    (a, b) =>
-                      Number(a.sort_order ?? 0) -
-                      Number(b.sort_order ?? 0),
-                  )
-              : [];
-
-          setRequirements(
-            activeRequirements,
-          );
-
-          setUploadForm(
-            (current) => {
-              const currentStillExists =
-                activeRequirements.some(
-                  (item) =>
-                    item.key ===
-                    current.documentType,
-                );
-
-              if (
-                currentStillExists
-              ) {
-                return current;
-              }
-
-              return {
-                ...current,
-                documentType:
-                  activeRequirements[0]?.key ??
-                  "",
-              };
-            },
-          );
         } catch (error) {
           setErrorMessage(
             error instanceof Error
@@ -1682,7 +1686,6 @@ export default function SellerVerificationWorkspace() {
                       uploadForm.documentType
                     }
                     disabled={
-                      !canEditDocuments ||
                       requirements.length === 0
                     }
                     onChange={(
@@ -1736,6 +1739,13 @@ export default function SellerVerificationWorkspace() {
                       )
                     )}
                   </select>
+
+                  {!canEditDocuments && requirements.length > 0 ? (
+                    <span className="block text-[11px] leading-4 text-slate-400">
+                      You can review document types now. Uploading becomes
+                      available when the verification application is editable.
+                    </span>
+                  ) : null}
                 </label>
 
                 <label className="space-y-1.5">
