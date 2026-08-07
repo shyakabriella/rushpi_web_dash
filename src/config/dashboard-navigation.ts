@@ -194,7 +194,7 @@ export const dashboardNavigation: Record<
           icon: FileImage,
         },
         {
-          label: "Return policies",
+          label: "Return policiesffffff",
           href: "/seller/return-policies",
           icon: FileText,
         },
