@@ -160,10 +160,10 @@ type SellerProfile = {
 
 type ApiEnvelope<T> = {
   success?: boolean;
-
   message?: string;
-
   data?: T;
+
+  requirements?: SellerDocumentRequirement[];
 
   errors?: Record<
     string,
@@ -185,66 +185,28 @@ type UploadForm = {
 |--------------------------------------------------------------------------
 */
 
-const DOCUMENT_TYPES = [
-  {
-    value:
-      "business_registration_certificate",
-    label:
-      "Business registration certificate",
-  },
-  {
-    value:
-      "tax_certificate",
-    label:
-      "Tax certificate",
-  },
-  {
-    value:
-      "authorized_representative_id",
-    label:
-      "Representative identification",
-  },
-  {
-    value:
-      "trading_license",
-    label:
-      "Trading licence",
-  },
-  {
-    value:
-      "payout_account_proof",
-    label:
-      "Payout account proof",
-  },
-  {
-    value:
-      "proof_of_address",
-    label:
-      "Proof of address",
-  },
-  {
-    value:
-      "store_photo",
-    label:
-      "Store photo",
-  },
-  {
-    value:
-      "other",
-    label:
-      "Other supporting document",
-  },
-] as const;
+type SellerDocumentRequirement = {
+  id?: number;
+  key: string;
+  name: string;
+  requirement_level:
+    | "required"
+    | "conditional"
+    | "recommended"
+    | string;
+  condition?: string | null;
+  description?: string | null;
+  allow_multiple?: boolean;
+  supports_expiry_date?: boolean;
+  is_active?: boolean;
+  sort_order?: number;
+};
 
-const INITIAL_UPLOAD_FORM: UploadForm =
-  {
-    documentType:
-      "business_registration_certificate",
-
-    issuedAt: "",
-
-    expiresAt: "",
-  };
+const INITIAL_UPLOAD_FORM: UploadForm = {
+  documentType: "",
+  issuedAt: "",
+  expiresAt: "",
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -590,12 +552,12 @@ function statusIcon(
 
 function documentTypeLabel(
   type: string,
+  requirements: SellerDocumentRequirement[] = [],
 ): string {
   return (
-    DOCUMENT_TYPES.find(
-      (item) =>
-        item.value === type,
-    )?.label ??
+    requirements.find(
+      (item) => item.key === type,
+    )?.name ??
     formatLabel(type)
   );
 }
@@ -702,6 +664,14 @@ export default function SellerVerificationWorkspace() {
     setDocuments,
   ] =
     useState<SellerDocument[]>(
+      [],
+    );
+
+  const [
+    requirements,
+    setRequirements,
+  ] =
+    useState<SellerDocumentRequirement[]>(
       [],
     );
 
@@ -827,6 +797,10 @@ export default function SellerVerificationWorkspace() {
               [],
             );
 
+            setRequirements(
+              [],
+            );
+
             return;
           }
 
@@ -871,6 +845,10 @@ export default function SellerVerificationWorkspace() {
               [],
             );
 
+            setRequirements(
+              [],
+            );
+
             return;
           }
 
@@ -892,6 +870,50 @@ export default function SellerVerificationWorkspace() {
               ? documentsResponse.data
               : currentApplication.documents ??
                   [],
+          );
+
+          const activeRequirements =
+            Array.isArray(
+              documentsResponse.requirements,
+            )
+              ? documentsResponse.requirements
+                  .filter(
+                    (item) =>
+                      item.is_active !== false,
+                  )
+                  .sort(
+                    (a, b) =>
+                      Number(a.sort_order ?? 0) -
+                      Number(b.sort_order ?? 0),
+                  )
+              : [];
+
+          setRequirements(
+            activeRequirements,
+          );
+
+          setUploadForm(
+            (current) => {
+              const currentStillExists =
+                activeRequirements.some(
+                  (item) =>
+                    item.key ===
+                    current.documentType,
+                );
+
+              if (
+                currentStillExists
+              ) {
+                return current;
+              }
+
+              return {
+                ...current,
+                documentType:
+                  activeRequirements[0]?.key ??
+                  "",
+              };
+            },
           );
         } catch (error) {
           setErrorMessage(
@@ -928,6 +950,20 @@ export default function SellerVerificationWorkspace() {
   const sellerStatus =
     normalizeStatus(
       profile?.status,
+    );
+
+  const selectedRequirement =
+    useMemo(
+      () =>
+        requirements.find(
+          (item) =>
+            item.key ===
+            uploadForm.documentType,
+        ) ?? null,
+      [
+        requirements,
+        uploadForm.documentType,
+      ],
     );
 
   const canEditDocuments =
@@ -1023,6 +1059,14 @@ export default function SellerVerificationWorkspace() {
     ) {
       setErrorMessage(
         "No seller verification application is available.",
+      );
+
+      return;
+    }
+
+    if (!uploadForm.documentType) {
+      setErrorMessage(
+        "Select a verification document type.",
       );
 
       return;
@@ -1638,7 +1682,8 @@ export default function SellerVerificationWorkspace() {
                       uploadForm.documentType
                     }
                     disabled={
-                      !canEditDocuments
+                      !canEditDocuments ||
+                      requirements.length === 0
                     }
                     onChange={(
                       event,
@@ -1653,28 +1698,42 @@ export default function SellerVerificationWorkspace() {
                             event
                               .target
                               .value,
+
+                          expiresAt:
+                            requirements.find(
+                              (item) =>
+                                item.key ===
+                                event.target.value,
+                            )?.supports_expiry_date
+                              ? current.expiresAt
+                              : "",
                         }),
                       )
                     }
                     className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-50 disabled:text-slate-400"
                   >
-                    {DOCUMENT_TYPES.map(
-                      (
-                        type,
-                      ) => (
-                        <option
-                          key={
-                            type.value
-                          }
-                          value={
-                            type.value
-                          }
-                        >
-                          {
-                            type.label
-                          }
-                        </option>
-                      ),
+                    {requirements.length === 0 ? (
+                      <option value="">
+                        No document requirements available
+                      </option>
+                    ) : (
+                      requirements.map(
+                        (requirement) => (
+                          <option
+                            key={
+                              requirement.key
+                            }
+                            value={
+                              requirement.key
+                            }
+                          >
+                            {requirement.name} ·{" "}
+                            {formatLabel(
+                              requirement.requirement_level,
+                            )}
+                          </option>
+                        ),
+                      )
                     )}
                   </select>
                 </label>
@@ -1723,7 +1782,8 @@ export default function SellerVerificationWorkspace() {
                       uploadForm.expiresAt
                     }
                     disabled={
-                      !canEditDocuments
+                      !canEditDocuments ||
+                      !selectedRequirement?.supports_expiry_date
                     }
                     onChange={(
                       event,
@@ -1745,6 +1805,49 @@ export default function SellerVerificationWorkspace() {
                   />
                 </label>
               </div>
+
+              {selectedRequirement ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={[
+                        "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                        normalizeStatus(
+                          selectedRequirement.requirement_level,
+                        ) === "required"
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : normalizeStatus(
+                                selectedRequirement.requirement_level,
+                              ) === "conditional"
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700",
+                      ].join(" ")}
+                    >
+                      {formatLabel(
+                        selectedRequirement.requirement_level,
+                      )}
+                    </span>
+
+                    {selectedRequirement.allow_multiple ? (
+                      <span className="text-[11px] font-medium text-slate-500">
+                        Multiple files allowed
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {selectedRequirement.description ? (
+                    <p className="mt-2 text-xs leading-5 text-slate-600">
+                      {selectedRequirement.description}
+                    </p>
+                  ) : null}
+
+                  {selectedRequirement.condition ? (
+                    <p className="mt-1 text-xs leading-5 text-amber-700">
+                      {selectedRequirement.condition}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div>
                 <input
@@ -1927,6 +2030,7 @@ export default function SellerVerificationWorkspace() {
                             <span>
                               {documentTypeLabel(
                                 documentItem.document_type,
+                                requirements,
                               )}
                             </span>
 
@@ -2199,6 +2303,7 @@ export default function SellerVerificationWorkspace() {
                         {selectedFile?.name ??
                           documentTypeLabel(
                             uploadForm.documentType,
+                            requirements,
                           )}
                       </p>
 
