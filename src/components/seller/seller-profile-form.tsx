@@ -2,12 +2,13 @@
 
 import {
   BadgeCheck,
-  BarChart3,
   Building2,
   Camera,
+  Check,
   CheckCircle2,
   Clock3,
   FileText,
+  Globe2,
   ImageIcon,
   LoaderCircle,
   Mail,
@@ -18,6 +19,7 @@ import {
   Save,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
   Star,
   Store,
   TriangleAlert,
@@ -57,7 +59,6 @@ type SellerProfile = {
   id: number;
   public_id?: string | null;
 
-  /* Requested seller profile fields */
   business_name?: string | null;
   store_name?: string | null;
 
@@ -103,8 +104,10 @@ type SellerProfile = {
   updated_at?: string | null;
 
   /*
-   * Existing RushPi backend aliases.
-   * Keep these while backend naming is being migrated.
+   * Current RushPi backend aliases.
+   * These allow this UI to work while
+   * the backend moves toward the new
+   * marketplace naming.
    */
   legal_business_name?: string | null;
   trading_name?: string | null;
@@ -188,7 +191,7 @@ const STORAGE_BASE_URL = (
 ).replace(/\/+$/, "");
 
 /* =========================================================
- * FORM DEFAULTS
+ * DEFAULT FORM
  * ======================================================= */
 
 const initialFormData: SellerProfileFormData = {
@@ -217,76 +220,72 @@ const initialFormData: SellerProfileFormData = {
 };
 
 /* =========================================================
- * STYLES
+ * COMPACT FORM STYLES
  * ======================================================= */
 
 const inputClassName = [
-  "mt-2 h-12 w-full rounded-xl",
-  "border border-slate-300 bg-white",
-  "px-4 text-sm font-medium text-slate-950",
-  "outline-none transition",
-  "placeholder:text-slate-400",
-  "hover:border-slate-400",
-  "focus:border-blue-600",
-  "focus:ring-4 focus:ring-blue-100",
+  "mt-1.5 h-10 w-full rounded-lg",
+  "border border-slate-200 bg-white",
+  "px-3 text-[13px] font-semibold text-slate-900",
+  "outline-none transition-all duration-200",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-300",
+  "focus:-translate-y-[1px]",
+  "focus:border-blue-500",
+  "focus:shadow-[0_8px_24px_rgba(37,99,235,0.10)]",
+  "focus:ring-2 focus:ring-blue-100",
   "disabled:cursor-not-allowed",
   "disabled:bg-slate-100",
   "disabled:text-slate-500",
 ].join(" ");
 
 const textareaClassName = [
-  "mt-2 min-h-32 w-full resize-y rounded-xl",
-  "border border-slate-300 bg-white",
-  "px-4 py-3",
-  "text-sm font-medium leading-6 text-slate-950",
-  "outline-none transition",
-  "placeholder:text-slate-400",
-  "hover:border-slate-400",
-  "focus:border-blue-600",
-  "focus:ring-4 focus:ring-blue-100",
-  "disabled:cursor-not-allowed",
+  "mt-1.5 w-full resize-none rounded-lg",
+  "border border-slate-200 bg-white",
+  "px-3 py-2.5",
+  "text-[13px] font-semibold leading-5 text-slate-900",
+  "outline-none transition-all duration-200",
+  "placeholder:font-normal placeholder:text-slate-400",
+  "hover:border-slate-300",
+  "focus:-translate-y-[1px]",
+  "focus:border-blue-500",
+  "focus:shadow-[0_8px_24px_rgba(37,99,235,0.10)]",
+  "focus:ring-2 focus:ring-blue-100",
   "disabled:bg-slate-100",
-  "disabled:text-slate-500",
 ].join(" ");
 
 const labelClassName =
-  "text-sm font-black text-slate-800";
+  "text-[11px] font-black uppercase tracking-[0.07em] text-slate-600";
 
 /* =========================================================
- * HELPERS
+ * API / HELPERS
  * ======================================================= */
 
 function getAccessToken(): string | null {
-  if (
-    typeof window === "undefined"
-  ) {
+  if (typeof window === "undefined") {
     return null;
   }
 
-  const tokenKeys = [
+  const keys = [
     "rushpi_token",
     "token",
     "access_token",
     "auth_token",
   ];
 
-  for (const key of tokenKeys) {
-    const localToken =
-      window.localStorage.getItem(
-        key,
-      );
+  for (const key of keys) {
+    const local =
+      window.localStorage.getItem(key);
 
-    if (localToken) {
-      return localToken;
+    if (local) {
+      return local;
     }
 
-    const sessionToken =
-      window.sessionStorage.getItem(
-        key,
-      );
+    const session =
+      window.sessionStorage.getItem(key);
 
-    if (sessionToken) {
-      return sessionToken;
+    if (session) {
+      return session;
     }
   }
 
@@ -327,45 +326,42 @@ async function apiRequest<T>(
   const raw =
     await response.text();
 
-  let payload:
-    ApiEnvelope<T>;
+  let parsed: unknown = {};
 
   try {
-    const parsed =
+    parsed =
       raw
         ? JSON.parse(raw)
         : {};
-
-    /*
-     * Support APIs that return
-     * an array/object directly.
-     */
-    if (
-      Array.isArray(parsed)
-    ) {
-      payload = {
-        data: parsed as T,
-      };
-    } else if (
-      parsed &&
-      typeof parsed ===
-        "object" &&
-      "data" in parsed
-    ) {
-      payload =
-        parsed as ApiEnvelope<T>;
-    } else {
-      payload = {
-        ...parsed,
-        data:
-          parsed as T,
-      };
-    }
   } catch {
     throw new ApiRequestError(
       `The server returned an invalid response. HTTP ${response.status}.`,
       response.status,
     );
+  }
+
+  let payload: ApiEnvelope<T>;
+
+  if (Array.isArray(parsed)) {
+    payload = {
+      data: parsed as T,
+    };
+  } else if (
+    parsed &&
+    typeof parsed === "object" &&
+    "data" in parsed
+  ) {
+    payload =
+      parsed as ApiEnvelope<T>;
+  } else {
+    payload = {
+      ...(parsed as Record<
+        string,
+        unknown
+      >),
+
+      data: parsed as T,
+    };
   }
 
   if (!response.ok) {
@@ -392,9 +388,7 @@ function firstError(
       continue;
     }
 
-    if (
-      Array.isArray(value)
-    ) {
+    if (Array.isArray(value)) {
       return (
         value[0] ??
         "This field is invalid."
@@ -407,7 +401,7 @@ function firstError(
   return null;
 }
 
-function normalizeStatus(
+function normalizedStatus(
   value?: string | null,
 ): string {
   return (
@@ -429,8 +423,8 @@ function formatStatus(
     .replaceAll("_", " ")
     .replace(
       /\b\w/g,
-      (character) =>
-        character.toUpperCase(),
+      (letter) =>
+        letter.toUpperCase(),
     );
 }
 
@@ -438,7 +432,7 @@ function statusClassName(
   value?: string | null,
 ): string {
   const status =
-    normalizeStatus(value);
+    normalizedStatus(value);
 
   if (
     [
@@ -470,9 +464,9 @@ function statusClassName(
 
   if (
     [
-      "rejected",
       "blocked",
       "suspended",
+      "rejected",
     ].includes(status)
   ) {
     return [
@@ -482,9 +476,7 @@ function statusClassName(
     ].join(" ");
   }
 
-  if (
-    status === "draft"
-  ) {
+  if (status === "draft") {
     return [
       "border-amber-200",
       "bg-amber-50",
@@ -495,7 +487,7 @@ function statusClassName(
   return [
     "border-slate-200",
     "bg-slate-50",
-    "text-slate-700",
+    "text-slate-600",
   ].join(" ");
 }
 
@@ -536,9 +528,7 @@ function formatRating(
   const rating =
     Number(value ?? 0);
 
-  if (
-    Number.isNaN(rating)
-  ) {
+  if (Number.isNaN(rating)) {
     return "0.0";
   }
 
@@ -551,20 +541,14 @@ function formatPercentage(
     | string
     | null,
 ): string {
-  const percentage =
+  const rate =
     Number(value ?? 0);
 
-  if (
-    Number.isNaN(
-      percentage,
-    )
-  ) {
+  if (Number.isNaN(rate)) {
     return "0%";
   }
 
-  return `${Math.round(
-    percentage,
-  )}%`;
+  return `${Math.round(rate)}%`;
 }
 
 function formatResponseTime(
@@ -574,28 +558,28 @@ function formatResponseTime(
     | null,
 ): string {
   if (
-    value === null ||
     value === undefined ||
+    value === null ||
     value === ""
   ) {
     return "—";
   }
 
-  const numeric =
+  const numberValue =
     Number(value);
 
   if (
-    Number.isNaN(numeric)
+    Number.isNaN(numberValue)
   ) {
     return String(value);
   }
 
-  if (numeric < 60) {
-    return `${numeric} min`;
+  if (numberValue < 60) {
+    return `${numberValue} min`;
   }
 
   const hours =
-    numeric / 60;
+    numberValue / 60;
 
   return `${hours.toFixed(
     hours % 1 === 0
@@ -615,10 +599,10 @@ function resolveImageUrl(
 
   if (
     value.startsWith(
-      "http://",
+      "https://",
     ) ||
     value.startsWith(
-      "https://",
+      "http://",
     ) ||
     value.startsWith(
       "blob:",
@@ -630,22 +614,19 @@ function resolveImageUrl(
     return value;
   }
 
-  const cleanPath =
+  const path =
     value
-      .replace(
-        /^\/+/,
-        "",
-      )
+      .replace(/^\/+/, "")
       .replace(
         /^storage\//,
         "",
       );
 
-  return `${STORAGE_BASE_URL}/${cleanPath}`;
+  return `${STORAGE_BASE_URL}/${path}`;
 }
 
 /* =========================================================
- * MAIN COMPONENT
+ * MAIN
  * ======================================================= */
 
 export default function SellerProfileForm() {
@@ -674,8 +655,8 @@ export default function SellerProfileForm() {
     );
 
   const [
-    coverImageFile,
-    setCoverImageFile,
+    coverFile,
+    setCoverFile,
   ] =
     useState<File | null>(
       null,
@@ -690,8 +671,8 @@ export default function SellerProfileForm() {
     );
 
   const [
-    coverImagePreview,
-    setCoverImagePreview,
+    coverPreview,
+    setCoverPreview,
   ] =
     useState<string | null>(
       null,
@@ -700,20 +681,17 @@ export default function SellerProfileForm() {
   const [
     loading,
     setLoading,
-  ] =
-    useState(true);
+  ] = useState(true);
 
   const [
     refreshing,
     setRefreshing,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     saving,
     setSaving,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     errors,
@@ -726,17 +704,15 @@ export default function SellerProfileForm() {
   const [
     errorMessage,
     setErrorMessage,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     successMessage,
     setSuccessMessage,
-  ] =
-    useState("");
+  ] = useState("");
 
   /* =======================================================
-   * PROFILE STATUS
+   * STATUS
    * ===================================================== */
 
   const verificationStatus =
@@ -760,13 +736,13 @@ export default function SellerProfileForm() {
       "suspended",
       "rejected",
     ].includes(
-      normalizeStatus(
+      normalizedStatus(
         sellerStatus,
       ),
     );
 
   /* =======================================================
-   * POPULATE FORM
+   * PROFILE → FORM
    * ===================================================== */
 
   const populateForm =
@@ -829,8 +805,7 @@ export default function SellerProfileForm() {
 
           country:
             seller.country ??
-            defaultAddress
-              ?.country ??
+            defaultAddress?.country ??
             "Rwanda",
 
           province:
@@ -860,8 +835,7 @@ export default function SellerProfileForm() {
             "",
 
           returnPolicy:
-            seller
-              .return_policy ??
+            seller.return_policy ??
             "",
 
           warrantyPolicy:
@@ -877,7 +851,7 @@ export default function SellerProfileForm() {
           ),
         );
 
-        setCoverImagePreview(
+        setCoverPreview(
           resolveImageUrl(
             seller
               .cover_image_url ??
@@ -887,16 +861,13 @@ export default function SellerProfileForm() {
         );
 
         setLogoFile(null);
-
-        setCoverImageFile(
-          null,
-        );
+        setCoverFile(null);
       },
       [],
     );
 
   /* =======================================================
-   * LOAD PROFILE
+   * LOAD
    * ===================================================== */
 
   const loadProfile =
@@ -922,8 +893,7 @@ export default function SellerProfileForm() {
             );
 
           const profiles =
-            response.data ??
-            [];
+            response.data ?? [];
 
           const seller =
             profiles[0];
@@ -935,13 +905,8 @@ export default function SellerProfileForm() {
               initialFormData,
             );
 
-            setLogoPreview(
-              null,
-            );
-
-            setCoverImagePreview(
-              null,
-            );
+            setLogoPreview(null);
+            setCoverPreview(null);
 
             return;
           }
@@ -970,10 +935,10 @@ export default function SellerProfileForm() {
   }, [loadProfile]);
 
   /* =======================================================
-   * PROFILE COMPLETION
+   * COMPLETION
    * ===================================================== */
 
-  const profileCompletion =
+  const completion =
     useMemo(() => {
       const values = [
         formData.businessName,
@@ -1001,44 +966,38 @@ export default function SellerProfileForm() {
 
       let completed =
         values.filter(
-          (value) =>
-            value
-              .trim()
-              .length > 0,
+          (item) =>
+            item.trim().length >
+            0,
         ).length;
 
       if (logoPreview) {
         completed++;
       }
 
-      if (
-        coverImagePreview
-      ) {
+      if (coverPreview) {
         completed++;
       }
 
-      const total =
-        values.length + 2;
-
       return Math.round(
         (completed /
-          total) *
+          (values.length + 2)) *
           100,
       );
     }, [
       formData,
       logoPreview,
-      coverImagePreview,
+      coverPreview,
     ]);
 
   /* =======================================================
-   * UPDATE FIELD
+   * FIELD UPDATE
    * ===================================================== */
 
   function updateField<
     K extends keyof SellerProfileFormData,
   >(
-    field: K,
+    key: K,
     value:
       SellerProfileFormData[K],
   ) {
@@ -1046,123 +1005,120 @@ export default function SellerProfileForm() {
       (current) => ({
         ...current,
 
-        [field]:
-          value,
+        [key]: value,
       }),
-    );
-
-    setErrors(
-      (current) => {
-        const next = {
-          ...current,
-        };
-
-        const fieldMap:
-          Partial<
-            Record<
-              keyof SellerProfileFormData,
-              string[]
-            >
-          > = {
-          businessName: [
-            "business_name",
-            "legal_business_name",
-          ],
-
-          storeName: [
-            "store_name",
-            "trading_name",
-          ],
-
-          description: [
-            "description",
-          ],
-
-          phone: [
-            "phone",
-            "business_phone",
-          ],
-
-          whatsapp: [
-            "whatsapp",
-          ],
-
-          email: [
-            "email",
-            "business_email",
-          ],
-
-          businessType: [
-            "business_type",
-          ],
-
-          registrationNumber:
-            [
-              "registration_number",
-            ],
-
-          tinNumber: [
-            "tin_number",
-            "tax_identification_number",
-          ],
-
-          country: [
-            "country",
-            "address.country",
-          ],
-
-          province: [
-            "province",
-            "address.province",
-          ],
-
-          district: [
-            "district",
-            "address.district",
-          ],
-
-          sector: [
-            "sector",
-            "address.sector",
-          ],
-
-          address: [
-            "address",
-            "address.address_line",
-          ],
-
-          returnPolicy: [
-            "return_policy",
-          ],
-
-          warrantyPolicy: [
-            "warranty_policy",
-          ],
-        };
-
-        const errorKeys =
-          fieldMap[field] ??
-          [String(field)];
-
-        for (
-          const key of errorKeys
-        ) {
-          delete next[key];
-        }
-
-        return next;
-      },
     );
 
     setErrorMessage("");
     setSuccessMessage("");
+
+    setErrors((current) => {
+      const next = {
+        ...current,
+      };
+
+      const map:
+        Partial<
+          Record<
+            keyof SellerProfileFormData,
+            string[]
+          >
+        > = {
+        businessName: [
+          "business_name",
+          "legal_business_name",
+        ],
+
+        storeName: [
+          "store_name",
+          "trading_name",
+        ],
+
+        description: [
+          "description",
+        ],
+
+        phone: [
+          "phone",
+          "business_phone",
+        ],
+
+        whatsapp: [
+          "whatsapp",
+        ],
+
+        email: [
+          "email",
+          "business_email",
+        ],
+
+        businessType: [
+          "business_type",
+        ],
+
+        registrationNumber: [
+          "registration_number",
+        ],
+
+        tinNumber: [
+          "tin_number",
+          "tax_identification_number",
+        ],
+
+        country: [
+          "country",
+          "address.country",
+        ],
+
+        province: [
+          "province",
+          "address.province",
+        ],
+
+        district: [
+          "district",
+          "address.district",
+        ],
+
+        sector: [
+          "sector",
+          "address.sector",
+        ],
+
+        address: [
+          "address",
+          "address.address_line",
+        ],
+
+        returnPolicy: [
+          "return_policy",
+        ],
+
+        warrantyPolicy: [
+          "warranty_policy",
+        ],
+      };
+
+      for (
+        const errorKey of
+        map[key] ?? [
+          String(key),
+        ]
+      ) {
+        delete next[
+          errorKey
+        ];
+      }
+
+      return next;
+    });
   }
 
   /* =======================================================
-   * IMAGE UPLOAD
+   * IMAGE PICKER
    * ===================================================== */
 
-  function handleImageChange(
+  function handleImage(
     event:
       ChangeEvent<HTMLInputElement>,
     type:
@@ -1189,15 +1145,12 @@ export default function SellerProfileForm() {
       return;
     }
 
-    const maximumSize =
-      5 * 1024 * 1024;
-
     if (
       file.size >
-      maximumSize
+      5 * 1024 * 1024
     ) {
       setErrorMessage(
-        "The image must not exceed 5 MB.",
+        "Image size must not exceed 5 MB.",
       );
 
       return;
@@ -1208,20 +1161,16 @@ export default function SellerProfileForm() {
         file,
       );
 
-    if (
-      type === "logo"
-    ) {
+    if (type === "logo") {
       setLogoFile(file);
 
       setLogoPreview(
         preview,
       );
     } else {
-      setCoverImageFile(
-        file,
-      );
+      setCoverFile(file);
 
-      setCoverImagePreview(
+      setCoverPreview(
         preview,
       );
     }
@@ -1231,7 +1180,7 @@ export default function SellerProfileForm() {
   }
 
   /* =======================================================
-   * SAVE PROFILE
+   * SAVE
    * ===================================================== */
 
   async function handleSubmit(
@@ -1248,6 +1197,7 @@ export default function SellerProfileForm() {
     }
 
     setSaving(true);
+
     setErrors({});
     setErrorMessage("");
     setSuccessMessage("");
@@ -1256,11 +1206,7 @@ export default function SellerProfileForm() {
       const body =
         new FormData();
 
-      /*
-       * ===================================================
-       * NEW PROFILE FIELD NAMES
-       * =================================================
-       */
+      /* New marketplace names */
 
       body.append(
         "business_name",
@@ -1326,9 +1272,7 @@ export default function SellerProfileForm() {
 
       body.append(
         "country",
-        formData
-          .country
-          .trim(),
+        formData.country.trim(),
       );
 
       body.append(
@@ -1373,11 +1317,7 @@ export default function SellerProfileForm() {
           .trim(),
       );
 
-      /*
-       * ===================================================
-       * EXISTING BACKEND COMPATIBILITY
-       * =================================================
-       */
+      /* Existing backend aliases */
 
       body.append(
         "legal_business_name",
@@ -1415,11 +1355,7 @@ export default function SellerProfileForm() {
           .trim(),
       );
 
-      /*
-       * ===================================================
-       * ADDRESS RELATIONSHIP
-       * =================================================
-       */
+      /* Address relation */
 
       body.append(
         "address[country]",
@@ -1456,10 +1392,6 @@ export default function SellerProfileForm() {
           .trim(),
       );
 
-      /*
-       * Images
-       */
-
       if (logoFile) {
         body.append(
           "logo",
@@ -1467,12 +1399,10 @@ export default function SellerProfileForm() {
         );
       }
 
-      if (
-        coverImageFile
-      ) {
+      if (coverFile) {
         body.append(
           "cover_image",
-          coverImageFile,
+          coverFile,
         );
       }
 
@@ -1480,14 +1410,10 @@ export default function SellerProfileForm() {
         ApiEnvelope<SellerProfile>;
 
       if (profile) {
-        const profileKey =
+        const key =
           profile.public_id ??
           profile.id;
 
-        /*
-         * Laravel multipart PATCH:
-         * send POST with _method.
-         */
         body.append(
           "_method",
           "PATCH",
@@ -1498,14 +1424,10 @@ export default function SellerProfileForm() {
             SellerProfile
           >(
             `/seller/profiles/${encodeURIComponent(
-              String(
-                profileKey,
-              ),
+              String(key),
             )}`,
             {
-              method:
-                "POST",
-
+              method: "POST",
               body,
             },
           );
@@ -1516,17 +1438,13 @@ export default function SellerProfileForm() {
           >(
             "/seller/profiles",
             {
-              method:
-                "POST",
-
+              method: "POST",
               body,
             },
           );
       }
 
-      if (
-        response.data
-      ) {
+      if (response.data) {
         setProfile(
           response.data,
         );
@@ -1574,12 +1492,18 @@ export default function SellerProfileForm() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[500px] items-center justify-center">
+      <div className="grid min-h-[520px] place-items-center">
         <div className="text-center">
-          <LoaderCircle className="mx-auto size-9 animate-spin text-blue-700" />
+          <div className="relative mx-auto size-14">
+            <div className="absolute inset-0 animate-ping rounded-full bg-blue-100" />
 
-          <p className="mt-3 text-sm font-bold text-slate-600">
-            Loading seller
+            <div className="relative grid size-14 place-items-center rounded-full bg-white shadow-lg">
+              <LoaderCircle className="size-6 animate-spin text-blue-700" />
+            </div>
+          </div>
+
+          <p className="mt-4 text-sm font-black text-slate-700">
+            Building your seller
             profile...
           </p>
         </div>
@@ -1592,617 +1516,407 @@ export default function SellerProfileForm() {
    * ===================================================== */
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* ================================================
-       * PAGE HEADER
-       * ============================================== */}
+    <>
+      <div className="seller-builder-enter space-y-4 pb-10">
+        {/* =================================================
+         * TOP BAR
+         * =============================================== */}
 
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-blue-700">
-            <Store className="size-4" />
+        <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-700 text-white shadow-lg shadow-blue-700/20">
+              <Store className="size-5" />
+            </div>
 
-            Seller center
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black text-slate-950">
+                  Store Profile Builder
+                </h1>
+
+                <span className="hidden items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-violet-700 sm:inline-flex">
+                  <Sparkles className="size-3" />
+                  Live
+                </span>
+              </div>
+
+              <p className="mt-0.5 text-xs font-medium text-slate-500">
+                Edit on the left.
+                Preview your customer
+                store on the right.
+              </p>
+            </div>
           </div>
 
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-            Seller profile
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="hidden min-w-36 sm:block">
+              <div className="mb-1 flex items-center justify-between text-[10px] font-black text-slate-500">
+                <span>
+                  Completion
+                </span>
 
-          <p className="mt-2 max-w-3xl leading-7 text-slate-600">
-            Complete your business
-            information, store
-            appearance, contact
-            details, location and
-            customer policies.
-          </p>
-        </div>
+                <span className="text-blue-700">
+                  {completion}%
+                </span>
+              </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            void loadProfile(
-              true,
-            )
-          }
-          disabled={
-            refreshing
-          }
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-        >
-          <RefreshCw
-            className={`size-4 ${
-              refreshing
-                ? "animate-spin"
-                : ""
-            }`}
-          />
-
-          Refresh profile
-        </button>
-      </div>
-
-      {/* ================================================
-       * STORE COVER + LOGO
-       * ============================================== */}
-
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-blue-700 sm:h-64">
-          {coverImagePreview ? (
-            <img
-              src={
-                coverImagePreview
-              }
-              alt="Store cover"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="grid h-full place-items-center text-white/70">
-              <div className="text-center">
-                <ImageIcon className="mx-auto size-11" />
-
-                <p className="mt-3 text-sm font-bold">
-                  Add your store
-                  cover image
-                </p>
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all duration-700"
+                  style={{
+                    width:
+                      `${completion}%`,
+                  }}
+                />
               </div>
             </div>
-          )}
 
-          {editable && (
-            <label className="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/95 px-4 py-2 text-xs font-black text-slate-800 shadow-lg transition hover:bg-white">
-              <Camera className="size-4" />
-
-              Cover image
-
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={(
-                  event,
-                ) =>
-                  handleImageChange(
-                    event,
-                    "cover",
-                  )
-                }
-                className="hidden"
+            <button
+              type="button"
+              onClick={() =>
+                void loadProfile(
+                  true,
+                )
+              }
+              disabled={
+                refreshing
+              }
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`size-3.5 ${
+                  refreshing
+                    ? "animate-spin"
+                    : ""
+                }`}
               />
-            </label>
-          )}
-        </div>
 
-        <div className="relative px-5 pb-7 sm:px-7">
-          <div className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end">
-            <div className="relative size-28 shrink-0 overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-lg">
-              {logoPreview ? (
-                <img
-                  src={
+              Refresh
+            </button>
+
+            {editable && (
+              <button
+                type="submit"
+                form="seller-profile-form"
+                disabled={saving}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-700 px-4 text-xs font-black text-white shadow-md shadow-blue-700/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60"
+              >
+                {saving ? (
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                ) : (
+                  <Save className="size-3.5" />
+                )}
+
+                {saving
+                  ? "Saving"
+                  : "Save"}
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* =================================================
+         * MESSAGES
+         * =============================================== */}
+
+        {successMessage && (
+          <div className="seller-message-in flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-700">
+            <CheckCircle2 className="size-4 shrink-0" />
+
+            {successMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="seller-message-in flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-700">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+
+            {errorMessage}
+          </div>
+        )}
+
+        {/* =================================================
+         * BUILDER GRID
+         * =============================================== */}
+
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.42fr)_minmax(360px,0.72fr)]">
+          {/* ===============================================
+           * LEFT — FORM
+           * ============================================= */}
+
+          <form
+            id="seller-profile-form"
+            onSubmit={
+              handleSubmit
+            }
+            className="space-y-3"
+          >
+            {/* ===========================================
+             * APPEARANCE
+             * ========================================= */}
+
+            <CompactSection
+              icon={ImageIcon}
+              title="Store appearance"
+              description="Logo, cover and public store identity."
+              delay="0ms"
+            >
+              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+                <UploadField
+                  label="Logo"
+                  preview={
                     logoPreview
                   }
-                  alt="Store logo"
-                  className="h-full w-full object-cover"
+                  type="logo"
+                  onChange={
+                    handleImage
+                  }
+                  disabled={
+                    !editable
+                  }
                 />
-              ) : (
-                <div className="grid h-full place-items-center text-slate-400">
-                  <Store className="size-10" />
-                </div>
-              )}
 
-              {editable && (
-                <label className="absolute bottom-2 right-2 grid size-8 cursor-pointer place-items-center rounded-lg bg-blue-700 text-white shadow-lg">
-                  <Upload className="size-4" />
+                <UploadField
+                  label="Cover"
+                  preview={
+                    coverPreview
+                  }
+                  type="cover"
+                  onChange={
+                    handleImage
+                  }
+                  disabled={
+                    !editable
+                  }
+                />
 
+                <Field
+                  label="Business name"
+                  required
+                  error={firstError(
+                    errors,
+                    "business_name",
+                    "legal_business_name",
+                  )}
+                >
                   <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .businessName
+                    }
                     onChange={(
                       event,
                     ) =>
-                      handleImageChange(
-                        event,
-                        "logo",
+                      updateField(
+                        "businessName",
+                        event.target
+                          .value,
                       )
                     }
-                    className="hidden"
+                    placeholder="RushPi Technologies"
+                    className={
+                      inputClassName
+                    }
                   />
-                </label>
-              )}
-            </div>
+                </Field>
 
-            <div className="flex-1 pb-1">
-              <h2 className="text-2xl font-black text-slate-950">
-                {formData.storeName ||
-                  "Your RushPi Store"}
-              </h2>
+                <Field
+                  label="Store name"
+                  required
+                  error={firstError(
+                    errors,
+                    "store_name",
+                    "trading_name",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .storeName
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "storeName",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="RushPi Store"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+              </div>
 
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                {formData
-                  .businessName ||
-                  "Complete your business information"}
-              </p>
-            </div>
+              <div className="mt-2.5 grid gap-2.5 xl:grid-cols-[180px_1fr]">
+                <Field
+                  label="Business type"
+                  required
+                  error={firstError(
+                    errors,
+                    "business_type",
+                  )}
+                >
+                  <select
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .businessType
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "businessType",
+                        event.target
+                          .value,
+                      )
+                    }
+                    className={`${inputClassName} appearance-none`}
+                  >
+                    <option value="shop_owner">
+                      Registered
+                      business
+                    </option>
 
-            <div className="flex flex-wrap gap-2 pb-1">
-              <StatusBadge
-                icon={BadgeCheck}
-                label="Verification"
-                value={
-                  verificationStatus
-                }
-              />
+                    <option value="individual_seller">
+                      Individual
+                      seller
+                    </option>
+                  </select>
+                </Field>
 
-              <StatusBadge
-                icon={ShieldCheck}
-                label="Seller"
-                value={
-                  sellerStatus
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+                <Field
+                  label="Description"
+                  error={firstError(
+                    errors,
+                    "description",
+                  )}
+                >
+                  <textarea
+                    rows={2}
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .description
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "description",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Short description of your store, products and customer experience..."
+                    className={`${textareaClassName} min-h-[72px]`}
+                  />
+                </Field>
+              </div>
+            </CompactSection>
 
-      {/* ================================================
-       * PROFILE COMPLETION
-       * ============================================== */}
+            {/* ===========================================
+             * CONTACT
+             * ========================================= */}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-5">
-          <div>
-            <h3 className="font-black text-slate-950">
-              Profile completion
-            </h3>
-
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Complete your seller
-              profile to increase
-              customer trust and
-              prepare your store for
-              verification.
-            </p>
-          </div>
-
-          <span className="text-2xl font-black text-blue-700">
-            {profileCompletion}%
-          </span>
-        </div>
-
-        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-full rounded-full bg-blue-700 transition-all duration-500"
-            style={{
-              width:
-                `${profileCompletion}%`,
-            }}
-          />
-        </div>
-      </section>
-
-      {/* ================================================
-       * SELLER PERFORMANCE
-       * ============================================== */}
-
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <BarChart3 className="size-5 text-blue-700" />
-
-          <h2 className="text-lg font-black text-slate-950">
-            Seller performance
-          </h2>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <MetricCard
-            icon={Star}
-            title="Average rating"
-            value={formatRating(
-              profile?.average_rating,
-            )}
-            subtitle={`${profile?.total_reviews ?? 0} reviews`}
-          />
-
-          <MetricCard
-            icon={MessageCircle}
-            title="Total reviews"
-            value={String(
-              profile
-                ?.total_reviews ??
-                0,
-            )}
-            subtitle="Customer reviews"
-          />
-
-          <MetricCard
-            icon={ShoppingBag}
-            title="Total orders"
-            value={String(
-              profile
-                ?.total_orders ??
-                0,
-            )}
-            subtitle="Orders received"
-          />
-
-          <MetricCard
-            icon={CheckCircle2}
-            title="Completed"
-            value={String(
-              profile
-                ?.completed_orders ??
-                0,
-            )}
-            subtitle="Completed orders"
-          />
-
-          <MetricCard
-            icon={MessageCircle}
-            title="Response rate"
-            value={formatPercentage(
-              profile
-                ?.response_rate,
-            )}
-            subtitle="Customer responses"
-          />
-
-          <MetricCard
-            icon={Clock3}
-            title="Response time"
-            value={formatResponseTime(
-              profile
-                ?.response_time,
-            )}
-            subtitle="Average response"
-          />
-        </div>
-      </section>
-
-      {/* ================================================
-       * SUCCESS / ERROR
-       * ============================================== */}
-
-      {successMessage && (
-        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
-
-          <span>
-            {successMessage}
-          </span>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
-          <TriangleAlert className="mt-0.5 size-5 shrink-0" />
-
-          <span>
-            {errorMessage}
-          </span>
-        </div>
-      )}
-
-      {/* ================================================
-       * EDITABLE PROFILE
-       * ============================================== */}
-
-      <form
-        onSubmit={
-          handleSubmit
-        }
-        className="space-y-6"
-      >
-        {/* ============================================
-         * BUSINESS / STORE IDENTITY
-         * ========================================== */}
-
-        <ProfileSection
-          icon={Store}
-          title="Store identity"
-          description="Business and store information that identifies your seller account."
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Business name"
-              required
-              error={firstError(
-                errors,
-                "business_name",
-                "legal_business_name",
-              )}
+            <CompactSection
+              icon={Phone}
+              title="Contact"
+              description="Customer and business contact channels."
+              delay="70ms"
             >
-              <input
-                type="text"
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .businessName
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "businessName",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Official business name"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="Store name"
-              required
-              error={firstError(
-                errors,
-                "store_name",
-                "trading_name",
-              )}
-            >
-              <input
-                type="text"
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .storeName
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "storeName",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Name customers see"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="Business type"
-              required
-              error={firstError(
-                errors,
-                "business_type",
-              )}
-            >
-              <select
-                disabled={!editable}
-                value={
-                  formData
-                    .businessType
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "businessType",
-                    event.target
-                      .value,
-                  )
-                }
-                className={`${inputClassName} appearance-none`}
-              >
-                <option value="shop_owner">
-                  Shop / Registered
-                  business
-                </option>
-
-                <option value="individual_seller">
-                  Individual seller
-                </option>
-              </select>
-            </Field>
-
-            <Field
-              label="Registration number"
-              error={firstError(
-                errors,
-                "registration_number",
-              )}
-            >
-              <input
-                type="text"
-                disabled={!editable}
-                value={
-                  formData
-                    .registrationNumber
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "registrationNumber",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Business registration number"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="TIN number"
-              error={firstError(
-                errors,
-                "tin_number",
-                "tax_identification_number",
-              )}
-            >
-              <input
-                type="text"
-                disabled={!editable}
-                value={
-                  formData
-                    .tinNumber
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "tinNumber",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Tax identification number"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <div className="md:col-span-2">
-              <Field
-                label="Store description"
-                error={firstError(
-                  errors,
-                  "description",
-                )}
-              >
-                <textarea
-                  disabled={!editable}
-                  value={
-                    formData
-                      .description
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    updateField(
-                      "description",
-                      event.target
-                        .value,
-                    )
-                  }
-                  placeholder="Describe your business, products, brands and customer service..."
-                  className={
-                    textareaClassName
-                  }
-                />
-              </Field>
-            </div>
-          </div>
-        </ProfileSection>
-
-        {/* ============================================
-         * CONTACT INFORMATION
-         * ========================================== */}
-
-        <ProfileSection
-          icon={Phone}
-          title="Contact information"
-          description="Contact details for RushPi and your customers."
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Phone number"
-              required
-              error={firstError(
-                errors,
-                "phone",
-                "business_phone",
-              )}
-            >
-              <input
-                type="tel"
-                required
-                disabled={!editable}
-                value={
-                  formData.phone
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
+              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+                <Field
+                  label="Phone"
+                  required
+                  error={firstError(
+                    errors,
                     "phone",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="+250 7XX XXX XXX"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
+                    "business_phone",
+                  )}
+                >
+                  <input
+                    type="tel"
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData.phone
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "phone",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="+250 788 000 000"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
 
-            <Field
-              label="WhatsApp number"
-              error={firstError(
-                errors,
-                "whatsapp",
-              )}
-            >
-              <input
-                type="tel"
-                disabled={!editable}
-                value={
-                  formData
-                    .whatsapp
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
+                <Field
+                  label="WhatsApp"
+                  error={firstError(
+                    errors,
                     "whatsapp",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="+250 7XX XXX XXX"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
+                  )}
+                >
+                  <input
+                    type="tel"
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .whatsapp
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "whatsapp",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="+250 788 000 000"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
 
-            <div className="md:col-span-2">
-              <Field
-                label="Business email"
-                required
-                error={firstError(
-                  errors,
-                  "email",
-                  "business_email",
-                )}
-              >
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-1/2 mt-1 size-5 -translate-y-1/2 text-slate-400" />
-
+                <Field
+                  label="Business email"
+                  required
+                  error={firstError(
+                    errors,
+                    "email",
+                    "business_email",
+                  )}
+                >
                   <input
                     type="email"
                     required
@@ -2222,375 +1936,963 @@ export default function SellerProfileForm() {
                       )
                     }
                     placeholder="store@example.com"
-                    className={`${inputClassName} pl-12`}
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+              </div>
+            </CompactSection>
+
+            {/* ===========================================
+             * LEGAL
+             * ========================================= */}
+
+            <CompactSection
+              icon={Building2}
+              title="Business details"
+              description="Legal registration and tax information."
+              delay="140ms"
+            >
+              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+                <Field
+                  label="Business name"
+                  required
+                  error={firstError(
+                    errors,
+                    "business_name",
+                    "legal_business_name",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .businessName
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "businessName",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Legal name"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="Store name"
+                  required
+                  error={firstError(
+                    errors,
+                    "store_name",
+                    "trading_name",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .storeName
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "storeName",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Trading name"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="Registration no."
+                  error={firstError(
+                    errors,
+                    "registration_number",
+                  )}
+                >
+                  <input
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .registrationNumber
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "registrationNumber",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Registration"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="TIN"
+                  error={firstError(
+                    errors,
+                    "tin_number",
+                    "tax_identification_number",
+                  )}
+                >
+                  <input
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .tinNumber
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "tinNumber",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Tax number"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+              </div>
+            </CompactSection>
+
+            {/* ===========================================
+             * LOCATION
+             * ========================================= */}
+
+            <CompactSection
+              icon={MapPin}
+              title="Business location"
+              description="Where customers and RushPi can locate your business."
+              delay="210ms"
+            >
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                <Field
+                  label="Country"
+                  required
+                  error={firstError(
+                    errors,
+                    "country",
+                    "address.country",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .country
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "country",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Rwanda"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="Province"
+                  required
+                  error={firstError(
+                    errors,
+                    "province",
+                    "address.province",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .province
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "province",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Kigali"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="District"
+                  required
+                  error={firstError(
+                    errors,
+                    "district",
+                    "address.district",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .district
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "district",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Gasabo"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="Sector"
+                  required
+                  error={firstError(
+                    errors,
+                    "sector",
+                    "address.sector",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData.sector
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "sector",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Remera"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+              </div>
+
+              <div className="mt-2.5">
+                <Field
+                  label="Full business address"
+                  required
+                  error={firstError(
+                    errors,
+                    "address",
+                    "address.address_line",
+                  )}
+                >
+                  <input
+                    required
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData.address
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "address",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Street, building, shop number or landmark"
+                    className={
+                      inputClassName
+                    }
+                  />
+                </Field>
+              </div>
+            </CompactSection>
+
+            {/* ===========================================
+             * POLICIES
+             * ========================================= */}
+
+            <CompactSection
+              icon={FileText}
+              title="Customer policies"
+              description="Set clear expectations before customers order."
+              delay="280ms"
+            >
+              <div className="grid gap-2.5 lg:grid-cols-2">
+                <Field
+                  label="Return policy"
+                  error={firstError(
+                    errors,
+                    "return_policy",
+                  )}
+                >
+                  <textarea
+                    rows={3}
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .returnPolicy
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "returnPolicy",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Example: Returns accepted within 7 days..."
+                    className={`${textareaClassName} min-h-[86px]`}
+                  />
+                </Field>
+
+                <Field
+                  label="Warranty policy"
+                  error={firstError(
+                    errors,
+                    "warranty_policy",
+                  )}
+                >
+                  <textarea
+                    rows={3}
+                    disabled={
+                      !editable
+                    }
+                    value={
+                      formData
+                        .warrantyPolicy
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "warrantyPolicy",
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Example: Manufacturer warranty applies..."
+                    className={`${textareaClassName} min-h-[86px]`}
+                  />
+                </Field>
+              </div>
+            </CompactSection>
+
+            {/* ===========================================
+             * MOBILE STATUS
+             * ========================================= */}
+
+            <div className="grid gap-2 xl:hidden sm:grid-cols-2">
+              <SystemChip
+                label="Verification"
+                value={formatStatus(
+                  verificationStatus,
+                )}
+              />
+
+              <SystemChip
+                label="Seller status"
+                value={formatStatus(
+                  sellerStatus,
+                )}
+              />
+            </div>
+
+            {!editable && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-700">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+
+                Profile editing is
+                disabled because this
+                seller is{" "}
+                {formatStatus(
+                  sellerStatus,
+                )}
+                .
+              </div>
+            )}
+          </form>
+
+          {/* ===============================================
+           * RIGHT — LIVE PREVIEW
+           * ============================================= */}
+
+          <aside className="xl:sticky xl:top-4">
+            <div className="preview-float overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+              {/* ===========================================
+               * PREVIEW LABEL
+               * ========================================= */}
+
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                  </span>
+
+                  <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                    Live store
+                    preview
+                  </span>
+                </div>
+
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">
+                  CUSTOMER VIEW
+                </span>
+              </div>
+
+              {/* ===========================================
+               * COVER
+               * ========================================= */}
+
+              <div className="relative h-36 overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-blue-700">
+                {coverPreview ? (
+                  <img
+                    src={
+                      coverPreview
+                    }
+                    alt="Store cover"
+                    className="preview-image-in h-full w-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <div className="absolute -right-12 -top-16 size-48 rounded-full bg-blue-500/20 blur-3xl" />
+
+                    <div className="absolute -bottom-20 left-8 size-48 rounded-full bg-violet-500/20 blur-3xl" />
+
+                    <div className="relative flex h-full items-center justify-center">
+                      <div className="text-center text-white/50">
+                        <ImageIcon className="mx-auto size-7" />
+
+                        <p className="mt-1 text-[10px] font-bold">
+                          Store cover
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/50 to-transparent" />
+              </div>
+
+              {/* ===========================================
+               * STORE HEADER
+               * ========================================= */}
+
+              <div className="relative px-4 pb-4">
+                <div className="-mt-10 flex items-end gap-3">
+                  <div className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-[22px] border-4 border-white bg-slate-100 shadow-xl">
+                    {logoPreview ? (
+                      <img
+                        src={
+                          logoPreview
+                        }
+                        alt="Store logo"
+                        className="preview-image-in h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Store className="size-8 text-slate-400" />
+                    )}
+
+                    {verificationStatus ===
+                      "verified" && (
+                      <span className="absolute bottom-0 right-0 grid size-5 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-white">
+                        <Check className="size-3" />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1 pb-1">
+                    <h2
+                      key={
+                        formData.storeName
+                      }
+                      className="preview-text-change truncate text-lg font-black text-slate-950"
+                    >
+                      {formData
+                        .storeName ||
+                        "Your Store Name"}
+                    </h2>
+
+                    <p className="truncate text-[11px] font-semibold text-slate-500">
+                      {formData
+                        .businessName ||
+                        "Business name"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* =========================================
+                 * STATUS
+                 * ======================================= */}
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <PreviewBadge
+                    icon={
+                      BadgeCheck
+                    }
+                    value={
+                      verificationStatus
+                    }
+                  />
+
+                  <PreviewBadge
+                    icon={
+                      ShieldCheck
+                    }
+                    value={
+                      sellerStatus
+                    }
+                  />
+
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">
+                    <Star className="size-3 fill-current" />
+
+                    {formatRating(
+                      profile
+                        ?.average_rating,
+                    )}
+
+                    <span className="font-semibold text-amber-600">
+                      (
+                      {profile
+                        ?.total_reviews ??
+                        0}
+                      )
+                    </span>
+                  </span>
+                </div>
+
+                {/* =========================================
+                 * DESCRIPTION
+                 * ======================================= */}
+
+                <p
+                  key={
+                    formData.description
+                  }
+                  className="preview-text-change mt-3 line-clamp-3 text-[11px] font-medium leading-5 text-slate-600"
+                >
+                  {formData
+                    .description ||
+                    "Your store description will appear here. Tell customers what makes your business special."}
+                </p>
+
+                {/* =========================================
+                 * LOCATION / CONTACT
+                 * ======================================= */}
+
+                <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 p-3">
+                  <PreviewInfo
+                    icon={MapPin}
+                    text={[
+                      formData
+                        .sector,
+                      formData
+                        .district,
+                      formData
+                        .province,
+                      formData
+                        .country,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") ||
+                      "Business location"}
+                  />
+
+                  <PreviewInfo
+                    icon={Phone}
+                    text={
+                      formData.phone ||
+                      "Phone number"
+                    }
+                  />
+
+                  <PreviewInfo
+                    icon={MessageCircle}
+                    text={
+                      formData.whatsapp ||
+                      "WhatsApp"
+                    }
+                  />
+
+                  <PreviewInfo
+                    icon={Mail}
+                    text={
+                      formData.email ||
+                      "Business email"
+                    }
                   />
                 </div>
-              </Field>
-            </div>
-          </div>
-        </ProfileSection>
 
-        {/* ============================================
-         * LOCATION
-         * ========================================== */}
+                {/* =========================================
+                 * PERFORMANCE
+                 * ======================================= */}
 
-        <ProfileSection
-          icon={MapPin}
-          title="Business location"
-          description="Complete the physical location of your store or business."
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Country"
-              required
-              error={firstError(
-                errors,
-                "country",
-                "address.country",
-              )}
-            >
-              <input
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .country
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "country",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Rwanda"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="Province / City"
-              required
-              error={firstError(
-                errors,
-                "province",
-                "address.province",
-              )}
-            >
-              <input
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .province
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "province",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Kigali"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="District"
-              required
-              error={firstError(
-                errors,
-                "district",
-                "address.district",
-              )}
-            >
-              <input
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .district
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "district",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Gasabo"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="Sector"
-              required
-              error={firstError(
-                errors,
-                "sector",
-                "address.sector",
-              )}
-            >
-              <input
-                required
-                disabled={!editable}
-                value={
-                  formData
-                    .sector
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "sector",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Remera"
-                className={
-                  inputClassName
-                }
-              />
-            </Field>
-
-            <div className="md:col-span-2">
-              <Field
-                label="Business address"
-                required
-                error={firstError(
-                  errors,
-                  "address",
-                  "address.address_line",
-                )}
-              >
-                <input
-                  required
-                  disabled={
-                    !editable
-                  }
-                  value={
-                    formData
-                      .address
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    updateField(
-                      "address",
-                      event.target
-                        .value,
-                    )
-                  }
-                  placeholder="Street, building, shop number or location description"
-                  className={
-                    inputClassName
-                  }
-                />
-              </Field>
-            </div>
-          </div>
-        </ProfileSection>
-
-        {/* ============================================
-         * POLICIES
-         * ========================================== */}
-
-        <ProfileSection
-          icon={FileText}
-          title="Store policies"
-          description="Explain your return and warranty conditions to customers."
-        >
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Field
-              label="Return policy"
-              error={firstError(
-                errors,
-                "return_policy",
-              )}
-            >
-              <textarea
-                disabled={!editable}
-                value={
-                  formData
-                    .returnPolicy
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "returnPolicy",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Example: Products may be returned within 7 days if unused and in original condition..."
-                className={
-                  textareaClassName
-                }
-              />
-            </Field>
-
-            <Field
-              label="Warranty policy"
-              error={firstError(
-                errors,
-                "warranty_policy",
-              )}
-            >
-              <textarea
-                disabled={!editable}
-                value={
-                  formData
-                    .warrantyPolicy
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "warrantyPolicy",
-                    event.target
-                      .value,
-                  )
-                }
-                placeholder="Example: Products include manufacturer warranty where applicable..."
-                className={
-                  textareaClassName
-                }
-              />
-            </Field>
-          </div>
-        </ProfileSection>
-
-        {/* ============================================
-         * SYSTEM CONTROLLED INFORMATION
-         * ========================================== */}
-
-        <ProfileSection
-          icon={ShieldCheck}
-          title="Seller account status"
-          description="These values are controlled automatically by RushPi and cannot be changed by the seller."
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <ReadOnlyItem
-              label="Verification status"
-              value={formatStatus(
-                verificationStatus,
-              )}
-            />
-
-            <ReadOnlyItem
-              label="Seller status"
-              value={formatStatus(
-                sellerStatus,
-              )}
-            />
-
-            <ReadOnlyItem
-              label="Created at"
-              value={formatDate(
-                profile
-                  ?.created_at,
-              )}
-            />
-
-            <ReadOnlyItem
-              label="Updated at"
-              value={formatDate(
-                profile
-                  ?.updated_at,
-              )}
-            />
-          </div>
-        </ProfileSection>
-
-        {/* ============================================
-         * SAVE
-         * ========================================== */}
-
-        {editable ? (
-          <div className="sticky bottom-4 z-30 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-black text-slate-950">
-                Save seller profile
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Save your business,
-                store, location and
-                policy information.
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? (
-                <>
-                  <LoaderCircle className="size-5 animate-spin" />
-
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="size-5" />
-
-                  Save profile
-                </>
-              )}
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-            <div className="flex items-start gap-3 text-red-800">
-              <TriangleAlert className="mt-0.5 size-5 shrink-0" />
-
-              <div>
-                <p className="font-black">
-                  Profile editing is
-                  disabled
-                </p>
-
-                <p className="mt-1 text-sm leading-6">
-                  This seller account
-                  currently has status{" "}
-                  <strong>
-                    {formatStatus(
-                      sellerStatus,
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <MiniMetric
+                    label="Orders"
+                    value={String(
+                      profile
+                        ?.total_orders ??
+                        0,
                     )}
-                  </strong>
-                  .
-                </p>
+                    icon={
+                      ShoppingBag
+                    }
+                  />
+
+                  <MiniMetric
+                    label="Completed"
+                    value={String(
+                      profile
+                        ?.completed_orders ??
+                        0,
+                    )}
+                    icon={
+                      CheckCircle2
+                    }
+                  />
+
+                  <MiniMetric
+                    label="Response"
+                    value={formatPercentage(
+                      profile
+                        ?.response_rate,
+                    )}
+                    icon={
+                      MessageCircle
+                    }
+                  />
+
+                  <MiniMetric
+                    label="Rating"
+                    value={formatRating(
+                      profile
+                        ?.average_rating,
+                    )}
+                    icon={Star}
+                  />
+
+                  <MiniMetric
+                    label="Reviews"
+                    value={String(
+                      profile
+                        ?.total_reviews ??
+                        0,
+                    )}
+                    icon={
+                      MessageCircle
+                    }
+                  />
+
+                  <MiniMetric
+                    label="Reply time"
+                    value={formatResponseTime(
+                      profile
+                        ?.response_time,
+                    )}
+                    icon={Clock3}
+                  />
+                </div>
+
+                {/* =========================================
+                 * POLICIES
+                 * ======================================= */}
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  <PolicyPreview
+                    title="Returns"
+                    value={
+                      formData
+                        .returnPolicy
+                    }
+                  />
+
+                  <PolicyPreview
+                    title="Warranty"
+                    value={
+                      formData
+                        .warrantyPolicy
+                    }
+                  />
+                </div>
+
+                {/* =========================================
+                 * ACCOUNT INFO
+                 * ======================================= */}
+
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[9px] font-semibold text-slate-400">
+                  <span>
+                    Joined{" "}
+                    {formatDate(
+                      profile
+                        ?.created_at,
+                    )}
+                  </span>
+
+                  <span>
+                    Updated{" "}
+                    {formatDate(
+                      profile
+                        ?.updated_at,
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </form>
-    </div>
+
+            {/* =============================================
+             * COMPLETION CARD
+             * =========================================== */}
+
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-black text-slate-800">
+                    Store readiness
+                  </p>
+
+                  <p className="mt-0.5 text-[9px] font-semibold text-slate-400">
+                    Complete your
+                    profile before
+                    verification.
+                  </p>
+                </div>
+
+                <span className="text-lg font-black text-blue-700">
+                  {completion}%
+                </span>
+              </div>
+
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-violet-600 transition-all duration-700"
+                  style={{
+                    width:
+                      `${completion}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      {/* ===================================================
+       * LOCAL ANIMATIONS
+       * ================================================= */}
+
+      <style jsx global>{`
+        @keyframes sellerBuilderEnter {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes sellerSectionEnter {
+          from {
+            opacity: 0;
+            transform: translateY(10px)
+              scale(0.992);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0)
+              scale(1);
+          }
+        }
+
+        @keyframes sellerPreviewFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+
+          50% {
+            transform: translateY(-3px);
+          }
+        }
+
+        @keyframes sellerPreviewText {
+          from {
+            opacity: 0.55;
+            transform: translateY(2px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes sellerPreviewImage {
+          from {
+            opacity: 0;
+            transform: scale(1.04);
+          }
+
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes sellerMessageIn {
+          from {
+            opacity: 0;
+            transform: translateY(-6px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .seller-builder-enter {
+          animation:
+            sellerBuilderEnter
+            0.5s
+            cubic-bezier(
+              0.16,
+              1,
+              0.3,
+              1
+            )
+            both;
+        }
+
+        .seller-compact-section {
+          animation:
+            sellerSectionEnter
+            0.48s
+            cubic-bezier(
+              0.16,
+              1,
+              0.3,
+              1
+            )
+            both;
+        }
+
+        .preview-text-change {
+          animation:
+            sellerPreviewText
+            0.24s ease-out
+            both;
+        }
+
+        .preview-image-in {
+          animation:
+            sellerPreviewImage
+            0.35s ease-out
+            both;
+        }
+
+        .seller-message-in {
+          animation:
+            sellerMessageIn
+            0.3s ease-out
+            both;
+        }
+
+        @media (
+          prefers-reduced-motion:
+            reduce
+        ) {
+          .seller-builder-enter,
+          .seller-compact-section,
+          .preview-text-change,
+          .preview-image-in,
+          .seller-message-in {
+            animation: none !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
 /* =========================================================
- * PROFILE SECTION
+ * COMPACT SECTION
  * ======================================================= */
 
-type ProfileSectionProps = {
+type CompactSectionProps = {
   icon: ComponentType<{
     className?: string;
   }>;
@@ -2598,34 +2900,43 @@ type ProfileSectionProps = {
   title: string;
   description: string;
 
+  delay?: string;
+
   children: ReactNode;
 };
 
-function ProfileSection({
+function CompactSection({
   icon: Icon,
   title,
   description,
+  delay = "0ms",
   children,
-}: ProfileSectionProps) {
+}: CompactSectionProps) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start gap-3 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700">
-          <Icon className="size-5" />
+    <section
+      className="seller-compact-section overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.035)] transition duration-300 hover:border-slate-300 hover:shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+      style={{
+        animationDelay:
+          delay,
+      }}
+    >
+      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/70 px-4 py-2.5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-700">
+          <Icon className="size-3.5" />
         </span>
 
-        <div>
-          <h2 className="font-black text-slate-950">
+        <div className="min-w-0">
+          <h2 className="text-xs font-black text-slate-900">
             {title}
           </h2>
 
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-400">
             {description}
           </p>
         </div>
       </div>
 
-      <div className="p-5 sm:p-6">
+      <div className="p-3.5">
         {children}
       </div>
     </section>
@@ -2638,7 +2949,9 @@ function ProfileSection({
 
 type FieldProps = {
   label: string;
+
   required?: boolean;
+
   error?: string | null;
 
   children: ReactNode;
@@ -2651,7 +2964,7 @@ function Field({
   children,
 }: FieldProps) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span
         className={
           labelClassName
@@ -2660,7 +2973,7 @@ function Field({
         {label}
 
         {required && (
-          <span className="ml-1 text-red-600">
+          <span className="ml-0.5 text-red-500">
             *
           </span>
         )}
@@ -2669,8 +2982,8 @@ function Field({
       {children}
 
       {error && (
-        <p className="mt-2 flex items-start gap-1.5 text-xs font-bold text-red-600">
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+        <p className="mt-1 flex items-start gap-1 text-[9px] font-bold text-red-600">
+          <TriangleAlert className="mt-[1px] size-2.5 shrink-0" />
 
           <span>
             {error}
@@ -2682,86 +2995,125 @@ function Field({
 }
 
 /* =========================================================
- * METRIC CARD
+ * UPLOAD FIELD
  * ======================================================= */
 
-type MetricCardProps = {
-  icon: ComponentType<{
-    className?: string;
-  }>;
+type UploadFieldProps = {
+  label: string;
 
-  title: string;
-  value: string;
-  subtitle: string;
+  preview: string | null;
+
+  type:
+    | "logo"
+    | "cover";
+
+  disabled: boolean;
+
+  onChange: (
+    event:
+      ChangeEvent<HTMLInputElement>,
+    type:
+      | "logo"
+      | "cover",
+  ) => void;
 };
 
-function MetricCard({
-  icon: Icon,
-  title,
-  value,
-  subtitle,
-}: MetricCardProps) {
+function UploadField({
+  label,
+  preview,
+  type,
+  disabled,
+  onChange,
+}: UploadFieldProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <label className="group block min-w-0">
+      <span
+        className={
+          labelClassName
+        }
+      >
+        {label}
+      </span>
+
+      <div className="mt-1.5 flex h-10 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50 px-2.5 transition duration-200 hover:border-blue-400 hover:bg-blue-50/50">
+        <div className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-md bg-white shadow-sm">
+          {preview ? (
+            <img
+              src={preview}
+              alt={label}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Camera className="size-3.5 text-slate-400" />
+          )}
+        </div>
+
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-            {title}
+          <p className="truncate text-[10px] font-black text-slate-700">
+            {preview
+              ? "Change image"
+              : "Choose image"}
           </p>
 
-          <p className="mt-2 truncate text-2xl font-black text-slate-950">
-            {value}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">
-            {subtitle}
+          <p className="text-[8px] font-semibold text-slate-400">
+            PNG, JPG, WEBP
           </p>
         </div>
 
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700">
-          <Icon className="size-5" />
-        </span>
+        <Upload className="ml-auto size-3 shrink-0 text-slate-400 transition group-hover:-translate-y-0.5 group-hover:text-blue-600" />
+
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          disabled={
+            disabled
+          }
+          onChange={(
+            event,
+          ) =>
+            onChange(
+              event,
+              type,
+            )
+          }
+          className="hidden"
+        />
       </div>
-    </div>
+    </label>
   );
 }
 
 /* =========================================================
- * STATUS BADGE
+ * PREVIEW BADGE
  * ======================================================= */
 
-type StatusBadgeProps = {
+type PreviewBadgeProps = {
   icon: ComponentType<{
     className?: string;
   }>;
-
-  label: string;
 
   value?:
     | string
     | null;
 };
 
-function StatusBadge({
+function PreviewBadge({
   icon: Icon,
-  label,
   value,
-}: StatusBadgeProps) {
+}: PreviewBadgeProps) {
   return (
     <span
       className={[
-        "inline-flex items-center gap-2",
+        "inline-flex items-center gap-1",
         "rounded-full border",
-        "px-3 py-2",
-        "text-xs font-black",
+        "px-2 py-1",
+        "text-[9px] font-black",
         statusClassName(
           value,
         ),
       ].join(" ")}
     >
-      <Icon className="size-4" />
-
-      {label}:{" "}
+      <Icon className="size-3" />
 
       {formatStatus(
         value,
@@ -2771,25 +3123,122 @@ function StatusBadge({
 }
 
 /* =========================================================
- * READ ONLY ITEM
+ * PREVIEW INFO
  * ======================================================= */
 
-type ReadOnlyItemProps = {
+type PreviewInfoProps = {
+  icon: ComponentType<{
+    className?: string;
+  }>;
+
+  text: string;
+};
+
+function PreviewInfo({
+  icon: Icon,
+  text,
+}: PreviewInfoProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="grid size-6 shrink-0 place-items-center rounded-md bg-white text-blue-700 shadow-sm">
+        <Icon className="size-3" />
+      </span>
+
+      <span className="truncate text-[10px] font-bold text-slate-600">
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/* =========================================================
+ * MINI METRIC
+ * ======================================================= */
+
+type MiniMetricProps = {
+  label: string;
+  value: string;
+
+  icon: ComponentType<{
+    className?: string;
+  }>;
+};
+
+function MiniMetric({
+  label,
+  value,
+  icon: Icon,
+}: MiniMetricProps) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-center justify-between gap-1">
+        <span className="grid size-5 place-items-center rounded-md bg-blue-50 text-blue-700">
+          <Icon className="size-2.5" />
+        </span>
+
+        <span className="truncate text-[11px] font-black text-slate-900">
+          {value}
+        </span>
+      </div>
+
+      <p className="mt-1 truncate text-[8px] font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/* =========================================================
+ * POLICY PREVIEW
+ * ======================================================= */
+
+type PolicyPreviewProps = {
+  title: string;
+  value: string;
+};
+
+function PolicyPreview({
+  title,
+  value,
+}: PolicyPreviewProps) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
+      <div className="flex items-center gap-1.5">
+        <FileText className="size-3 text-blue-700" />
+
+        <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">
+          {title}
+        </p>
+      </div>
+
+      <p className="mt-1 line-clamp-2 text-[9px] font-medium leading-4 text-slate-500">
+        {value ||
+          `Your ${title.toLowerCase()} policy will appear here.`}
+      </p>
+    </div>
+  );
+}
+
+/* =========================================================
+ * SYSTEM CHIP
+ * ======================================================= */
+
+type SystemChipProps = {
   label: string;
   value: string;
 };
 
-function ReadOnlyItem({
+function SystemChip({
   label,
   value,
-}: ReadOnlyItemProps) {
+}: SystemChipProps) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <p className="mt-2 font-black text-slate-950">
+      <p className="mt-0.5 text-xs font-black text-slate-800">
         {value}
       </p>
     </div>
