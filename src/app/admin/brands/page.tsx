@@ -1,18 +1,3 @@
-<<<<<<< HEAD
-export default function TemporaryRoutePage() {
-  return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-semibold">
-        Page under development
-      </h1>
-
-      <p className="mt-3">
-        This RushPi page is being prepared.
-      </p>
-    </main>
-  );
-}
-=======
 "use client";
 
 import {
@@ -1742,4 +1727,3 @@ function FormField({
     </label>
   );
 }
->>>>>>> f2ec0856defa7238c87fd7adc412dbc959e3834a
