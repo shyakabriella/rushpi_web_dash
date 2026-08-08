@@ -1271,39 +1271,6 @@ export default function SellerProfileForm() {
       );
 
       body.append(
-        "country",
-        formData.country.trim(),
-      );
-
-      body.append(
-        "province",
-        formData
-          .province
-          .trim(),
-      );
-
-      body.append(
-        "district",
-        formData
-          .district
-          .trim(),
-      );
-
-      body.append(
-        "sector",
-        formData
-          .sector
-          .trim(),
-      );
-
-      body.append(
-        "address",
-        formData
-          .address
-          .trim(),
-      );
-
-      body.append(
         "return_policy",
         formData
           .returnPolicy
