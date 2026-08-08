@@ -19,31 +19,17 @@ import {
   UploadCloud,
   XCircle,
 } from "lucide-react";
-
 import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-
-/*
-|--------------------------------------------------------------------------
-| API
-|--------------------------------------------------------------------------
-*/
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "https://rushpi.asyncafrica.com/api"
 ).replace(/\/+$/, "");
-
-/*
-|--------------------------------------------------------------------------
-| Types
-|--------------------------------------------------------------------------
-*/
 
 type ApplicationStatus =
   | "draft"
@@ -75,24 +61,17 @@ type DocumentStatus =
 type SellerDocument = {
   id?: number;
   public_id: string;
-
   document_type: string;
   original_name: string;
-
   mime_type?: string | null;
   size_bytes?: number | null;
-
   status: DocumentStatus;
-
   issued_at?: string | null;
   expires_at?: string | null;
-
   scanned_at?: string | null;
   scan_result?: string | null;
-
   reviewed_at?: string | null;
   rejection_reason?: string | null;
-
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -104,36 +83,25 @@ type ReviewUser = {
 
 type SellerApplicationReview = {
   id?: number;
-
   action: string;
-
   notes?: string | null;
-
   reviewed_by?: ReviewUser | null;
-
   created_at?: string | null;
 };
 
 type SellerApplication = {
   id?: number;
   public_id: string;
-
   version?: number;
-
   status: ApplicationStatus;
-
   information_request?: string | null;
   rejection_reason?: string | null;
-
   submitted_at?: string | null;
   review_started_at?: string | null;
   decided_at?: string | null;
-
   documents_count?: number;
-
   documents?: SellerDocument[];
   reviews?: SellerApplicationReview[];
-
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -141,49 +109,16 @@ type SellerApplication = {
 type SellerProfile = {
   id?: number;
   public_id: string;
-
   legal_business_name?: string | null;
   trading_name?: string | null;
-
   status: SellerStatus;
-
   approved_at?: string | null;
-
   suspended_at?: string | null;
   suspension_reason?: string | null;
-
   applications?: SellerApplication[];
-
   created_at?: string | null;
   updated_at?: string | null;
 };
-
-type ApiEnvelope<T> = {
-  success?: boolean;
-  message?: string;
-  data?: T;
-
-  requirements?: SellerDocumentRequirement[];
-
-  errors?: Record<
-    string,
-    string[]
-  >;
-};
-
-type UploadForm = {
-  documentType: string;
-
-  issuedAt: string;
-
-  expiresAt: string;
-};
-
-/*
-|--------------------------------------------------------------------------
-| Document configuration
-|--------------------------------------------------------------------------
-*/
 
 type SellerDocumentRequirement = {
   id?: number;
@@ -202,33 +137,34 @@ type SellerDocumentRequirement = {
   sort_order?: number;
 };
 
-const INITIAL_UPLOAD_FORM: UploadForm = {
-  documentType: "",
+type ApiEnvelope<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+  requirements?: SellerDocumentRequirement[];
+  errors?: Record<string, string[]>;
+};
+
+type RequirementDraft = {
+  file: File | null;
+  issuedAt: string;
+  expiresAt: string;
+};
+
+const EMPTY_DRAFT: RequirementDraft = {
+  file: null,
   issuedAt: "",
   expiresAt: "",
 };
 
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-
 function getToken(): string | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
+  if (typeof window === "undefined") {
     return null;
   }
 
   return (
-    localStorage.getItem(
-      "rushpi_token",
-    ) ??
-    sessionStorage.getItem(
-      "rushpi_token",
-    )
+    localStorage.getItem("rushpi_token") ??
+    sessionStorage.getItem("rushpi_token")
   );
 }
 
@@ -238,20 +174,15 @@ function getApiMessage(
 ): string {
   if (
     payload &&
-    typeof payload ===
-      "object" &&
+    typeof payload === "object" &&
     "message" in payload
   ) {
-    const message =
-      (
-        payload as {
-          message?: unknown;
-        }
-      ).message;
+    const message = (
+      payload as { message?: unknown }
+    ).message;
 
     if (
-      typeof message ===
-        "string" &&
+      typeof message === "string" &&
       message.trim()
     ) {
       return message;
@@ -263,21 +194,13 @@ function getApiMessage(
 
 async function apiRequest<T>(
   path: string,
-  options:
-    RequestInit = {},
+  options: RequestInit = {},
 ): Promise<ApiEnvelope<T>> {
-  const headers =
-    new Headers(
-      options.headers,
-    );
+  const headers = new Headers(options.headers);
 
-  headers.set(
-    "Accept",
-    "application/json",
-  );
+  headers.set("Accept", "application/json");
 
-  const token =
-    getToken();
+  const token = getToken();
 
   if (token) {
     headers.set(
@@ -286,30 +209,24 @@ async function apiRequest<T>(
     );
   }
 
-  const response =
-    await fetch(
-      `${API_BASE_URL}${path}`,
-      {
-        ...options,
+  const response = await fetch(
+    `${API_BASE_URL}${path}`,
+    {
+      ...options,
+      headers,
+      cache: "no-store",
+    },
+  );
 
-        headers,
+  const text = await response.text();
 
-        cache:
-          "no-store",
-      },
-    );
-
-  const text =
-    await response.text();
-
-  let payload:
-    ApiEnvelope<T> = {};
+  let payload: ApiEnvelope<T> = {};
 
   if (text) {
     try {
-      payload =
-        JSON.parse(text) as
-          ApiEnvelope<T>;
+      payload = JSON.parse(
+        text,
+      ) as ApiEnvelope<T>;
     } catch {
       payload = {};
     }
@@ -334,10 +251,7 @@ function normalizeStatus(
     value
       ?.trim()
       .toLowerCase()
-      .replace(
-        /[\s-]+/g,
-        "_",
-      ) ?? ""
+      .replace(/[\s-]+/g, "_") ?? ""
   );
 }
 
@@ -364,14 +278,9 @@ function formatDate(
     return "—";
   }
 
-  const date =
-    new Date(value);
+  const date = new Date(value);
 
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
@@ -392,14 +301,9 @@ function formatDateTime(
     return "—";
   }
 
-  const date =
-    new Date(value);
+  const date = new Date(value);
 
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
@@ -426,13 +330,8 @@ function formatBytes(
     return `${value} B`;
   }
 
-  if (
-    value <
-    1024 * 1024
-  ) {
-    return `${(
-      value / 1024
-    ).toFixed(1)} KB`;
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
   }
 
   return `${(
@@ -443,30 +342,14 @@ function formatBytes(
 }
 
 function sortApplications(
-  applications:
-    SellerApplication[],
+  applications: SellerApplication[],
 ): SellerApplication[] {
-  return [
-    ...applications,
-  ].sort((a, b) => {
-    const versionA =
-      Number(
-        a.version ?? 0,
-      );
+  return [...applications].sort((a, b) => {
+    const versionA = Number(a.version ?? 0);
+    const versionB = Number(b.version ?? 0);
 
-    const versionB =
-      Number(
-        b.version ?? 0,
-      );
-
-    if (
-      versionA !==
-      versionB
-    ) {
-      return (
-        versionB -
-        versionA
-      );
+    if (versionA !== versionB) {
+      return versionB - versionA;
     }
 
     return (
@@ -483,10 +366,7 @@ function sortApplications(
 function statusClasses(
   status?: string | null,
 ): string {
-  const current =
-    normalizeStatus(
-      status,
-    );
+  const current = normalizeStatus(status);
 
   switch (current) {
     case "approved":
@@ -516,26 +396,19 @@ function statusClasses(
 function statusIcon(
   status?: string | null,
 ) {
-  const current =
-    normalizeStatus(
-      status,
-    );
+  const current = normalizeStatus(status);
 
   if (
-    current ===
-      "approved" ||
+    current === "approved" ||
     current === "clean"
   ) {
     return CheckCircle2;
   }
 
   if (
-    current ===
-      "rejected" ||
-    current ===
-      "suspended" ||
-    current ===
-      "infected"
+    current === "rejected" ||
+    current === "suspended" ||
+    current === "infected"
   ) {
     return XCircle;
   }
@@ -557,203 +430,163 @@ function documentTypeLabel(
   return (
     requirements.find(
       (item) => item.key === type,
-    )?.name ??
-    formatLabel(type)
+    )?.name ?? formatLabel(type)
   );
 }
 
 function reviewActionLabel(
   action: string,
 ): string {
-  const labels:
-    Record<
-      string,
-      string
-    > = {
+  const labels: Record<string, string> = {
     review_started:
       "Review started",
-
     information_requested:
       "Additional information requested",
-
     application_approved:
       "Application approved",
-
     application_rejected:
       "Application rejected",
-
     document_approved:
       "Document approved",
-
     document_rejected:
       "Document rejected",
-
     seller_suspended:
       "Seller suspended",
   };
 
-  return (
-    labels[action] ??
-    formatLabel(action)
-  );
+  return labels[action] ?? formatLabel(action);
 }
-
-/*
-|--------------------------------------------------------------------------
-| Status badge
-|--------------------------------------------------------------------------
-*/
 
 function StatusBadge({
   status,
 }: {
   status?: string | null;
 }) {
-  const Icon =
-    statusIcon(status);
+  const Icon = statusIcon(status);
 
   return (
     <span
       className={[
         "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5",
         "text-[11px] font-semibold tracking-wide",
-        statusClasses(
-          status,
-        ),
+        statusClasses(status),
       ].join(" ")}
     >
       <Icon className="h-3.5 w-3.5" />
-
-      {formatLabel(
-        status,
-      )}
+      {formatLabel(status)}
     </span>
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| Component
-|--------------------------------------------------------------------------
-*/
+function RequirementLevelBadge({
+  level,
+}: {
+  level: string;
+}) {
+  const normalized = normalizeStatus(level);
+
+  const classes =
+    normalized === "required"
+      ? "border-red-200 bg-red-50 text-red-700"
+      : normalized === "conditional"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700";
+
+  return (
+    <span
+      className={[
+        "inline-flex rounded-full border px-2.5 py-1",
+        "text-[10px] font-semibold uppercase tracking-wide",
+        classes,
+      ].join(" ")}
+    >
+      {formatLabel(level)}
+    </span>
+  );
+}
 
 export default function SellerVerificationWorkspace() {
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(
-      null,
-    );
-
   const [
     profile,
     setProfile,
-  ] =
-    useState<SellerProfile | null>(
-      null,
-    );
+  ] = useState<SellerProfile | null>(null);
 
   const [
     application,
     setApplication,
-  ] =
-    useState<SellerApplication | null>(
-      null,
-    );
+  ] = useState<SellerApplication | null>(
+    null,
+  );
 
   const [
     documents,
     setDocuments,
-  ] =
-    useState<SellerDocument[]>(
-      [],
-    );
+  ] = useState<SellerDocument[]>([]);
 
   const [
     requirements,
     setRequirements,
-  ] =
-    useState<SellerDocumentRequirement[]>(
-      [],
-    );
+  ] = useState<
+    SellerDocumentRequirement[]
+  >([]);
 
   const [
-    uploadForm,
-    setUploadForm,
-  ] =
-    useState<UploadForm>(
-      INITIAL_UPLOAD_FORM,
-    );
+    drafts,
+    setDrafts,
+  ] = useState<
+    Record<string, RequirementDraft>
+  >({});
 
   const [
-    selectedFile,
-    setSelectedFile,
-  ] =
-    useState<File | null>(
-      null,
-    );
+    fileInputVersions,
+    setFileInputVersions,
+  ] = useState<Record<string, number>>(
+    {},
+  );
 
   const [
     loading,
     setLoading,
-  ] =
-    useState(true);
+  ] = useState(true);
 
   const [
     refreshing,
     setRefreshing,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
-    uploading,
-    setUploading,
-  ] =
-    useState(false);
+    uploadingRequirement,
+    setUploadingRequirement,
+  ] = useState<string | null>(null);
 
   const [
     submitting,
     setSubmitting,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     deletingId,
     setDeletingId,
-  ] =
-    useState<string | null>(
-      null,
-    );
+  ] = useState<string | null>(null);
 
   const [
     downloadingId,
     setDownloadingId,
-  ] =
-    useState<string | null>(
-      null,
-    );
+  ] = useState<string | null>(null);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     successMessage,
     setSuccessMessage,
-  ] =
-    useState("");
-
-  /*
-  |--------------------------------------------------------------------------
-  | Load verification
-  |--------------------------------------------------------------------------
-  */
+  ] = useState("");
 
   const loadVerification =
     useCallback(
-      async (
-        refresh = false,
-      ) => {
+      async (refresh = false) => {
         if (refresh) {
           setRefreshing(true);
         } else {
@@ -763,29 +596,18 @@ export default function SellerVerificationWorkspace() {
         setErrorMessage("");
 
         try {
-          /*
-           * Load the seller profile FIRST.
-           *
-           * A failure of the optional document-requirements endpoint
-           * must never make an existing seller appear as if no profile
-           * exists.
-           */
           const profilesResponse =
             await apiRequest<
               SellerProfile[]
-            >(
-              "/seller/profiles",
-            );
+            >("/seller/profiles");
 
-          const profiles =
-            Array.isArray(
-              profilesResponse.data,
-            )
-              ? profilesResponse.data
-              : [];
+          const profiles = Array.isArray(
+            profilesResponse.data,
+          )
+            ? profilesResponse.data
+            : [];
 
-          const basicProfile =
-            profiles[0];
+          const basicProfile = profiles[0];
 
           if (!basicProfile) {
             setProfile(null);
@@ -795,9 +617,6 @@ export default function SellerVerificationWorkspace() {
             return;
           }
 
-          /*
-           * Load the complete profile including applications/reviews.
-           */
           const detailResponse =
             await apiRequest<SellerProfile>(
               `/seller/profiles/${encodeURIComponent(
@@ -809,27 +628,19 @@ export default function SellerVerificationWorkspace() {
             detailResponse.data ??
             basicProfile;
 
-          setProfile(
-            completeProfile,
+          setProfile(completeProfile);
+
+          const apps = sortApplications(
+            completeProfile.applications ?? [],
           );
 
-          const apps =
-            sortApplications(
-              completeProfile.applications ??
-                [],
-            );
-
           const currentApplication =
-            apps[0] ??
-            null;
+            apps[0] ?? null;
 
           setApplication(
             currentApplication,
           );
 
-          /*
-           * Requirements are useful but must not block the seller profile.
-           */
           let activeRequirements:
             SellerDocumentRequirement[] = [];
 
@@ -848,19 +659,21 @@ export default function SellerVerificationWorkspace() {
                 ? requirementsResponse.data
                     .filter(
                       (item) =>
-                        item.is_active !== false,
+                        item.is_active !==
+                        false,
                     )
                     .sort(
                       (a, b) =>
-                        Number(a.sort_order ?? 0) -
-                        Number(b.sort_order ?? 0),
+                        Number(
+                          a.sort_order ?? 0,
+                        ) -
+                        Number(
+                          b.sort_order ?? 0,
+                        ),
                     )
                 : [];
           } catch {
-            /*
-             * Non-fatal. The documents endpoint may also return
-             * requirements at the top level.
-             */
+            // Fallback below.
           }
 
           if (!currentApplication) {
@@ -868,22 +681,6 @@ export default function SellerVerificationWorkspace() {
             setRequirements(
               activeRequirements,
             );
-
-            setUploadForm(
-              (current) => ({
-                ...current,
-                documentType:
-                  activeRequirements.some(
-                    (item) =>
-                      item.key ===
-                      current.documentType,
-                  )
-                    ? current.documentType
-                    : activeRequirements[0]?.key ??
-                      "",
-              }),
-            );
-
             return;
           }
 
@@ -898,18 +695,16 @@ export default function SellerVerificationWorkspace() {
               )}/documents`,
             );
 
-          setDocuments(
+          const loadedDocuments =
             Array.isArray(
               documentsResponse.data,
             )
               ? documentsResponse.data
               : currentApplication.documents ??
-                  [],
-          );
+                [];
 
-          /*
-           * Fallback to requirements returned by documents endpoint.
-           */
+          setDocuments(loadedDocuments);
+
           if (
             activeRequirements.length === 0 &&
             Array.isArray(
@@ -924,33 +719,17 @@ export default function SellerVerificationWorkspace() {
                 )
                 .sort(
                   (a, b) =>
-                    Number(a.sort_order ?? 0) -
-                    Number(b.sort_order ?? 0),
+                    Number(
+                      a.sort_order ?? 0,
+                    ) -
+                    Number(
+                      b.sort_order ?? 0,
+                    ),
                 );
           }
 
           setRequirements(
             activeRequirements,
-          );
-
-          setUploadForm(
-            (current) => {
-              const currentStillExists =
-                activeRequirements.some(
-                  (item) =>
-                    item.key ===
-                    current.documentType,
-                );
-
-              return {
-                ...current,
-                documentType:
-                  currentStillExists
-                    ? current.documentType
-                    : activeRequirements[0]?.key ??
-                      "",
-              };
-            },
           );
         } catch (error) {
           setErrorMessage(
@@ -970,56 +749,127 @@ export default function SellerVerificationWorkspace() {
     void loadVerification();
   }, [loadVerification]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Derived values
-  |--------------------------------------------------------------------------
-  */
-
   const applicationStatus =
     normalizeStatus(
       application?.status,
     );
 
   const sellerStatus =
-    normalizeStatus(
-      profile?.status,
-    );
+    normalizeStatus(profile?.status);
 
-  const selectedRequirement =
+  const canEditDocuments = [
+    "draft",
+    "more_information_required",
+  ].includes(applicationStatus);
+
+  const documentsByType = useMemo(() => {
+    const map: Record<
+      string,
+      SellerDocument[]
+    > = {};
+
+    for (const document of documents) {
+      const type = document.document_type;
+
+      if (!map[type]) {
+        map[type] = [];
+      }
+
+      map[type].push(document);
+    }
+
+    return map;
+  }, [documents]);
+
+  const requiredRequirements =
     useMemo(
       () =>
-        requirements.find(
-          (item) =>
-            item.key ===
-            uploadForm.documentType,
-        ) ?? null,
+        requirements.filter(
+          (requirement) =>
+            normalizeStatus(
+              requirement.requirement_level,
+            ) === "required",
+        ),
+      [requirements],
+    );
+
+  const requiredUploadedCount =
+    useMemo(
+      () =>
+        requiredRequirements.filter(
+          (requirement) =>
+            (
+              documentsByType[
+                requirement.key
+              ] ?? []
+            ).some((document) => {
+              const status =
+                normalizeStatus(
+                  document.status,
+                );
+
+              return ![
+                "rejected",
+                "infected",
+              ].includes(status);
+            }),
+        ).length,
       [
-        requirements,
-        uploadForm.documentType,
+        requiredRequirements,
+        documentsByType,
       ],
     );
 
-  const canEditDocuments =
-    [
-      "draft",
-      "more_information_required",
-    ].includes(
-      applicationStatus,
+  const requiredReadyCount =
+    useMemo(
+      () =>
+        requiredRequirements.filter(
+          (requirement) =>
+            (
+              documentsByType[
+                requirement.key
+              ] ?? []
+            ).some((document) =>
+              [
+                "clean",
+                "approved",
+              ].includes(
+                normalizeStatus(
+                  document.status,
+                ),
+              ),
+            ),
+        ).length,
+      [
+        requiredRequirements,
+        documentsByType,
+      ],
     );
 
-  const canSubmit =
-    Boolean(
-      application &&
-        documents.length >
-          0 &&
-        [
-          "draft",
-          "more_information_required",
-        ].includes(
-          applicationStatus,
+  const allRequiredReady =
+    requiredRequirements.length > 0 &&
+    requiredReadyCount ===
+      requiredRequirements.length;
+
+  const hasBlockedDocument =
+    documents.some((document) =>
+      [
+        "quarantined",
+        "pending_scan",
+        "infected",
+      ].includes(
+        normalizeStatus(
+          document.status,
         ),
+      ),
     );
+
+  const canSubmit = Boolean(
+    application &&
+      canEditDocuments &&
+      allRequiredReady &&
+      !hasBlockedDocument,
+  );
 
   const approvedDocuments =
     useMemo(
@@ -1028,10 +878,8 @@ export default function SellerVerificationWorkspace() {
           (document) =>
             normalizeStatus(
               document.status,
-            ) ===
-            "approved",
+            ) === "approved",
         ).length,
-
       [documents],
     );
 
@@ -1042,137 +890,236 @@ export default function SellerVerificationWorkspace() {
           (document) =>
             normalizeStatus(
               document.status,
-            ) ===
-            "rejected",
+            ) === "rejected",
         ).length,
-
       [documents],
     );
 
-  const pendingDocuments =
-    Math.max(
-      0,
-      documents.length -
-        approvedDocuments -
-        rejectedDocuments,
+  const pendingDocuments = Math.max(
+    0,
+    documents.length -
+      approvedDocuments -
+      rejectedDocuments,
+  );
+
+  const reviews = useMemo(
+    () =>
+      [
+        ...(application?.reviews ?? []),
+      ].sort(
+        (a, b) =>
+          new Date(
+            b.created_at ?? 0,
+          ).getTime() -
+          new Date(
+            a.created_at ?? 0,
+          ).getTime(),
+      ),
+    [application],
+  );
+
+  function getDraft(
+    requirementKey: string,
+  ): RequirementDraft {
+    return (
+      drafts[requirementKey] ??
+      EMPTY_DRAFT
     );
+  }
 
-  const reviews =
-    useMemo(
-      () =>
-        [
-          ...(
-            application?.reviews ??
-            []
-          ),
-        ].sort(
-          (a, b) =>
-            new Date(
-              b.created_at ??
-                0,
-            ).getTime() -
-            new Date(
-              a.created_at ??
-                0,
-            ).getTime(),
-        ),
+  function updateDraft(
+    requirementKey: string,
+    patch: Partial<RequirementDraft>,
+  ) {
+    setDrafts((current) => ({
+      ...current,
+      [requirementKey]: {
+        ...(current[requirementKey] ??
+          EMPTY_DRAFT),
+        ...patch,
+      },
+    }));
+  }
 
-      [application],
+  function resetDraft(
+    requirementKey: string,
+  ) {
+    setDrafts((current) => ({
+      ...current,
+      [requirementKey]: {
+        ...EMPTY_DRAFT,
+      },
+    }));
+
+    setFileInputVersions(
+      (current) => ({
+        ...current,
+        [requirementKey]:
+          (current[
+            requirementKey
+          ] ?? 0) + 1,
+      }),
     );
+  }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Upload
-  |--------------------------------------------------------------------------
-  */
+  async function deleteDocumentRequest(
+    document: SellerDocument,
+  ) {
+    if (!profile || !application) {
+      throw new Error(
+        "No seller verification application is available.",
+      );
+    }
 
-  async function handleUpload() {
-    if (
-      !profile ||
-      !application
-    ) {
+    await apiRequest<unknown>(
+      `/seller/profiles/${encodeURIComponent(
+        profile.public_id,
+      )}/applications/${encodeURIComponent(
+        application.public_id,
+      )}/documents/${encodeURIComponent(
+        document.public_id,
+      )}`,
+      {
+        method: "DELETE",
+      },
+    );
+  }
+
+  async function handleUploadRequirement(
+    requirement:
+      SellerDocumentRequirement,
+  ) {
+    if (!profile || !application) {
       setErrorMessage(
         "No seller verification application is available.",
       );
-
       return;
     }
 
-    if (!uploadForm.documentType) {
+    if (!canEditDocuments) {
       setErrorMessage(
-        "Select a verification document type.",
+        "This verification application is not editable.",
       );
-
       return;
     }
 
-    if (!selectedFile) {
+    const draft =
+      getDraft(requirement.key);
+
+    if (!draft.file) {
       setErrorMessage(
-        "Select a document before uploading.",
+        `Select a file for ${requirement.name}.`,
       );
-
       return;
     }
 
-    const allowedTypes =
-      [
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-      ];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+    ];
 
     if (
-      selectedFile.type &&
+      draft.file.type &&
       !allowedTypes.includes(
-        selectedFile.type,
+        draft.file.type,
       )
     ) {
       setErrorMessage(
         "Only PDF, JPEG and PNG documents are supported.",
       );
-
       return;
     }
 
-    setUploading(true);
+    const requirementDocuments =
+      documentsByType[
+        requirement.key
+      ] ?? [];
 
+    const blockingDocument =
+      !requirement.allow_multiple
+        ? requirementDocuments.find(
+            (document) =>
+              ![
+                "rejected",
+                "infected",
+              ].includes(
+                normalizeStatus(
+                  document.status,
+                ),
+              ),
+          )
+        : undefined;
+
+    if (
+      blockingDocument &&
+      normalizeStatus(
+        blockingDocument.status,
+      ) === "approved"
+    ) {
+      setErrorMessage(
+        `${requirement.name} is already approved and cannot be replaced.`,
+      );
+      return;
+    }
+
+    if (blockingDocument) {
+      const confirmed =
+        window.confirm(
+          `${requirement.name} already has a current document. Replace it with "${draft.file.name}"?`,
+        );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setUploadingRequirement(
+      requirement.key,
+    );
     setErrorMessage("");
-
     setSuccessMessage("");
 
     try {
-      const body =
-        new FormData();
-
       /*
-       * Backend field name is "document".
+       * The current backend accepts one active file for a
+       * single-file requirement. To replace it, remove the
+       * current non-approved document first, then upload the
+       * new one.
        */
+      if (blockingDocument) {
+        await deleteDocumentRequest(
+          blockingDocument,
+        );
+      }
+
+      const body = new FormData();
+
       body.append(
         "document",
-        selectedFile,
-        selectedFile.name,
+        draft.file,
+        draft.file.name,
       );
 
       body.append(
         "document_type",
-        uploadForm.documentType,
+        requirement.key,
       );
 
-      if (
-        uploadForm.issuedAt
-      ) {
+      if (draft.issuedAt) {
         body.append(
           "issued_at",
-          uploadForm.issuedAt,
+          draft.issuedAt,
         );
       }
 
       if (
-        uploadForm.expiresAt
+        requirement.supports_expiry_date &&
+        draft.expiresAt
       ) {
         body.append(
           "expires_at",
-          uploadForm.expiresAt,
+          draft.expiresAt,
         );
       }
 
@@ -1184,123 +1131,39 @@ export default function SellerVerificationWorkspace() {
             application.public_id,
           )}/documents`,
           {
-            method:
-              "POST",
-
+            method: "POST",
             body,
           },
         );
 
       setSuccessMessage(
         response.message ??
-          "Verification document uploaded successfully.",
+          `${requirement.name} uploaded successfully.`,
       );
 
-      setSelectedFile(
-        null,
-      );
+      resetDraft(requirement.key);
 
-      setUploadForm(
-        INITIAL_UPLOAD_FORM,
-      );
-
-      if (
-        fileInputRef.current
-      ) {
-        fileInputRef.current.value =
-          "";
-      }
-
-      await loadVerification(
-        true,
-      );
+      await loadVerification(true);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "The document could not be uploaded.",
+          : `${requirement.name} could not be uploaded.`,
       );
+
+      /*
+       * Refresh because a failed replacement may have removed
+       * the previous editable document before upload failed.
+       */
+      await loadVerification(true);
     } finally {
-      setUploading(
-        false,
-      );
+      setUploadingRequirement(null);
     }
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Submit application
-  |--------------------------------------------------------------------------
-  */
-
-  async function handleSubmitApplication() {
-    if (
-      !profile ||
-      !application
-    ) {
-      return;
-    }
-
-    setSubmitting(true);
-
-    setErrorMessage("");
-
-    setSuccessMessage("");
-
-    try {
-      const response =
-        await apiRequest<
-          SellerApplication
-        >(
-          `/seller/profiles/${encodeURIComponent(
-            profile.public_id,
-          )}/applications/${encodeURIComponent(
-            application.public_id,
-          )}/submit`,
-          {
-            method:
-              "POST",
-          },
-        );
-
-      setSuccessMessage(
-        response.message ??
-          "Verification application submitted successfully.",
-      );
-
-      await loadVerification(
-        true,
-      );
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "The verification application could not be submitted.",
-      );
-    } finally {
-      setSubmitting(
-        false,
-      );
-    }
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Delete document
-  |--------------------------------------------------------------------------
-  */
 
   async function handleDeleteDocument(
-    document:
-      SellerDocument,
+    document: SellerDocument,
   ) {
-    if (
-      !profile ||
-      !application
-    ) {
-      return;
-    }
-
     const confirmed =
       window.confirm(
         `Remove "${document.original_name}" from this verification application?`,
@@ -1313,35 +1176,19 @@ export default function SellerVerificationWorkspace() {
     setDeletingId(
       document.public_id,
     );
-
     setErrorMessage("");
-
     setSuccessMessage("");
 
     try {
-      const response =
-        await apiRequest<unknown>(
-          `/seller/profiles/${encodeURIComponent(
-            profile.public_id,
-          )}/applications/${encodeURIComponent(
-            application.public_id,
-          )}/documents/${encodeURIComponent(
-            document.public_id,
-          )}`,
-          {
-            method:
-              "DELETE",
-          },
-        );
+      await deleteDocumentRequest(
+        document,
+      );
 
       setSuccessMessage(
-        response.message ??
-          "Document removed successfully.",
+        "Document removed successfully.",
       );
 
-      await loadVerification(
-        true,
-      );
+      await loadVerification(true);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -1349,63 +1196,46 @@ export default function SellerVerificationWorkspace() {
           : "The document could not be removed.",
       );
     } finally {
-      setDeletingId(
-        null,
-      );
+      setDeletingId(null);
     }
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Protected download
-  |--------------------------------------------------------------------------
-  */
 
   async function handleDownloadDocument(
     sellerDocument: SellerDocument,
   ) {
-    if (
-      !profile ||
-      !application
-    ) {
+    if (!profile || !application) {
       return;
     }
 
     setDownloadingId(
       sellerDocument.public_id,
     );
-
     setErrorMessage("");
 
     try {
-      const token =
-        getToken();
+      const token = getToken();
 
-      const response =
-        await fetch(
-          `${API_BASE_URL}/seller/profiles/${encodeURIComponent(
-            profile.public_id,
-          )}/applications/${encodeURIComponent(
-            application.public_id,
-          )}/documents/${encodeURIComponent(
-            sellerDocument.public_id,
-          )}/download`,
-          {
-            method: "GET",
-
-            headers: {
-              Accept:
-                "*/*",
-
-              ...(token
-                ? {
-                    Authorization:
-                      `Bearer ${token}`,
-                  }
-                : {}),
-            },
+      const response = await fetch(
+        `${API_BASE_URL}/seller/profiles/${encodeURIComponent(
+          profile.public_id,
+        )}/applications/${encodeURIComponent(
+          application.public_id,
+        )}/documents/${encodeURIComponent(
+          sellerDocument.public_id,
+        )}/download`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "*/*",
+            ...(token
+              ? {
+                  Authorization:
+                    `Bearer ${token}`,
+                }
+              : {}),
           },
-        );
+        },
+      );
 
       if (!response.ok) {
         let message =
@@ -1420,30 +1250,23 @@ export default function SellerVerificationWorkspace() {
             payload.message ??
             message;
         } catch {
-          //
+          // Keep fallback.
         }
 
-        throw new Error(
-          message,
-        );
+        throw new Error(message);
       }
 
-      const blob =
-        await response.blob();
+      const blob = await response.blob();
 
       const temporaryUrl =
-        URL.createObjectURL(
-          blob,
-        );
+        URL.createObjectURL(blob);
 
       const link =
         window.document.createElement(
           "a",
         );
 
-      link.href =
-        temporaryUrl;
-
+      link.href = temporaryUrl;
       link.download =
         sellerDocument.original_name ||
         "verification-document";
@@ -1453,7 +1276,6 @@ export default function SellerVerificationWorkspace() {
       );
 
       link.click();
-
       link.remove();
 
       URL.revokeObjectURL(
@@ -1466,17 +1288,50 @@ export default function SellerVerificationWorkspace() {
           : "The document could not be downloaded.",
       );
     } finally {
-      setDownloadingId(
-        null,
-      );
+      setDownloadingId(null);
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Loading
-  |--------------------------------------------------------------------------
-  */
+  async function handleSubmitApplication() {
+    if (!profile || !application) {
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const response =
+        await apiRequest<
+          SellerApplication
+        >(
+          `/seller/profiles/${encodeURIComponent(
+            profile.public_id,
+          )}/applications/${encodeURIComponent(
+            application.public_id,
+          )}/submit`,
+          {
+            method: "POST",
+          },
+        );
+
+      setSuccessMessage(
+        response.message ??
+          "Verification application submitted successfully.",
+      );
+
+      await loadVerification(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The verification application could not be submitted.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -1493,12 +1348,6 @@ export default function SellerVerificationWorkspace() {
       </div>
     );
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | No seller profile
-  |--------------------------------------------------------------------------
-  */
 
   if (!profile) {
     return (
@@ -1522,15 +1371,11 @@ export default function SellerVerificationWorkspace() {
 
   return (
     <div className="verification-enter space-y-5 pb-10">
-      {/* -------------------------------------------------
-       * Header
-       * ----------------------------------------------- */}
-
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-              <ShieldCheck className="h-4.5 w-4.5 text-slate-800" />
+              <ShieldCheck className="h-4 w-4 text-slate-800" />
             </div>
 
             <StatusBadge
@@ -1545,22 +1390,19 @@ export default function SellerVerificationWorkspace() {
             Seller verification
           </h1>
 
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-            Submit business evidence, track document reviews and follow
-            RushPi administration decisions from one secure workspace.
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+            Upload every business verification document from the requirement
+            list below. Required documents must be clean or approved before the
+            application can be submitted.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() =>
-            void loadVerification(
-              true,
-            )
+            void loadVerification(true)
           }
-          disabled={
-            refreshing
-          }
+          disabled={refreshing}
           className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw
@@ -1571,19 +1413,13 @@ export default function SellerVerificationWorkspace() {
                 : "",
             ].join(" ")}
           />
-
           Refresh
         </button>
       </div>
 
-      {/* -------------------------------------------------
-       * Messages
-       * ----------------------------------------------- */}
-
       {errorMessage ? (
         <div className="verification-enter flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-
           <p className="text-sm text-red-700">
             {errorMessage}
           </p>
@@ -1593,16 +1429,11 @@ export default function SellerVerificationWorkspace() {
       {successMessage ? (
         <div className="verification-enter flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-
           <p className="text-sm text-emerald-700">
             {successMessage}
           </p>
         </div>
       ) : null}
-
-      {/* -------------------------------------------------
-       * Admin action notice
-       * ----------------------------------------------- */}
 
       {application?.information_request ? (
         <div className="verification-enter rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -1613,11 +1444,8 @@ export default function SellerVerificationWorkspace() {
               <h3 className="text-sm font-semibold text-amber-950">
                 Administration requires additional information
               </h3>
-
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                {
-                  application.information_request
-                }
+                {application.information_request}
               </p>
             </div>
           </div>
@@ -1633,11 +1461,8 @@ export default function SellerVerificationWorkspace() {
               <h3 className="text-sm font-semibold text-red-950">
                 Application decision
               </h3>
-
               <p className="mt-1 text-sm leading-6 text-red-800">
-                {
-                  application.rejection_reason
-                }
+                {application.rejection_reason}
               </p>
             </div>
           </div>
@@ -1653,499 +1478,514 @@ export default function SellerVerificationWorkspace() {
               <h3 className="text-sm font-semibold text-red-950">
                 Administrative restriction
               </h3>
-
               <p className="mt-1 text-sm leading-6 text-red-800">
-                {
-                  profile.suspension_reason
-                }
+                {profile.suspension_reason}
               </p>
             </div>
           </div>
         </div>
       ) : null}
 
-      {/* -------------------------------------------------
-       * Main two-column workspace
-       * ----------------------------------------------- */}
+      {!application ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-amber-700" />
+            <div>
+              <h3 className="text-sm font-semibold text-amber-950">
+                Verification application required
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                No verification application exists for this seller profile yet.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(350px,0.72fr)]">
-        {/* =============================================
-         * LEFT
-         * =========================================== */}
-
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.65fr)]">
         <div className="space-y-5">
-          {/* -------------------------------------------
-           * Upload
-           * ----------------------------------------- */}
-
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">
-                  <UploadCloud className="h-4 w-4 text-slate-700" />
-                </div>
-
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-950">
-                    Verification evidence
-                  </h2>
-
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Upload official business documents for administrator review.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 p-5">
-              {!application ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  No verification application has been created for this seller
-                  profile yet.
-                </div>
-              ) : null}
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-slate-600">
-                    Document type
-                  </span>
-
-                  <select
-                    value={
-                      uploadForm.documentType
-                    }
-                    disabled={
-                      requirements.length === 0
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setUploadForm(
-                        (
-                          current,
-                        ) => ({
-                          ...current,
-
-                          documentType:
-                            event
-                              .target
-                              .value,
-
-                          expiresAt:
-                            requirements.find(
-                              (item) =>
-                                item.key ===
-                                event.target.value,
-                            )?.supports_expiry_date
-                              ? current.expiresAt
-                              : "",
-                        }),
-                      )
-                    }
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-50 disabled:text-slate-400"
-                  >
-                    {requirements.length === 0 ? (
-                      <option value="">
-                        No document requirements available
-                      </option>
-                    ) : (
-                      requirements.map(
-                        (requirement) => (
-                          <option
-                            key={
-                              requirement.key
-                            }
-                            value={
-                              requirement.key
-                            }
-                          >
-                            {requirement.name} ·{" "}
-                            {formatLabel(
-                              requirement.requirement_level,
-                            )}
-                          </option>
-                        ),
-                      )
-                    )}
-                  </select>
-
-                  {!canEditDocuments && requirements.length > 0 ? (
-                    <span className="block text-[11px] leading-4 text-slate-400">
-                      You can review document types now. Uploading becomes
-                      available when the verification application is editable.
-                    </span>
-                  ) : null}
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-slate-600">
-                    Issued date
-                  </span>
-
-                  <input
-                    type="date"
-                    value={
-                      uploadForm.issuedAt
-                    }
-                    disabled={
-                      !canEditDocuments
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setUploadForm(
-                        (
-                          current,
-                        ) => ({
-                          ...current,
-
-                          issuedAt:
-                            event
-                              .target
-                              .value,
-                        }),
-                      )
-                    }
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-50"
-                  />
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-slate-600">
-                    Expiry date
-                  </span>
-
-                  <input
-                    type="date"
-                    value={
-                      uploadForm.expiresAt
-                    }
-                    disabled={
-                      !canEditDocuments ||
-                      !selectedRequirement?.supports_expiry_date
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setUploadForm(
-                        (
-                          current,
-                        ) => ({
-                          ...current,
-
-                          expiresAt:
-                            event
-                              .target
-                              .value,
-                        }),
-                      )
-                    }
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:bg-slate-50"
-                  />
-                </label>
-              </div>
-
-              {selectedRequirement ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={[
-                        "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                        normalizeStatus(
-                          selectedRequirement.requirement_level,
-                        ) === "required"
-                          ? "border-red-200 bg-red-50 text-red-700"
-                          : normalizeStatus(
-                                selectedRequirement.requirement_level,
-                              ) === "conditional"
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-700",
-                      ].join(" ")}
-                    >
-                      {formatLabel(
-                        selectedRequirement.requirement_level,
-                      )}
-                    </span>
-
-                    {selectedRequirement.allow_multiple ? (
-                      <span className="text-[11px] font-medium text-slate-500">
-                        Multiple files allowed
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {selectedRequirement.description ? (
-                    <p className="mt-2 text-xs leading-5 text-slate-600">
-                      {selectedRequirement.description}
-                    </p>
-                  ) : null}
-
-                  {selectedRequirement.condition ? (
-                    <p className="mt-1 text-xs leading-5 text-amber-700">
-                      {selectedRequirement.condition}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <input
-                  ref={
-                    fileInputRef
-                  }
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                  disabled={
-                    !canEditDocuments
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setSelectedFile(
-                      event.target
-                        .files?.[0] ??
-                        null,
-                    )
-                  }
-                  className="hidden"
-                />
-
-                <button
-                  type="button"
-                  disabled={
-                    !canEditDocuments
-                  }
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
-                  className="group flex min-h-28 w-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-5 text-center transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <div>
-                    <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition group-hover:-translate-y-0.5">
-                      <UploadCloud className="h-4 w-4 text-slate-700" />
-                    </div>
-
-                    {selectedFile ? (
-                      <>
-                        <p className="mt-2 text-sm font-medium text-slate-800">
-                          {
-                            selectedFile.name
-                          }
-                        </p>
-
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {formatBytes(
-                            selectedFile.size,
-                          )}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="mt-2 text-sm font-medium text-slate-800">
-                          Select verification document
-                        </p>
-
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          PDF, JPEG or PNG
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </button>
+                <h2 className="text-sm font-semibold text-slate-950">
+                  Verification document checklist
+                </h2>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Upload, replace and manage every document type required by
+                  RushPi administration.
+                </p>
               </div>
 
-              {!canEditDocuments &&
-              application ? (
-                <div className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                  {requirements.length} document types
+                </span>
 
-                  Documents cannot be changed while this application is{" "}
-                  {formatLabel(
-                    application.status,
-                  ).toLowerCase()}
-                  .
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">
-                  Verification documents are private and reviewed by authorized
-                  RushPi administrators.
-                </p>
-
-                <button
-                  type="button"
-                  disabled={
-                    uploading ||
-                    !selectedFile ||
-                    !canEditDocuments
-                  }
-                  onClick={() =>
-                    void handleUpload()
-                  }
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <UploadCloud className="h-4 w-4" />
-                  )}
-
-                  {uploading
-                    ? "Uploading..."
-                    : "Upload document"}
-                </button>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                  {requiredUploadedCount}/{requiredRequirements.length} required uploaded
+                </span>
               </div>
             </div>
-          </section>
 
-          {/* -------------------------------------------
-           * Documents
-           * ----------------------------------------- */}
+            {requirements.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <FileText className="mx-auto h-8 w-8 text-slate-300" />
+                <p className="mt-3 text-sm font-medium text-slate-700">
+                  No document requirements available
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Ask RushPi administration to configure seller verification
+                  requirements.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {requirements.map(
+                  (requirement) => {
+                    const draft =
+                      getDraft(
+                        requirement.key,
+                      );
+
+                    const requirementDocuments =
+                      documentsByType[
+                        requirement.key
+                      ] ?? [];
+
+                    const currentDocument =
+                      requirementDocuments.find(
+                        (document) =>
+                          ![
+                            "rejected",
+                            "infected",
+                          ].includes(
+                            normalizeStatus(
+                              document.status,
+                            ),
+                          ),
+                      ) ??
+                      requirementDocuments[0] ??
+                      null;
+
+                    const hasApproved =
+                      requirementDocuments.some(
+                        (document) =>
+                          normalizeStatus(
+                            document.status,
+                          ) === "approved",
+                      );
+
+                    const isUploading =
+                      uploadingRequirement ===
+                      requirement.key;
+
+                    const uploadDisabled =
+                      !canEditDocuments ||
+                      !draft.file ||
+                      isUploading ||
+                      hasApproved;
+
+                    const actionText =
+                      hasApproved
+                        ? "Approved"
+                        : currentDocument &&
+                            !requirement.allow_multiple
+                          ? "Replace document"
+                          : "Upload document";
+
+                    return (
+                      <div
+                        key={
+                          requirement.key
+                        }
+                        className="px-5 py-5"
+                      >
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                  {
+                                    requirement.name
+                                  }
+                                </h3>
+
+                                <RequirementLevelBadge
+                                  level={
+                                    requirement.requirement_level
+                                  }
+                                />
+
+                                {requirement.allow_multiple ? (
+                                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-medium text-slate-500">
+                                    Multiple files
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              {requirement.description ? (
+                                <p className="mt-1.5 max-w-3xl text-xs leading-5 text-slate-500">
+                                  {
+                                    requirement.description
+                                  }
+                                </p>
+                              ) : null}
+
+                              {requirement.condition ? (
+                                <p className="mt-1 text-xs leading-5 text-amber-700">
+                                  Condition:{" "}
+                                  {
+                                    requirement.condition
+                                  }
+                                </p>
+                              ) : null}
+                            </div>
+
+                            {currentDocument ? (
+                              <StatusBadge
+                                status={
+                                  currentDocument.status
+                                }
+                              />
+                            ) : (
+                              <span className="inline-flex h-7 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-semibold text-slate-500">
+                                Not uploaded
+                              </span>
+                            )}
+                          </div>
+
+                          {requirementDocuments.length > 0 ? (
+                            <div className="space-y-2">
+                              {requirementDocuments.map(
+                                (
+                                  documentItem,
+                                ) => (
+                                  <div
+                                    key={
+                                      documentItem.public_id
+                                    }
+                                    className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="truncate text-xs font-semibold text-slate-800">
+                                          {
+                                            documentItem.original_name
+                                          }
+                                        </p>
+
+                                        <StatusBadge
+                                          status={
+                                            documentItem.status
+                                          }
+                                        />
+                                      </div>
+
+                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                                        <span>
+                                          {formatBytes(
+                                            documentItem.size_bytes,
+                                          )}
+                                        </span>
+                                        <span>
+                                          Added{" "}
+                                          {formatDate(
+                                            documentItem.created_at,
+                                          )}
+                                        </span>
+
+                                        {documentItem.expires_at ? (
+                                          <span>
+                                            Expires{" "}
+                                            {formatDate(
+                                              documentItem.expires_at,
+                                            )}
+                                          </span>
+                                        ) : null}
+                                      </div>
+
+                                      {documentItem.rejection_reason ? (
+                                        <p className="mt-1.5 text-[11px] leading-5 text-red-600">
+                                          {
+                                            documentItem.rejection_reason
+                                          }
+                                        </p>
+                                      ) : null}
+                                    </div>
+
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void handleDownloadDocument(
+                                            documentItem,
+                                          )
+                                        }
+                                        disabled={
+                                          downloadingId ===
+                                          documentItem.public_id
+                                        }
+                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                                      >
+                                        {downloadingId ===
+                                        documentItem.public_id ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Download className="h-3.5 w-3.5" />
+                                        )}
+                                        Download
+                                      </button>
+
+                                      {canEditDocuments &&
+                                      normalizeStatus(
+                                        documentItem.status,
+                                      ) !==
+                                        "approved" ? (
+                                        <button
+                                          type="button"
+                                          title="Delete document"
+                                          onClick={() =>
+                                            void handleDeleteDocument(
+                                              documentItem,
+                                            )
+                                          }
+                                          disabled={
+                                            deletingId ===
+                                            documentItem.public_id
+                                          }
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                        >
+                                          {deletingId ===
+                                          documentItem.public_id ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          ) : null}
+
+                          {!hasApproved ? (
+                            <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 lg:grid-cols-[minmax(0,1.3fr)_150px_150px_auto] lg:items-end">
+                              <label className="space-y-1.5">
+                                <span className="text-xs font-medium text-slate-600">
+                                  File
+                                </span>
+
+                                <input
+                                  key={`${requirement.key}-${fileInputVersions[requirement.key] ?? 0}`}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                  disabled={
+                                    !canEditDocuments
+                                  }
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    updateDraft(
+                                      requirement.key,
+                                      {
+                                        file:
+                                          event.target
+                                            .files?.[0] ??
+                                          null,
+                                      },
+                                    )
+                                  }
+                                  className="block h-10 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-slate-700 disabled:bg-slate-50"
+                                />
+
+                                {draft.file ? (
+                                  <span className="block truncate text-[11px] text-slate-400">
+                                    {draft.file.name} ·{" "}
+                                    {formatBytes(
+                                      draft.file.size,
+                                    )}
+                                  </span>
+                                ) : null}
+                              </label>
+
+                              <label className="space-y-1.5">
+                                <span className="text-xs font-medium text-slate-600">
+                                  Issued date
+                                </span>
+
+                                <input
+                                  type="date"
+                                  value={
+                                    draft.issuedAt
+                                  }
+                                  disabled={
+                                    !canEditDocuments
+                                  }
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    updateDraft(
+                                      requirement.key,
+                                      {
+                                        issuedAt:
+                                          event.target
+                                            .value,
+                                      },
+                                    )
+                                  }
+                                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 disabled:bg-slate-50"
+                                />
+                              </label>
+
+                              <label className="space-y-1.5">
+                                <span className="text-xs font-medium text-slate-600">
+                                  Expiry date
+                                </span>
+
+                                <input
+                                  type="date"
+                                  value={
+                                    draft.expiresAt
+                                  }
+                                  disabled={
+                                    !canEditDocuments ||
+                                    !requirement.supports_expiry_date
+                                  }
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    updateDraft(
+                                      requirement.key,
+                                      {
+                                        expiresAt:
+                                          event.target
+                                            .value,
+                                      },
+                                    )
+                                  }
+                                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 disabled:bg-slate-50"
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  uploadDisabled
+                                }
+                                onClick={() =>
+                                  void handleUploadRequirement(
+                                    requirement,
+                                  )
+                                }
+                                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {isUploading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <UploadCloud className="h-4 w-4" />
+                                )}
+
+                                {isUploading
+                                  ? "Uploading..."
+                                  : actionText}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700">
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                              This document type is approved. No replacement is
+                              required.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            )}
+          </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-950">
-                  Submitted documents
+                  All submitted documents
                 </h2>
-
                 <p className="mt-0.5 text-xs text-slate-500">
                   {documents.length} verification document
-                  {documents.length ===
-                  1
+                  {documents.length === 1
                     ? ""
-                    : "s"}
+                    : "s"}{" "}
+                  uploaded
                 </p>
               </div>
 
               <FileCheck2 className="h-5 w-5 text-slate-400" />
             </div>
 
-            {documents.length ===
-            0 ? (
-              <div className="px-5 py-12 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100">
-                  <FileText className="h-5 w-5 text-slate-500" />
-                </div>
-
-                <p className="mt-3 text-sm font-medium text-slate-800">
-                  No documents uploaded
-                </p>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  Your verification evidence will appear here.
+            {documents.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <FileText className="mx-auto h-8 w-8 text-slate-300" />
+                <p className="mt-2 text-sm font-medium text-slate-700">
+                  No documents uploaded yet
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {documents.map(
-                  (
-                    documentItem,
-                  ) => (
+                  (documentItem) => (
                     <div
                       key={
                         documentItem.public_id
                       }
-                      className="group px-5 py-4 transition hover:bg-slate-50/70"
+                      className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {
-                                documentItem.original_name
-                              }
-                            </p>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {
+                              documentItem.original_name
+                            }
+                          </p>
 
-                            <StatusBadge
-                              status={
-                                documentItem.status
-                              }
-                            />
-                          </div>
-
-                          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                            <span>
-                              {documentTypeLabel(
-                                documentItem.document_type,
-                                requirements,
-                              )}
-                            </span>
-
-                            <span>
-                              {formatBytes(
-                                documentItem.size_bytes,
-                              )}
-                            </span>
-
-                            <span>
-                              Added{" "}
-                              {formatDate(
-                                documentItem.created_at,
-                              )}
-                            </span>
-                          </div>
-
-                          {documentItem.rejection_reason ? (
-                            <div className="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
-                              {
-                                documentItem.rejection_reason
-                              }
-                            </div>
-                          ) : null}
+                          <StatusBadge
+                            status={
+                              documentItem.status
+                            }
+                          />
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void handleDownloadDocument(
-                                documentItem,
-                              )
-                            }
-                            disabled={
-                              downloadingId ===
-                              documentItem.public_id
-                            }
-                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            {downloadingId ===
-                            documentItem.public_id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Download className="h-3.5 w-3.5" />
-                            )}
-
-                            Download
-                          </button>
-
-                          {canEditDocuments ? (
-                            <button
-                              type="button"
-                              title="Delete document"
-                              onClick={() =>
-                                void handleDeleteDocument(
-                                  documentItem,
-                                )
-                              }
-                              disabled={
-                                deletingId ===
-                                documentItem.public_id
-                              }
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            >
-                              {deletingId ===
-                              documentItem.public_id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                          ) : null}
-                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {documentTypeLabel(
+                            documentItem.document_type,
+                            requirements,
+                          )}
+                          {" · "}
+                          {formatBytes(
+                            documentItem.size_bytes,
+                          )}
+                        </p>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleDownloadDocument(
+                            documentItem,
+                          )
+                        }
+                        disabled={
+                          downloadingId ===
+                          documentItem.public_id
+                        }
+                        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download
+                      </button>
                     </div>
                   ),
                 )}
@@ -2153,16 +1993,11 @@ export default function SellerVerificationWorkspace() {
             )}
           </section>
 
-          {/* -------------------------------------------
-           * Admin timeline
-           * ----------------------------------------- */}
-
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-sm font-semibold text-slate-950">
                 Administration activity
               </h2>
-
               <p className="mt-0.5 text-xs text-slate-500">
                 Decisions and seller-facing recommendations related to this
                 verification application.
@@ -2170,11 +2005,9 @@ export default function SellerVerificationWorkspace() {
             </div>
 
             <div className="p-5">
-              {reviews.length ===
-              0 ? (
+              {reviews.length === 0 ? (
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-4">
                   <Clock3 className="h-4 w-4 text-slate-400" />
-
                   <p className="text-sm text-slate-500">
                     No administration decisions have been recorded yet.
                   </p>
@@ -2182,16 +2015,13 @@ export default function SellerVerificationWorkspace() {
               ) : (
                 <div className="relative space-y-5 before:absolute before:bottom-3 before:left-[7px] before:top-3 before:w-px before:bg-slate-200">
                   {reviews.map(
-                    (
-                      review,
-                      index,
-                    ) => (
+                    (review, index) => (
                       <div
                         key={
                           review.id ??
                           `${review.action}-${index}`
                         }
-                        className="verification-enter relative flex gap-4"
+                        className="relative flex gap-4"
                       >
                         <div className="relative z-10 mt-1 h-[15px] w-[15px] shrink-0 rounded-full border-[4px] border-white bg-slate-800 shadow-sm" />
 
@@ -2202,7 +2032,6 @@ export default function SellerVerificationWorkspace() {
                                 review.action,
                               )}
                             </p>
-
                             <span className="text-[11px] text-slate-400">
                               {formatDateTime(
                                 review.created_at,
@@ -2212,9 +2041,7 @@ export default function SellerVerificationWorkspace() {
 
                           {review.notes ? (
                             <p className="mt-1 text-sm leading-6 text-slate-600">
-                              {
-                                review.notes
-                              }
+                              {review.notes}
                             </p>
                           ) : null}
 
@@ -2222,8 +2049,7 @@ export default function SellerVerificationWorkspace() {
                             <p className="mt-1 text-xs text-slate-400">
                               RushPi administration ·{" "}
                               {
-                                review
-                                  .reviewed_by
+                                review.reviewed_by
                                   .name
                               }
                             </p>
@@ -2238,15 +2064,10 @@ export default function SellerVerificationWorkspace() {
           </section>
         </div>
 
-        {/* =============================================
-         * RIGHT PREVIEW
-         * =========================================== */}
-
         <aside className="verification-preview xl:sticky xl:top-5">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="relative overflow-hidden bg-slate-950 px-5 py-5 text-white">
               <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-white/5" />
-
               <div className="absolute -bottom-16 left-12 h-32 w-32 rounded-full bg-white/5" />
 
               <div className="relative">
@@ -2264,7 +2085,7 @@ export default function SellerVerificationWorkspace() {
                 </div>
 
                 <p className="mt-5 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                  Verification preview
+                  Verification progress
                 </p>
 
                 <h2 className="mt-1 text-xl font-semibold">
@@ -2275,25 +2096,19 @@ export default function SellerVerificationWorkspace() {
 
                 <div className="mt-3 flex items-center gap-2 text-xs text-slate-300">
                   <Building2 className="h-3.5 w-3.5" />
-
                   Application{" "}
                   {application?.version
                     ? `v${application.version}`
-                    : "not submitted"}
+                    : "not started"}
                 </div>
               </div>
             </div>
 
-            {/* Status stats */}
-
             <div className="grid grid-cols-3 border-b border-slate-100">
               <div className="px-3 py-4 text-center">
                 <p className="text-lg font-semibold text-slate-950">
-                  {
-                    documents.length
-                  }
+                  {documents.length}
                 </p>
-
                 <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                   Documents
                 </p>
@@ -2301,23 +2116,18 @@ export default function SellerVerificationWorkspace() {
 
               <div className="border-x border-slate-100 px-3 py-4 text-center">
                 <p className="text-lg font-semibold text-emerald-600">
-                  {
-                    approvedDocuments
-                  }
+                  {requiredReadyCount}/
+                  {requiredRequirements.length}
                 </p>
-
                 <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
-                  Approved
+                  Required ready
                 </p>
               </div>
 
               <div className="px-3 py-4 text-center">
                 <p className="text-lg font-semibold text-blue-600">
-                  {
-                    pendingDocuments
-                  }
+                  {pendingDocuments}
                 </p>
-
                 <p className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                   Pending
                 </p>
@@ -2325,68 +2135,61 @@ export default function SellerVerificationWorkspace() {
             </div>
 
             <div className="space-y-5 p-5">
-              {/* Current selection */}
-
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  New evidence
+                  Required documents
                 </p>
 
-                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
-                      <FileText className="h-4 w-4 text-slate-600" />
-                    </div>
+                <div className="mt-2 space-y-2">
+                  {requiredRequirements.map(
+                    (requirement) => {
+                      const requirementDocuments =
+                        documentsByType[
+                          requirement.key
+                        ] ?? [];
 
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">
-                        {selectedFile?.name ??
-                          documentTypeLabel(
-                            uploadForm.documentType,
-                            requirements,
+                      const readyDocument =
+                        requirementDocuments.find(
+                          (document) =>
+                            [
+                              "clean",
+                              "approved",
+                            ].includes(
+                              normalizeStatus(
+                                document.status,
+                              ),
+                            ),
+                        );
+
+                      const anyDocument =
+                        requirementDocuments[0];
+
+                      return (
+                        <div
+                          key={
+                            requirement.key
+                          }
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2.5"
+                        >
+                          <span className="min-w-0 truncate text-xs text-slate-600">
+                            {
+                              requirement.name
+                            }
+                          </span>
+
+                          {readyDocument ? (
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                          ) : anyDocument ? (
+                            <Clock3 className="h-4 w-4 shrink-0 text-blue-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 shrink-0 text-slate-300" />
                           )}
-                      </p>
-
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {selectedFile
-                          ? formatBytes(
-                              selectedFile.size,
-                            )
-                          : "No file selected"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {(uploadForm.issuedAt ||
-                    uploadForm.expiresAt) && (
-                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs">
-                      <div>
-                        <p className="text-slate-400">
-                          Issued
-                        </p>
-
-                        <p className="mt-0.5 font-medium text-slate-700">
-                          {uploadForm.issuedAt ||
-                            "—"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-slate-400">
-                          Expires
-                        </p>
-
-                        <p className="mt-0.5 font-medium text-slate-700">
-                          {uploadForm.expiresAt ||
-                            "—"}
-                        </p>
-                      </div>
-                    </div>
+                        </div>
+                      );
+                    },
                   )}
                 </div>
               </div>
-
-              {/* Status */}
 
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -2398,11 +2201,8 @@ export default function SellerVerificationWorkspace() {
                     <span className="text-xs text-slate-500">
                       Seller status
                     </span>
-
                     <StatusBadge
-                      status={
-                        profile.status
-                      }
+                      status={profile.status}
                     />
                   </div>
 
@@ -2410,7 +2210,6 @@ export default function SellerVerificationWorkspace() {
                     <span className="text-xs text-slate-500">
                       Application
                     </span>
-
                     <StatusBadge
                       status={
                         application?.status ??
@@ -2421,79 +2220,60 @@ export default function SellerVerificationWorkspace() {
 
                   <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5">
                     <span className="text-xs text-slate-500">
-                      Last updated
+                      Approved documents
                     </span>
-
-                    <span className="text-xs font-medium text-slate-700">
-                      {formatDate(
-                        application?.updated_at ??
-                          profile.updated_at,
-                      )}
+                    <span className="text-xs font-semibold text-slate-700">
+                      {approvedDocuments}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Important administrative measure */}
-
-              {sellerStatus ===
-                "approved" && (
+              {sellerStatus === "approved" ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
                   <div className="flex gap-2">
                     <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-
                     <div>
                       <p className="text-xs font-semibold text-emerald-900">
                         Verified seller
                       </p>
-
                       <p className="mt-1 text-xs leading-5 text-emerald-700">
                         This business has been approved by RushPi administration.
                       </p>
-
-                      {profile.approved_at ? (
-                        <p className="mt-1 text-[11px] text-emerald-600">
-                          Approved{" "}
-                          {formatDateTime(
-                            profile.approved_at,
-                          )}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {sellerStatus ===
-                "suspended" && (
+              "suspended" ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3">
                   <div className="flex gap-2">
                     <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
-
                     <div>
                       <p className="text-xs font-semibold text-red-900">
                         Seller suspended
                       </p>
-
                       <p className="mt-1 text-xs leading-5 text-red-700">
                         {profile.suspension_reason ??
                           "RushPi administration has restricted this seller account."}
                       </p>
-
-                      {profile.suspended_at ? (
-                        <p className="mt-1 text-[11px] text-red-600">
-                          Applied{" "}
-                          {formatDateTime(
-                            profile.suspended_at,
-                          )}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {/* Submission action */}
+              {!canEditDocuments &&
+              application ? (
+                <div className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  Documents cannot be changed while this application is{" "}
+                  {formatLabel(
+                    application.status,
+                  ).toLowerCase()}
+                  .
+                </div>
+              ) : null}
 
               <div className="border-t border-slate-100 pt-4">
                 <button
@@ -2521,20 +2301,14 @@ export default function SellerVerificationWorkspace() {
                       : "Submit for verification"}
                 </button>
 
-                {!documents.length ? (
+                {!allRequiredReady ? (
                   <p className="mt-2 text-center text-[11px] leading-5 text-slate-400">
-                    Upload verification evidence before submitting.
+                    All required documents must be security-scanned and ready
+                    before submission.
                   </p>
-                ) : null}
-
-                {[
-                  "submitted",
-                  "under_review",
-                ].includes(
-                  applicationStatus,
-                ) ? (
+                ) : hasBlockedDocument ? (
                   <p className="mt-2 text-center text-[11px] leading-5 text-slate-400">
-                    Your application is currently with RushPi administration.
+                    Some documents are still waiting for security scanning.
                   </p>
                 ) : null}
               </div>
@@ -2543,17 +2317,12 @@ export default function SellerVerificationWorkspace() {
         </aside>
       </div>
 
-      {/* -------------------------------------------------
-       * CSS animations
-       * ----------------------------------------------- */}
-
       <style jsx global>{`
         @keyframes rushpiVerificationEnter {
           from {
             opacity: 0;
             transform: translateY(8px);
           }
-
           to {
             opacity: 1;
             transform: translateY(0);
@@ -2565,7 +2334,6 @@ export default function SellerVerificationWorkspace() {
             opacity: 0;
             transform: translateX(12px);
           }
-
           to {
             opacity: 1;
             transform: translateX(0);
