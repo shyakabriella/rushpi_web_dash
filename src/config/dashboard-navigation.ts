@@ -141,6 +141,22 @@ export const dashboardNavigation: Record<
           icon: ClipboardCheck,
         },
         {
+          label: "Orders",
+          href: "/admin/orders",
+          icon: ShoppingBag,
+        },
+      ],
+    },
+
+    {
+      title: "Catalog setup",
+      items: [
+        {
+          label: "Departments",
+          href: "/admin/departments",
+          icon: Building2,
+        },
+        {
           label: "Categories",
           href: "/admin/categories",
           icon: Boxes,
@@ -151,9 +167,19 @@ export const dashboardNavigation: Record<
           icon: Tags,
         },
         {
-          label: "Orders",
-          href: "/admin/orders",
-          icon: ShoppingBag,
+          label: "Specifications",
+          href: "/admin/specifications",
+          icon: ListChecks,
+        },
+        {
+          label: "Category specifications",
+          href: "/admin/category-specifications",
+          icon: FileText,
+        },
+        {
+          label: "Commission rules",
+          href: "/admin/commission-rules",
+          icon: CircleDollarSign,
         },
       ],
     },
