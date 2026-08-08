@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock3,
   Download,
+  Eye,
   FileCheck2,
   FileText,
   Loader2,
@@ -172,6 +173,29 @@ type PendingDocumentAction = {
   publicId: string;
   name: string;
 } | null;
+
+
+type ConfirmAction =
+  | {
+      kind: "start-review";
+      title: string;
+      description: string;
+      confirmLabel: string;
+    }
+  | {
+      kind: "approve-application";
+      title: string;
+      description: string;
+      confirmLabel: string;
+    }
+  | {
+      kind: "approve-document";
+      title: string;
+      description: string;
+      confirmLabel: string;
+      document: SellerDocument;
+    }
+  | null;
 
 function getToken(): string | null {
   if (typeof window === "undefined") {
@@ -573,6 +597,32 @@ export default function AdminSellerReviewPage() {
     null,
   );
 
+
+  const [
+    confirmAction,
+    setConfirmAction,
+  ] = useState<ConfirmAction>(null);
+
+  const [
+    previewDocument,
+    setPreviewDocument,
+  ] = useState<SellerDocument | null>(null);
+
+  const [
+    previewUrl,
+    setPreviewUrl,
+  ] = useState<string | null>(null);
+
+  const [
+    previewMimeType,
+    setPreviewMimeType,
+  ] = useState("");
+
+  const [
+    previewLoading,
+    setPreviewLoading,
+  ] = useState(false);
+
   const loadApplication =
     useCallback(
       async (refresh = false) => {
@@ -747,70 +797,95 @@ export default function AdminSellerReviewPage() {
     }
   }
 
-  async function handleStartReview() {
+  function requestStartReview() {
     if (!application) {
       return;
     }
 
-    await runSimpleAction(
-      "start-review",
-      `/admin/seller-applications/${encodeURIComponent(
-        application.public_id,
-      )}/start-review`,
-      "Seller application review started successfully.",
-    );
+    setConfirmAction({
+      kind: "start-review",
+      title: "Start seller review?",
+      description:
+        "This application will be assigned to you and moved to Under Review.",
+      confirmLabel: "Start review",
+    });
   }
 
-  async function handleApproveApplication() {
+  function requestApproveApplication() {
     if (!application) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `Approve ${sellerName(
-          seller,
-        )} as a verified seller?`,
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    await runSimpleAction(
-      "approve-application",
-      `/admin/seller-applications/${encodeURIComponent(
-        application.public_id,
-      )}/approve`,
-      "Seller application approved successfully.",
-    );
+    setConfirmAction({
+      kind: "approve-application",
+      title: "Approve seller?",
+      description: `${sellerName(
+        seller,
+      )} will be marked as a verified seller after this decision.`,
+      confirmLabel: "Approve seller",
+    });
   }
 
-  async function handleApproveDocument(
+  function requestApproveDocument(
     document: SellerDocument,
   ) {
     if (!application) {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `Approve "${document.original_name}"?`,
-      );
+    setConfirmAction({
+      kind: "approve-document",
+      title: "Approve document?",
+      description: `Confirm that "${document.original_name}" has been reviewed and is valid.`,
+      confirmLabel: "Approve document",
+      document,
+    });
+  }
 
-    if (!confirmed) {
+  async function submitConfirmAction() {
+    if (!application || !confirmAction) {
       return;
     }
 
-    await runSimpleAction(
-      `approve-document-${document.public_id}`,
-      `/admin/seller-applications/${encodeURIComponent(
-        application.public_id,
-      )}/documents/${encodeURIComponent(
-        document.public_id,
-      )}/approve`,
-      "Seller document approved successfully.",
-    );
+    const action = confirmAction;
+
+    try {
+      if (action.kind === "start-review") {
+        await runSimpleAction(
+          "start-review",
+          `/admin/seller-applications/${encodeURIComponent(
+            application.public_id,
+          )}/start-review`,
+          "Seller application review started successfully.",
+        );
+      }
+
+      if (action.kind === "approve-application") {
+        await runSimpleAction(
+          "approve-application",
+          `/admin/seller-applications/${encodeURIComponent(
+            application.public_id,
+          )}/approve`,
+          "Seller application approved successfully.",
+        );
+      }
+
+      if (action.kind === "approve-document") {
+        await runSimpleAction(
+          `approve-document-${action.document.public_id}`,
+          `/admin/seller-applications/${encodeURIComponent(
+            application.public_id,
+          )}/documents/${encodeURIComponent(
+            action.document.public_id,
+          )}/approve`,
+          "Seller document approved successfully.",
+        );
+      }
+
+      setConfirmAction(null);
+    } catch {
+      // runSimpleAction already exposes the error message.
+    }
   }
 
   function openTextAction(
@@ -998,6 +1073,109 @@ export default function AdminSellerReviewPage() {
     } finally {
       setBusyAction(null);
     }
+  }
+
+  async function handlePreviewDocument(
+    document: SellerDocument,
+  ) {
+    if (!application) {
+      return;
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+
+    setPreviewDocument(document);
+    setPreviewMimeType("");
+    setPreviewLoading(true);
+    setErrorMessage("");
+
+    try {
+      const token = getToken();
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seller-applications/${encodeURIComponent(
+          application.public_id,
+        )}/documents/${encodeURIComponent(
+          document.public_id,
+        )}/download`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "*/*",
+            ...(token
+              ? {
+                  Authorization:
+                    `Bearer ${token}`,
+                }
+              : {}),
+          },
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        let message =
+          "The document could not be previewed.";
+
+        try {
+          const payload =
+            (await response.json()) as
+              ApiEnvelope<unknown>;
+
+          message =
+            payload.message ??
+            message;
+        } catch {
+          // Keep fallback.
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+
+      const mimeType =
+        blob.type ||
+        document.mime_type ||
+        "";
+
+      const objectUrl =
+        URL.createObjectURL(blob);
+
+      setPreviewMimeType(
+        mimeType,
+      );
+
+      setPreviewUrl(
+        objectUrl,
+      );
+    } catch (error) {
+      setPreviewDocument(null);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The document could not be previewed.",
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  function closePreview() {
+    if (previewUrl) {
+      URL.revokeObjectURL(
+        previewUrl,
+      );
+    }
+
+    setPreviewUrl(null);
+    setPreviewMimeType("");
+    setPreviewDocument(null);
+    setPreviewLoading(false);
   }
 
   async function handleDownloadDocument(
@@ -1206,8 +1384,8 @@ export default function AdminSellerReviewPage() {
             {canStartReview ? (
               <button
                 type="button"
-                onClick={() =>
-                  void handleStartReview()
+                onClick={
+                  requestStartReview
                 }
                 disabled={
                   busyAction !== null
@@ -1345,19 +1523,25 @@ export default function AdminSellerReviewPage() {
                           document.status,
                         );
 
+                      /*
+                       * Backend only allows administration to approve
+                       * a successfully scanned CLEAN document.
+                       */
                       const canApprove =
                         canReviewDocuments &&
-                        ![
-                          "approved",
-                          "infected",
-                          "scan_failed",
-                          "expired",
-                        ].includes(status);
+                        status === "clean";
 
+                      /*
+                       * Backend rejection currently accepts CLEAN or
+                       * APPROVED documents. Quarantined/pending-scan
+                       * documents must finish scanning first.
+                       */
                       const canReject =
                         canReviewDocuments &&
-                        status !==
-                          "approved";
+                        [
+                          "clean",
+                          "approved",
+                        ].includes(status);
 
                       return (
                         <div
@@ -1445,6 +1629,30 @@ export default function AdminSellerReviewPage() {
                               <button
                                 type="button"
                                 onClick={() =>
+                                  void handlePreviewDocument(
+                                    document,
+                                  )
+                                }
+                                disabled={
+                                  previewLoading &&
+                                  previewDocument?.public_id ===
+                                    document.public_id
+                                }
+                                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                              >
+                                {previewLoading &&
+                                previewDocument?.public_id ===
+                                  document.public_id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" />
+                                )}
+                                Preview
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
                                   void handleDownloadDocument(
                                     document,
                                   )
@@ -1468,7 +1676,7 @@ export default function AdminSellerReviewPage() {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    void handleApproveDocument(
+                                    requestApproveDocument(
                                       document,
                                     )
                                   }
@@ -1506,6 +1714,17 @@ export default function AdminSellerReviewPage() {
                                   <XCircle className="h-3.5 w-3.5" />
                                   Reject
                                 </button>
+                              ) : null}
+                              {!canApprove &&
+                              !canReject &&
+                              [
+                                "quarantined",
+                                "pending_scan",
+                              ].includes(status) ? (
+                                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-500">
+                                  <Clock3 className="h-3.5 w-3.5" />
+                                  Waiting for scan
+                                </span>
                               ) : null}
                             </div>
                           </div>
@@ -1764,8 +1983,8 @@ export default function AdminSellerReviewPage() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        void handleApproveApplication()
+                      onClick={
+                        requestApproveApplication
                       }
                       disabled={
                         busyAction !== null
@@ -1824,6 +2043,188 @@ export default function AdminSellerReviewPage() {
           </aside>
         </div>
       </div>
+
+      {confirmAction ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                  {confirmAction.kind ===
+                  "start-review" ? (
+                    <FileCheck2 className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-base font-semibold text-slate-950">
+                    {confirmAction.title}
+                  </h3>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    {confirmAction.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-4">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmAction(null)
+                }
+                disabled={
+                  busyAction !== null
+                }
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void submitConfirmAction()
+                }
+                disabled={
+                  busyAction !== null
+                }
+                className={[
+                  "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white transition disabled:opacity-50",
+                  confirmAction.kind ===
+                  "start-review"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-emerald-600 hover:bg-emerald-700",
+                ].join(" ")}
+              >
+                {busyAction !== null ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : confirmAction.kind ===
+                  "start-review" ? (
+                  <FileCheck2 className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+
+                {confirmAction.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewDocument ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 shrink-0 text-blue-600" />
+
+                  <h3 className="truncate text-sm font-semibold text-slate-950">
+                    {previewDocument.original_name}
+                  </h3>
+                </div>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {documentTypeLabel(
+                    previewDocument.document_type,
+                  )}
+                  {" · "}
+                  {formatBytes(
+                    previewDocument.size_bytes,
+                  )}
+                </p>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleDownloadDocument(
+                      previewDocument,
+                    )
+                  }
+                  disabled={
+                    downloadingId ===
+                    previewDocument.public_id
+                  }
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                  aria-label="Close preview"
+                >
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 bg-slate-100 p-3">
+              {previewLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-600" />
+                    <p className="text-sm text-slate-500">
+                      Loading document preview...
+                    </p>
+                  </div>
+                </div>
+              ) : previewUrl &&
+                previewMimeType.startsWith(
+                  "image/",
+                ) ? (
+                <div className="flex h-full items-center justify-center overflow-auto rounded-xl bg-slate-900/5 p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt={
+                      previewDocument.original_name
+                    }
+                    className="max-h-full max-w-full rounded-lg object-contain shadow-lg"
+                  />
+                </div>
+              ) : previewUrl &&
+                (previewMimeType ===
+                  "application/pdf" ||
+                  previewDocument.original_name
+                    .toLowerCase()
+                    .endsWith(".pdf")) ? (
+                <iframe
+                  src={previewUrl}
+                  title={
+                    previewDocument.original_name
+                  }
+                  className="h-full w-full rounded-xl border border-slate-200 bg-white"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                    <FileText className="mx-auto h-9 w-9 text-slate-400" />
+
+                    <p className="mt-3 text-sm font-semibold text-slate-800">
+                      Preview is not available for this file type.
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      You can still download the original document securely.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {actionKind ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
