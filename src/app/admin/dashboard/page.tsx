@@ -1,4 +1,1 @@
-export {
-  default,
-  metadata,
-} from "../../seller/dashboard/page";
+export { default } from "../page";
