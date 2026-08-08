@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   FormEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -30,6 +31,30 @@ const API_BASE_URL = (
   "https://rushpi.asyncafrica.com/api"
 ).replace(/\/+$/, "");
 
+type CategoryParent = {
+  public_id: string;
+  name: string;
+  slug: string;
+};
+
+type Category = {
+  public_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  is_active: boolean;
+  sort_order: number;
+  parent?: CategoryParent | null;
+};
+
+type BrandCategory = {
+  public_id: string;
+  name: string;
+  slug: string;
+  is_active?: boolean;
+  sort_order?: number;
+};
+
 type Brand = {
   public_id: string;
   name: string;
@@ -40,6 +65,7 @@ type Brand = {
   is_active: boolean;
   sort_order: number;
   products_count?: number;
+  categories?: BrandCategory[];
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -69,6 +95,7 @@ type BrandForm = {
   website_url: string;
   is_active: boolean;
   sort_order: string;
+  category_public_ids: string[];
 };
 
 type BrandStatusFilter =
@@ -92,6 +119,7 @@ const EMPTY_FORM: BrandForm = {
   website_url: "",
   is_active: true,
   sort_order: "0",
+  category_public_ids: [],
 };
 
 function getToken(): string | null {
@@ -166,14 +194,12 @@ async function apiRequest<T>(
         Accept: "application/json",
         ...(init.body
           ? {
-              "Content-Type":
-                "application/json",
+              "Content-Type": "application/json",
             }
           : {}),
         ...(token
           ? {
-              Authorization:
-                `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             }
           : {}),
         ...(init.headers ?? {}),
@@ -334,11 +360,19 @@ export default function AdminBrandsPage() {
   const [brands, setBrands] =
     useState<Brand[]>([]);
 
+  const [categories, setCategories] =
+    useState<Category[]>([]);
+
   const [meta, setMeta] =
     useState<PaginationMeta>({});
 
   const [loading, setLoading] =
     useState(true);
+
+  const [
+    categoriesLoading,
+    setCategoriesLoading,
+  ] = useState(false);
 
   const [submitting, setSubmitting] =
     useState(false);
@@ -358,6 +392,11 @@ export default function AdminBrandsPage() {
 
   const [search, setSearch] =
     useState("");
+
+  const [
+    categorySearch,
+    setCategorySearch,
+  ] = useState("");
 
   const [
     activeFilter,
@@ -399,6 +438,36 @@ export default function AdminBrandsPage() {
     actionMenu,
     setActionMenu,
   ] = useState<string | null>(null);
+
+  const loadCategories =
+    useCallback(async () => {
+      setCategoriesLoading(true);
+
+      try {
+        const payload =
+          await apiRequest<
+            ApiEnvelope<Category[]>
+          >(
+            "/admin/categories?per_page=100&is_active=1&sort_by=sort_order&sort_direction=asc",
+          );
+
+        setCategories(
+          extractArray<Category>(
+            payload,
+          ),
+        );
+      } catch (error) {
+        setCategories([]);
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Categories could not be loaded.",
+        );
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }, []);
 
   const loadBrands = useCallback(
     async (
@@ -501,6 +570,10 @@ export default function AdminBrandsPage() {
   );
 
   useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
     const timeout =
       window.setTimeout(
         () => {
@@ -555,9 +628,38 @@ export default function AdminBrandsPage() {
       [brands],
     );
 
+  const filteredCategories =
+    useMemo(() => {
+      const term =
+        categorySearch
+          .trim()
+          .toLowerCase();
+
+      if (!term) {
+        return categories;
+      }
+
+      return categories.filter(
+        (category) =>
+          category.name
+            .toLowerCase()
+            .includes(term) ||
+          category.slug
+            .toLowerCase()
+            .includes(term) ||
+          category.parent?.name
+            ?.toLowerCase()
+            .includes(term),
+      );
+    }, [
+      categories,
+      categorySearch,
+    ]);
+
   function openCreateModal() {
     setEditingBrand(null);
     setForm(EMPTY_FORM);
+    setCategorySearch("");
     setErrorMessage("");
     setSuccessMessage("");
     setFormOpen(true);
@@ -582,8 +684,14 @@ export default function AdminBrandsPage() {
       sort_order: String(
         brand.sort_order ?? 0,
       ),
+      category_public_ids:
+        (brand.categories ?? []).map(
+          (category) =>
+            category.public_id,
+        ),
     });
 
+    setCategorySearch("");
     setActionMenu(null);
     setErrorMessage("");
     setSuccessMessage("");
@@ -598,6 +706,32 @@ export default function AdminBrandsPage() {
     setFormOpen(false);
     setEditingBrand(null);
     setForm(EMPTY_FORM);
+    setCategorySearch("");
+  }
+
+  function toggleCategory(
+    publicId: string,
+  ) {
+    setForm((current) => {
+      const exists =
+        current.category_public_ids.includes(
+          publicId,
+        );
+
+      return {
+        ...current,
+        category_public_ids:
+          exists
+            ? current.category_public_ids.filter(
+                (item) =>
+                  item !== publicId,
+              )
+            : [
+                ...current.category_public_ids,
+                publicId,
+              ],
+      };
+    });
   }
 
   async function submitBrand(
@@ -608,6 +742,16 @@ export default function AdminBrandsPage() {
     if (!form.name.trim()) {
       setErrorMessage(
         "Brand name is required.",
+      );
+      return;
+    }
+
+    if (
+      form.category_public_ids.length ===
+      0
+    ) {
+      setErrorMessage(
+        "Select at least one saved category for this brand.",
       );
       return;
     }
@@ -637,6 +781,8 @@ export default function AdminBrandsPage() {
           Number(
             form.sort_order,
           ) || 0,
+        category_public_ids:
+          form.category_public_ids,
       };
 
       if (editingBrand) {
@@ -671,7 +817,10 @@ export default function AdminBrandsPage() {
         );
       }
 
-      closeFormModal();
+      setFormOpen(false);
+      setEditingBrand(null);
+      setForm(EMPTY_FORM);
+      setCategorySearch("");
 
       await loadBrands(
         page,
@@ -744,27 +893,6 @@ export default function AdminBrandsPage() {
     }
   }
 
-  function changeStatusFilter(
-    value: BrandStatusFilter,
-  ) {
-    setPage(1);
-    setActiveFilter(value);
-  }
-
-  function changeSortBy(
-    value: BrandSortField,
-  ) {
-    setPage(1);
-    setSortBy(value);
-  }
-
-  function changeSortDirection(
-    value: SortDirection,
-  ) {
-    setPage(1);
-    setSortDirection(value);
-  }
-
   const currentPage =
     meta.current_page ?? page;
 
@@ -776,7 +904,6 @@ export default function AdminBrandsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
@@ -789,31 +916,33 @@ export default function AdminBrandsPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Manage reusable marketplace brands such as Apple,
-            Samsung, Nike, Adidas, local manufacturers, and other
-            product brands. Brands are shared across departments
-            and categories.
+            Create marketplace brands and assign them to categories already saved in RushPi.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              void loadCategories();
               void loadBrands(
                 page,
                 search,
                 activeFilter,
                 sortBy,
                 sortDirection,
-              )
+              );
+            }}
+            disabled={
+              loading ||
+              categoriesLoading
             }
-            disabled={loading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
               className={`h-4 w-4 ${
-                loading
+                loading ||
+                categoriesLoading
                   ? "animate-spin"
                   : ""
               }`}
@@ -832,7 +961,6 @@ export default function AdminBrandsPage() {
         </div>
       </div>
 
-      {/* Messages */}
       {errorMessage ? (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -845,7 +973,6 @@ export default function AdminBrandsPage() {
               setErrorMessage("")
             }
             className="rounded-lg p-1 hover:bg-red-100"
-            aria-label="Dismiss error"
           >
             <X className="h-4 w-4" />
           </button>
@@ -864,14 +991,12 @@ export default function AdminBrandsPage() {
               setSuccessMessage("")
             }
             className="rounded-lg p-1 hover:bg-emerald-100"
-            aria-label="Dismiss message"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       ) : null}
 
-      {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-3">
         <SummaryCard
           label="Total brands"
@@ -892,7 +1017,6 @@ export default function AdminBrandsPage() {
         />
       </div>
 
-      {/* Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 xl:grid-cols-[minmax(260px,1fr)_180px_180px_150px]">
           <label className="relative block">
@@ -913,12 +1037,13 @@ export default function AdminBrandsPage() {
 
           <select
             value={activeFilter}
-            onChange={(event) =>
-              changeStatusFilter(
+            onChange={(event) => {
+              setPage(1);
+              setActiveFilter(
                 event.target
                   .value as BrandStatusFilter,
-              )
-            }
+              );
+            }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-slate-400"
           >
             <option value="all">
@@ -934,12 +1059,13 @@ export default function AdminBrandsPage() {
 
           <select
             value={sortBy}
-            onChange={(event) =>
-              changeSortBy(
+            onChange={(event) => {
+              setPage(1);
+              setSortBy(
                 event.target
                   .value as BrandSortField,
-              )
-            }
+              );
+            }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-slate-400"
           >
             <option value="sort_order">
@@ -958,12 +1084,13 @@ export default function AdminBrandsPage() {
 
           <select
             value={sortDirection}
-            onChange={(event) =>
-              changeSortDirection(
+            onChange={(event) => {
+              setPage(1);
+              setSortDirection(
                 event.target
                   .value as SortDirection,
-              )
-            }
+              );
+            }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-slate-400"
           >
             <option value="asc">
@@ -976,7 +1103,6 @@ export default function AdminBrandsPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -986,13 +1112,13 @@ export default function AdminBrandsPage() {
                   Brand
                 </TableHead>
                 <TableHead>
+                  Categories
+                </TableHead>
+                <TableHead>
                   Website
                 </TableHead>
                 <TableHead>
                   Products
-                </TableHead>
-                <TableHead>
-                  Sort
                 </TableHead>
                 <TableHead>
                   Status
@@ -1035,7 +1161,7 @@ export default function AdminBrandsPage() {
                       </h3>
 
                       <p className="mt-1 text-sm text-slate-500">
-                        Create the first marketplace brand or adjust your search filters.
+                        Create the first marketplace brand or adjust your filters.
                       </p>
 
                       <button
@@ -1084,7 +1210,7 @@ export default function AdminBrandsPage() {
                               {brand.name}
                             </div>
 
-                            <div className="mt-0.5 max-w-[320px] truncate text-xs text-slate-500">
+                            <div className="mt-0.5 max-w-[280px] truncate text-xs text-slate-500">
                               {brand.description ||
                                 brand.slug}
                             </div>
@@ -1094,6 +1220,15 @@ export default function AdminBrandsPage() {
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <BrandCategories
+                          categories={
+                            brand.categories ??
+                            []
+                          }
+                        />
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600">
@@ -1123,11 +1258,6 @@ export default function AdminBrandsPage() {
                           0}
                       </td>
 
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {brand.sort_order ??
-                          0}
-                      </td>
-
                       <td className="px-6 py-4">
                         <StatusBadge
                           active={
@@ -1154,7 +1284,6 @@ export default function AdminBrandsPage() {
                             )
                           }
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
-                          aria-label={`Actions for ${brand.name}`}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
@@ -1201,7 +1330,6 @@ export default function AdminBrandsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="text-sm text-slate-500">
             {meta.total !== undefined
@@ -1259,10 +1387,9 @@ export default function AdminBrandsPage() {
         </div>
       </div>
 
-      {/* Create/Edit modal */}
       {formOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-200 bg-white px-6 py-5">
               <div>
                 <h2 className="text-xl font-semibold text-slate-950">
@@ -1272,7 +1399,7 @@ export default function AdminBrandsPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Brands are reusable across the entire marketplace.
+                  Select one or more categories already saved in the marketplace.
                 </p>
               </div>
 
@@ -1281,7 +1408,6 @@ export default function AdminBrandsPage() {
                 onClick={closeFormModal}
                 disabled={submitting}
                 className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
-                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1322,7 +1448,7 @@ export default function AdminBrandsPage() {
 
                 <FormField
                   label="Slug"
-                  hint="Used in clean URLs. Leave blank to let the API generate it."
+                  hint="Leave blank to let the API generate it."
                 >
                   <input
                     value={form.slug}
@@ -1345,6 +1471,159 @@ export default function AdminBrandsPage() {
               </div>
 
               <FormField
+                label="Categories"
+                required
+                hint="Choose from categories already saved in RushPi. One brand may belong to several categories."
+              >
+                <div className="rounded-2xl border border-slate-200 bg-white">
+                  <div className="border-b border-slate-200 p-3">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                      <input
+                        value={
+                          categorySearch
+                        }
+                        onChange={(event) =>
+                          setCategorySearch(
+                            event.target
+                              .value,
+                          )
+                        }
+                        placeholder="Search saved categories..."
+                        className="form-input pl-10"
+                      />
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-500">
+                      {
+                        form
+                          .category_public_ids
+                          .length
+                      }{" "}
+                      categor
+                      {form
+                        .category_public_ids
+                        .length === 1
+                        ? "y"
+                        : "ies"}{" "}
+                      selected
+                    </div>
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto p-2">
+                    {categoriesLoading ? (
+                      <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading saved categories...
+                      </div>
+                    ) : filteredCategories.length ===
+                      0 ? (
+                      <div className="px-4 py-10 text-center text-sm text-slate-500">
+                        No saved category matches your search.
+                      </div>
+                    ) : (
+                      filteredCategories.map(
+                        (category) => {
+                          const checked =
+                            form.category_public_ids.includes(
+                              category.public_id,
+                            );
+
+                          return (
+                            <label
+                              key={
+                                category.public_id
+                              }
+                              className={`flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 transition ${
+                                checked
+                                  ? "bg-slate-100"
+                                  : "hover:bg-slate-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  checked
+                                }
+                                onChange={() =>
+                                  toggleCategory(
+                                    category.public_id,
+                                  )
+                                }
+                                className="mt-1 h-4 w-4 rounded border-slate-300"
+                              />
+
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-slate-900">
+                                  {
+                                    category.name
+                                  }
+                                </div>
+
+                                <div className="mt-0.5 text-xs text-slate-500">
+                                  {category.parent
+                                    ? `${category.parent.name} → `
+                                    : ""}
+                                  {
+                                    category.slug
+                                  }
+                                </div>
+                              </div>
+
+                              {checked ? (
+                                <span className="rounded-full bg-slate-950 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                  Selected
+                                </span>
+                              ) : null}
+                            </label>
+                          );
+                        },
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {form.category_public_ids
+                  .length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {form.category_public_ids.map(
+                      (publicId) => {
+                        const category =
+                          categories.find(
+                            (item) =>
+                              item.public_id ===
+                              publicId,
+                          );
+
+                        if (!category) {
+                          return null;
+                        }
+
+                        return (
+                          <button
+                            key={publicId}
+                            type="button"
+                            onClick={() =>
+                              toggleCategory(
+                                publicId,
+                              )
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                          >
+                            {
+                              category.name
+                            }
+                            <X className="h-3 w-3" />
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                ) : null}
+              </FormField>
+
+              <FormField
                 label="Description"
               >
                 <textarea
@@ -1362,7 +1641,7 @@ export default function AdminBrandsPage() {
                     )
                   }
                   rows={4}
-                  placeholder="Short description of this marketplace brand..."
+                  placeholder="Short description of this brand..."
                   className="form-input min-h-28 resize-y py-3"
                 />
               </FormField>
@@ -1370,7 +1649,7 @@ export default function AdminBrandsPage() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <FormField
                   label="Logo path / URL"
-                  hint="Full URL or storage path. File upload can be added later."
+                  hint="Full URL or storage path."
                 >
                   <div className="relative">
                     <ImageIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -1449,7 +1728,7 @@ export default function AdminBrandsPage() {
                     Marketplace status
                   </div>
 
-                  <label className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-slate-200 px-4">
+                  <label className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
                     <div>
                       <div className="text-sm font-medium text-slate-800">
                         Active
@@ -1519,7 +1798,10 @@ export default function AdminBrandsPage() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting ||
+                    categoriesLoading
+                  }
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
@@ -1538,7 +1820,6 @@ export default function AdminBrandsPage() {
         </div>
       ) : null}
 
-      {/* Delete modal */}
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
@@ -1557,22 +1838,6 @@ export default function AdminBrandsPage() {
               </span>
               . A brand with assigned products cannot be deleted.
             </p>
-
-            {(deleteTarget.products_count ??
-              0) > 0 ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                This brand currently has{" "}
-                {
-                  deleteTarget.products_count
-                }{" "}
-                product
-                {deleteTarget.products_count ===
-                1
-                  ? ""
-                  : "s"}{" "}
-                assigned to it. The backend will block deletion.
-              </div>
-            ) : null}
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -1636,6 +1901,41 @@ export default function AdminBrandsPage() {
   );
 }
 
+function BrandCategories({
+  categories,
+}: {
+  categories: BrandCategory[];
+}) {
+  if (categories.length === 0) {
+    return (
+      <span className="text-sm text-slate-400">
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex max-w-[280px] flex-wrap gap-1.5">
+      {categories
+        .slice(0, 3)
+        .map((category) => (
+          <span
+            key={category.public_id}
+            className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+          >
+            {category.name}
+          </span>
+        ))}
+
+      {categories.length > 3 ? (
+        <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">
+          +{categories.length - 3}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function SummaryCard({
   label,
   value,
@@ -1682,7 +1982,7 @@ function TableHead({
   children,
   className = "",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -1704,12 +2004,13 @@ function FormField({
   label: string;
   required?: boolean;
   hint?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
       <div className="mb-2 flex items-center gap-1 text-sm font-medium text-slate-700">
         {label}
+
         {required ? (
           <span className="text-red-500">
             *
