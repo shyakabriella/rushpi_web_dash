@@ -755,9 +755,7 @@ export default function SellerVerificationWorkspace() {
         refresh = false,
       ) => {
         if (refresh) {
-          setRefreshing(
-            true,
-          );
+          setRefreshing(true);
         } else {
           setLoading(true);
         }
@@ -766,60 +764,12 @@ export default function SellerVerificationWorkspace() {
 
         try {
           /*
-           * Load document requirements independently from the seller
-           * application so the Document type selector is always usable.
+           * Load the seller profile FIRST.
+           *
+           * A failure of the optional document-requirements endpoint
+           * must never make an existing seller appear as if no profile
+           * exists.
            */
-          const requirementsResponse =
-            await apiRequest<
-              SellerDocumentRequirement[]
-            >(
-              "/seller/document-requirements",
-            );
-
-          const activeRequirements =
-            Array.isArray(
-              requirementsResponse.data,
-            )
-              ? requirementsResponse.data
-                  .filter(
-                    (item) =>
-                      item.is_active !== false,
-                  )
-                  .sort(
-                    (a, b) =>
-                      Number(a.sort_order ?? 0) -
-                      Number(b.sort_order ?? 0),
-                  )
-              : [];
-
-          setRequirements(
-            activeRequirements,
-          );
-
-          setUploadForm(
-            (current) => {
-              const currentStillExists =
-                activeRequirements.some(
-                  (item) =>
-                    item.key ===
-                    current.documentType,
-                );
-
-              if (
-                currentStillExists
-              ) {
-                return current;
-              }
-
-              return {
-                ...current,
-                documentType:
-                  activeRequirements[0]?.key ??
-                  "",
-              };
-            },
-          );
-
           const profilesResponse =
             await apiRequest<
               SellerProfile[]
@@ -837,28 +787,16 @@ export default function SellerVerificationWorkspace() {
           const basicProfile =
             profiles[0];
 
-          if (
-            !basicProfile
-          ) {
-            setProfile(
-              null,
-            );
-
-            setApplication(
-              null,
-            );
-
-            setDocuments(
-              [],
-            );
-
+          if (!basicProfile) {
+            setProfile(null);
+            setApplication(null);
+            setDocuments([]);
+            setRequirements([]);
             return;
           }
 
           /*
-           * Read the complete profile because
-           * show() contains application/review
-           * relationships.
+           * Load the complete profile including applications/reviews.
            */
           const detailResponse =
             await apiRequest<SellerProfile>(
@@ -889,11 +827,61 @@ export default function SellerVerificationWorkspace() {
             currentApplication,
           );
 
-          if (
-            !currentApplication
-          ) {
-            setDocuments(
-              [],
+          /*
+           * Requirements are useful but must not block the seller profile.
+           */
+          let activeRequirements:
+            SellerDocumentRequirement[] = [];
+
+          try {
+            const requirementsResponse =
+              await apiRequest<
+                SellerDocumentRequirement[]
+              >(
+                "/seller/document-requirements",
+              );
+
+            activeRequirements =
+              Array.isArray(
+                requirementsResponse.data,
+              )
+                ? requirementsResponse.data
+                    .filter(
+                      (item) =>
+                        item.is_active !== false,
+                    )
+                    .sort(
+                      (a, b) =>
+                        Number(a.sort_order ?? 0) -
+                        Number(b.sort_order ?? 0),
+                    )
+                : [];
+          } catch {
+            /*
+             * Non-fatal. The documents endpoint may also return
+             * requirements at the top level.
+             */
+          }
+
+          if (!currentApplication) {
+            setDocuments([]);
+            setRequirements(
+              activeRequirements,
+            );
+
+            setUploadForm(
+              (current) => ({
+                ...current,
+                documentType:
+                  activeRequirements.some(
+                    (item) =>
+                      item.key ===
+                      current.documentType,
+                  )
+                    ? current.documentType
+                    : activeRequirements[0]?.key ??
+                      "",
+              }),
             );
 
             return;
@@ -919,6 +907,51 @@ export default function SellerVerificationWorkspace() {
                   [],
           );
 
+          /*
+           * Fallback to requirements returned by documents endpoint.
+           */
+          if (
+            activeRequirements.length === 0 &&
+            Array.isArray(
+              documentsResponse.requirements,
+            )
+          ) {
+            activeRequirements =
+              documentsResponse.requirements
+                .filter(
+                  (item) =>
+                    item.is_active !== false,
+                )
+                .sort(
+                  (a, b) =>
+                    Number(a.sort_order ?? 0) -
+                    Number(b.sort_order ?? 0),
+                );
+          }
+
+          setRequirements(
+            activeRequirements,
+          );
+
+          setUploadForm(
+            (current) => {
+              const currentStillExists =
+                activeRequirements.some(
+                  (item) =>
+                    item.key ===
+                    current.documentType,
+                );
+
+              return {
+                ...current,
+                documentType:
+                  currentStillExists
+                    ? current.documentType
+                    : activeRequirements[0]?.key ??
+                      "",
+              };
+            },
+          );
         } catch (error) {
           setErrorMessage(
             error instanceof Error
@@ -927,10 +960,7 @@ export default function SellerVerificationWorkspace() {
           );
         } finally {
           setLoading(false);
-
-          setRefreshing(
-            false,
-          );
+          setRefreshing(false);
         }
       },
       [],
