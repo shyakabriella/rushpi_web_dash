@@ -195,6 +195,13 @@ type ConfirmAction =
       confirmLabel: string;
       document: SellerDocument;
     }
+  | {
+      kind: "scan-document";
+      title: string;
+      description: string;
+      confirmLabel: string;
+      document: SellerDocument;
+    }
   | null;
 
 function getToken(): string | null {
@@ -842,6 +849,22 @@ export default function AdminSellerReviewPage() {
     });
   }
 
+  function requestScanDocument(
+    document: SellerDocument,
+  ) {
+    if (!application) {
+      return;
+    }
+
+    setConfirmAction({
+      kind: "scan-document",
+      title: "Scan document?",
+      description: `Run the security scan for "${document.original_name}". The result will mark it Clean, Infected, or Scan Failed.`,
+      confirmLabel: "Scan document",
+      document,
+    });
+  }
+
   async function submitConfirmAction() {
     if (!application || !confirmAction) {
       return;
@@ -879,6 +902,18 @@ export default function AdminSellerReviewPage() {
             action.document.public_id,
           )}/approve`,
           "Seller document approved successfully.",
+        );
+      }
+
+      if (action.kind === "scan-document") {
+        await runSimpleAction(
+          `scan-document-${action.document.public_id}`,
+          `/admin/seller-applications/${encodeURIComponent(
+            application.public_id,
+          )}/documents/${encodeURIComponent(
+            action.document.public_id,
+          )}/scan`,
+          "Seller document security scan completed.",
         );
       }
 
@@ -1543,6 +1578,13 @@ export default function AdminSellerReviewPage() {
                           "approved",
                         ].includes(status);
 
+                      const canScan =
+                        canReviewDocuments &&
+                        [
+                          "quarantined",
+                          "scan_failed",
+                        ].includes(status);
+
                       return (
                         <div
                           key={
@@ -1715,15 +1757,34 @@ export default function AdminSellerReviewPage() {
                                   Reject
                                 </button>
                               ) : null}
-                              {!canApprove &&
-                              !canReject &&
-                              [
-                                "quarantined",
-                                "pending_scan",
-                              ].includes(status) ? (
-                                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-500">
-                                  <Clock3 className="h-3.5 w-3.5" />
-                                  Waiting for scan
+                              {canScan ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    requestScanDocument(
+                                      document,
+                                    )
+                                  }
+                                  disabled={
+                                    busyAction !== null
+                                  }
+                                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+                                >
+                                  {busyAction ===
+                                  `scan-document-${document.public_id}` ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                  )}
+                                  Scan
+                                </button>
+                              ) : null}
+
+                              {status ===
+                              "pending_scan" ? (
+                                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Scanning...
                                 </span>
                               ) : null}
                             </div>
@@ -2053,6 +2114,9 @@ export default function AdminSellerReviewPage() {
                   {confirmAction.kind ===
                   "start-review" ? (
                     <FileCheck2 className="h-5 w-5 text-blue-600" />
+                  ) : confirmAction.kind ===
+                    "scan-document" ? (
+                    <ShieldCheck className="h-5 w-5 text-violet-600" />
                   ) : (
                     <BadgeCheck className="h-5 w-5 text-emerald-600" />
                   )}
@@ -2097,7 +2161,10 @@ export default function AdminSellerReviewPage() {
                   confirmAction.kind ===
                   "start-review"
                     ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-emerald-600 hover:bg-emerald-700",
+                    : confirmAction.kind ===
+                        "scan-document"
+                      ? "bg-violet-600 hover:bg-violet-700"
+                      : "bg-emerald-600 hover:bg-emerald-700",
                 ].join(" ")}
               >
                 {busyAction !== null ? (
@@ -2105,6 +2172,9 @@ export default function AdminSellerReviewPage() {
                 ) : confirmAction.kind ===
                   "start-review" ? (
                   <FileCheck2 className="h-4 w-4" />
+                ) : confirmAction.kind ===
+                    "scan-document" ? (
+                  <ShieldCheck className="h-4 w-4" />
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
