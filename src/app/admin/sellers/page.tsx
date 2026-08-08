@@ -46,17 +46,12 @@ type ApplicationStatus =
   | "rejected"
   | string;
 
-type SellerApplication = {
+type SellerDocument = {
   id?: number;
-  public_id: string;
-  version?: number;
-  status: ApplicationStatus;
-  submitted_at?: string | null;
-  review_started_at?: string | null;
-  decided_at?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  documents_count?: number;
+  public_id?: string;
+  document_type?: string;
+  original_name?: string;
+  status?: string;
 };
 
 type SellerMemberUser = {
@@ -88,9 +83,32 @@ type SellerProfile = {
   approved_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  applications?: SellerApplication[];
-  latest_application?: SellerApplication | null;
   members?: SellerMember[];
+};
+
+type SellerApplication = {
+  id?: number;
+  public_id: string;
+  seller_profile_id?: number;
+  version?: number;
+  status: ApplicationStatus;
+  information_request?: string | null;
+  rejection_reason?: string | null;
+  submitted_at?: string | null;
+  review_started_at?: string | null;
+  decided_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  documents_count?: number;
+  documents?: SellerDocument[];
+
+  /*
+   * Laravel normally serializes sellerProfile as seller_profile.
+   * sellerProfile is kept as a fallback in case an API Resource
+   * uses camelCase.
+   */
+  seller_profile?: SellerProfile | null;
+  sellerProfile?: SellerProfile | null;
 };
 
 type PaginationMeta = {
@@ -206,7 +224,9 @@ async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<ApiEnvelope<T>> {
-  const headers = new Headers(options.headers);
+  const headers = new Headers(
+    options.headers,
+  );
 
   headers.set(
     "Accept",
@@ -257,76 +277,91 @@ async function apiRequest<T>(
   return payload;
 }
 
-function latestApplication(
-  seller: SellerProfile,
-): SellerApplication | null {
-  if (seller.latest_application) {
-    return seller.latest_application;
+/**
+ * Supports:
+ *
+ * {
+ *   data: [...]
+ * }
+ *
+ * and Laravel paginator-style:
+ *
+ * {
+ *   data: {
+ *     data: [...]
+ *   }
+ * }
+ */
+function extractApplications(
+  value: unknown,
+): SellerApplication[] {
+  if (Array.isArray(value)) {
+    return value as SellerApplication[];
   }
 
-  const applications = [
-    ...(seller.applications ?? []),
-  ];
+  if (
+    value &&
+    typeof value === "object"
+  ) {
+    const nestedData = (
+      value as {
+        data?: unknown;
+      }
+    ).data;
 
-  if (applications.length === 0) {
-    return null;
-  }
-
-  applications.sort((a, b) => {
-    const versionDifference =
-      Number(b.version ?? 0) -
-      Number(a.version ?? 0);
-
-    if (versionDifference !== 0) {
-      return versionDifference;
+    if (Array.isArray(nestedData)) {
+      return nestedData as SellerApplication[];
     }
+  }
 
-    return (
-      new Date(
-        b.created_at ?? 0,
-      ).getTime() -
-      new Date(
-        a.created_at ?? 0,
-      ).getTime()
-    );
-  });
-
-  return applications[0] ?? null;
+  return [];
 }
 
-function sellerCategory(
-  seller: SellerProfile,
-): SellerFilter {
-  const sellerStatus =
-    normalizeStatus(seller.status);
+function getSellerProfile(
+  application: SellerApplication,
+): SellerProfile | null {
+  return (
+    application.seller_profile ??
+    application.sellerProfile ??
+    null
+  );
+}
 
+function applicationCategory(
+  application: SellerApplication,
+): SellerFilter {
   const applicationStatus =
+    normalizeStatus(application.status);
+
+  const sellerStatus =
     normalizeStatus(
-      latestApplication(seller)?.status,
+      getSellerProfile(application)?.status,
     );
 
   if (
-    sellerStatus === "approved" ||
-    applicationStatus === "approved"
+    applicationStatus === "approved" ||
+    sellerStatus === "approved"
   ) {
     return "approved";
   }
 
   if (
-    sellerStatus === "rejected" ||
-    applicationStatus === "rejected"
+    applicationStatus === "rejected" ||
+    sellerStatus === "rejected"
   ) {
     return "rejected";
   }
 
   /*
-   * A newly submitted application appears under Applied.
-   * Once administration starts reviewing it, it moves to Pending.
+   * Newly submitted applications are shown in Applied.
    */
   if (applicationStatus === "submitted") {
     return "applied";
   }
 
+  /*
+   * Once administration starts the review, it moves to Pending.
+   */
   if (
     [
       "under_review",
@@ -336,6 +371,14 @@ function sellerCategory(
       "pending_verification"
   ) {
     return "pending";
+  }
+
+  /*
+   * If the admin API happens to expose drafts, keep them in Applied
+   * rather than hiding them from the table.
+   */
+  if (applicationStatus === "draft") {
+    return "applied";
   }
 
   return "all";
@@ -405,8 +448,12 @@ function StatusBadge({
 }
 
 function sellerDisplayName(
-  seller: SellerProfile,
+  seller: SellerProfile | null,
 ): string {
+  if (!seller) {
+    return "Seller profile unavailable";
+  }
+
   return (
     seller.trading_name ??
     seller.legal_business_name ??
@@ -415,8 +462,12 @@ function sellerDisplayName(
 }
 
 function sellerOwner(
-  seller: SellerProfile,
+  seller: SellerProfile | null,
 ): SellerMemberUser | null {
+  if (!seller) {
+    return null;
+  }
+
   const owner =
     seller.members?.find(
       (member) =>
@@ -432,7 +483,7 @@ function sellerOwner(
 }
 
 function sellerInitials(
-  seller: SellerProfile,
+  seller: SellerProfile | null,
 ): string {
   const name =
     sellerDisplayName(seller);
@@ -447,11 +498,28 @@ function sellerInitials(
     .join("");
 }
 
+function getDocumentsCount(
+  application: SellerApplication,
+): number {
+  if (
+    typeof application.documents_count ===
+    "number"
+  ) {
+    return application.documents_count;
+  }
+
+  return Array.isArray(
+    application.documents,
+  )
+    ? application.documents.length
+    : 0;
+}
+
 export default function AdminSellersPage() {
   const [
-    sellers,
-    setSellers,
-  ] = useState<SellerProfile[]>([]);
+    applications,
+    setApplications,
+  ] = useState<SellerApplication[]>([]);
 
   const [
     loading,
@@ -478,7 +546,7 @@ export default function AdminSellersPage() {
     setFilter,
   ] = useState<SellerFilter>("all");
 
-  const loadSellers =
+  const loadApplications =
     useCallback(
       async (refresh = false) => {
         if (refresh) {
@@ -490,23 +558,25 @@ export default function AdminSellersPage() {
         setErrorMessage("");
 
         try {
+          /*
+           * Swagger:
+           * GET /admin/seller-applications
+           */
           const response =
-            await apiRequest<
-              SellerProfile[]
-            >("/admin/sellers");
+            await apiRequest<unknown>(
+              "/admin/seller-applications",
+            );
 
-          const loaded = Array.isArray(
-            response.data,
-          )
-            ? response.data
-            : [];
-
-          setSellers(loaded);
+          setApplications(
+            extractApplications(
+              response.data,
+            ),
+          );
         } catch (error) {
           setErrorMessage(
             error instanceof Error
               ? error.message
-              : "Sellers could not be loaded.",
+              : "Seller verification applications could not be loaded.",
           );
         } finally {
           setLoading(false);
@@ -517,21 +587,23 @@ export default function AdminSellersPage() {
     );
 
   useEffect(() => {
-    void loadSellers();
-  }, [loadSellers]);
+    void loadApplications();
+  }, [loadApplications]);
 
   const counts = useMemo(() => {
     const result = {
-      all: sellers.length,
+      all: applications.length,
       applied: 0,
       pending: 0,
       approved: 0,
       rejected: 0,
     };
 
-    for (const seller of sellers) {
+    for (const application of applications) {
       const category =
-        sellerCategory(seller);
+        applicationCategory(
+          application,
+        );
 
       if (category !== "all") {
         result[category] += 1;
@@ -539,17 +611,19 @@ export default function AdminSellersPage() {
     }
 
     return result;
-  }, [sellers]);
+  }, [applications]);
 
-  const visibleSellers =
+  const visibleApplications =
     useMemo(() => {
       const query =
         search.trim().toLowerCase();
 
-      return sellers.filter(
-        (seller) => {
+      return applications.filter(
+        (application) => {
           const category =
-            sellerCategory(seller);
+            applicationCategory(
+              application,
+            );
 
           if (
             filter !== "all" &&
@@ -562,19 +636,25 @@ export default function AdminSellersPage() {
             return true;
           }
 
+          const seller =
+            getSellerProfile(
+              application,
+            );
+
           const owner =
             sellerOwner(seller);
 
           const values = [
-            seller.legal_business_name,
-            seller.trading_name,
-            seller.business_email,
-            seller.business_phone,
-            seller.registration_number,
-            seller.tax_identification_number,
+            seller?.legal_business_name,
+            seller?.trading_name,
+            seller?.business_email,
+            seller?.business_phone,
+            seller?.registration_number,
+            seller?.tax_identification_number,
             owner?.name,
             owner?.email,
             owner?.phone,
+            application.public_id,
           ];
 
           return values.some(
@@ -586,7 +666,7 @@ export default function AdminSellersPage() {
         },
       );
     }, [
-      sellers,
+      applications,
       search,
       filter,
     ]);
@@ -598,7 +678,7 @@ export default function AdminSellersPage() {
   }> = [
     {
       key: "all",
-      label: "All sellers",
+      label: "All applications",
       count: counts.all,
     },
     {
@@ -632,7 +712,7 @@ export default function AdminSellersPage() {
           </div>
 
           <p className="text-sm text-slate-500">
-            Loading sellers...
+            Loading seller applications...
           </p>
         </div>
       </div>
@@ -649,24 +729,25 @@ export default function AdminSellersPage() {
             </div>
 
             <span className="inline-flex h-7 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-semibold text-slate-600">
-              Administration
+              Seller Verification Admin
             </span>
           </div>
 
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-            Sellers
+            Seller applications
           </h1>
 
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-            Review seller applications, verification progress, approvals and
-            rejected businesses from one place.
+            Review seller verification applications submitted to RushPi,
+            including applications waiting for review, approved sellers and
+            rejected applications.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() =>
-            void loadSellers(true)
+            void loadApplications(true)
           }
           disabled={refreshing}
           className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -700,11 +781,13 @@ export default function AdminSellersPage() {
             </span>
             <FileCheck2 className="h-4 w-4 text-slate-400" />
           </div>
+
           <p className="mt-3 text-2xl font-semibold text-slate-950">
             {counts.applied}
           </p>
+
           <p className="mt-1 text-xs text-slate-500">
-            Applications received
+            Newly submitted applications
           </p>
         </div>
 
@@ -715,11 +798,13 @@ export default function AdminSellersPage() {
             </span>
             <Clock3 className="h-4 w-4 text-blue-500" />
           </div>
+
           <p className="mt-3 text-2xl font-semibold text-slate-950">
             {counts.pending}
           </p>
+
           <p className="mt-1 text-xs text-slate-500">
-            Waiting for verification
+            Under administration review
           </p>
         </div>
 
@@ -730,11 +815,13 @@ export default function AdminSellersPage() {
             </span>
             <BadgeCheck className="h-4 w-4 text-emerald-600" />
           </div>
+
           <p className="mt-3 text-2xl font-semibold text-slate-950">
             {counts.approved}
           </p>
+
           <p className="mt-1 text-xs text-slate-500">
-            Verified sellers
+            Approved seller applications
           </p>
         </div>
 
@@ -745,11 +832,13 @@ export default function AdminSellersPage() {
             </span>
             <ShieldAlert className="h-4 w-4 text-red-500" />
           </div>
+
           <p className="mt-3 text-2xl font-semibold text-slate-950">
             {counts.rejected}
           </p>
+
           <p className="mt-1 text-xs text-slate-500">
-            Applications declined
+            Rejected applications
           </p>
         </div>
       </div>
@@ -806,16 +895,17 @@ export default function AdminSellersPage() {
           </div>
         </div>
 
-        {visibleSellers.length === 0 ? (
+        {visibleApplications.length ===
+        0 ? (
           <div className="px-5 py-16 text-center">
             <Store className="mx-auto h-9 w-9 text-slate-300" />
 
             <p className="mt-3 text-sm font-semibold text-slate-700">
-              No sellers found
+              No seller applications found
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
-              No seller matches the selected filter or search.
+              No application matches the selected filter or search.
             </p>
           </div>
         ) : (
@@ -826,47 +916,58 @@ export default function AdminSellersPage() {
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Seller
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Owner / contact
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Seller status
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Application
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Documents
                   </th>
+
                   <th className="whitespace-nowrap px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Applied
                   </th>
+
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
-                {visibleSellers.map(
-                  (seller) => {
-                    const application =
-                      latestApplication(
-                        seller,
+                {visibleApplications.map(
+                  (application) => {
+                    const seller =
+                      getSellerProfile(
+                        application,
                       );
 
                     const owner =
                       sellerOwner(seller);
 
+                    const documentsCount =
+                      getDocumentsCount(
+                        application,
+                      );
+
                     return (
                       <tr
                         key={
-                          seller.public_id
+                          application.public_id
                         }
                         className="transition hover:bg-slate-50/70"
                       >
                         <td className="px-5 py-4">
                           <div className="flex min-w-[220px] items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
-                              {seller.logo ? (
+                              {seller?.logo ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={
@@ -892,11 +993,11 @@ export default function AdminSellersPage() {
                               </p>
 
                               <p className="mt-0.5 truncate text-xs text-slate-500">
-                                {seller.legal_business_name ??
+                                {seller?.legal_business_name ??
                                   "Business name not provided"}
                               </p>
 
-                              {seller.registration_number ? (
+                              {seller?.registration_number ? (
                                 <p className="mt-0.5 text-[11px] text-slate-400">
                                   Reg.{" "}
                                   {
@@ -912,6 +1013,7 @@ export default function AdminSellersPage() {
                           <div className="min-w-[190px]">
                             <div className="flex items-center gap-1.5">
                               <UserRoundCheck className="h-3.5 w-3.5 text-slate-400" />
+
                               <p className="text-xs font-medium text-slate-700">
                                 {owner?.name ??
                                   "Owner not available"}
@@ -919,13 +1021,13 @@ export default function AdminSellersPage() {
                             </div>
 
                             <p className="mt-1 text-xs text-slate-500">
-                              {seller.business_email ??
+                              {seller?.business_email ??
                                 owner?.email ??
                                 "No email"}
                             </p>
 
                             <p className="mt-0.5 text-[11px] text-slate-400">
-                              {seller.business_phone ??
+                              {seller?.business_phone ??
                                 owner?.phone ??
                                 "No phone"}
                             </p>
@@ -933,33 +1035,33 @@ export default function AdminSellersPage() {
                         </td>
 
                         <td className="px-5 py-4">
-                          <StatusBadge
-                            status={
-                              seller.status
-                            }
-                          />
+                          {seller ? (
+                            <StatusBadge
+                              status={
+                                seller.status
+                              }
+                            />
+                          ) : (
+                            <span className="text-xs text-slate-400">
+                              —
+                            </span>
+                          )}
                         </td>
 
                         <td className="px-5 py-4">
-                          {application ? (
-                            <div className="space-y-1">
-                              <StatusBadge
-                                status={
-                                  application.status
-                                }
-                              />
+                          <div className="space-y-1">
+                            <StatusBadge
+                              status={
+                                application.status
+                              }
+                            />
 
-                              <p className="text-[11px] text-slate-400">
-                                Version{" "}
-                                {application.version ??
-                                  1}
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">
-                              No application
-                            </span>
-                          )}
+                            <p className="text-[11px] text-slate-400">
+                              Version{" "}
+                              {application.version ??
+                                1}
+                            </p>
+                          </div>
                         </td>
 
                         <td className="px-5 py-4">
@@ -967,24 +1069,31 @@ export default function AdminSellersPage() {
                             <FileCheck2 className="h-4 w-4 text-slate-400" />
 
                             <span className="text-sm font-semibold text-slate-700">
-                              {application?.documents_count ??
-                                0}
+                              {documentsCount}
                             </span>
                           </div>
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-500">
                           {formatDate(
-                            application?.submitted_at ??
-                              application?.created_at ??
-                              seller.created_at,
+                            application.submitted_at ??
+                              application.created_at,
                           )}
                         </td>
 
                         <td className="px-5 py-4 text-right">
+                          {/*
+                           * IMPORTANT:
+                           *
+                           * The Swagger admin detail endpoint is application based:
+                           * GET /admin/seller-applications/{sellerApplication}
+                           *
+                           * Therefore the URL carries application.public_id,
+                           * not seller.public_id.
+                           */}
                           <Link
                             href={`/admin/sellers/${encodeURIComponent(
-                              seller.public_id,
+                              application.public_id,
                             )}`}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                           >
@@ -1005,10 +1114,11 @@ export default function AdminSellersPage() {
       <div className="flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-2">
           <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+
           <p className="text-xs leading-5 text-blue-700">
-            The Review button opens the seller verification detail page where
-            administration can inspect uploaded documents and make an approval
-            or rejection decision.
+            Applications are loaded directly from the Seller Verification Admin
+            API. Review opens the selected seller application so administration
+            can inspect documents and make a verification decision.
           </p>
         </div>
 
