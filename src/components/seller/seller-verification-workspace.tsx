@@ -846,29 +846,32 @@ export default function SellerVerificationWorkspace() {
       ],
     );
 
-  const allRequiredReady =
-    requiredRequirements.length > 0 &&
-    requiredReadyCount ===
-      requiredRequirements.length;
-
-  const hasBlockedDocument =
-    documents.some((document) =>
-      [
-        "quarantined",
-        "pending_scan",
-        "infected",
-      ].includes(
-        normalizeStatus(
-          document.status,
+  const submitEligibleDocuments =
+    useMemo(
+      () =>
+        documents.filter(
+          (document) =>
+            ![
+              "infected",
+              "rejected",
+              "expired",
+              "deleted",
+            ].includes(
+              normalizeStatus(
+                document.status,
+              ),
+            ),
         ),
-      ),
+      [documents],
     );
+
+  const minimumDocumentsRequired = 2;
 
   const canSubmit = Boolean(
     application &&
       canEditDocuments &&
-      allRequiredReady &&
-      !hasBlockedDocument,
+      submitEligibleDocuments.length >=
+        minimumDocumentsRequired,
   );
 
   const approvedDocuments =
@@ -1391,9 +1394,9 @@ export default function SellerVerificationWorkspace() {
           </h1>
 
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-            Upload every business verification document from the requirement
-            list below. Required documents must be clean or approved before the
-            application can be submitted.
+            Upload at least two business verification documents before
+            submitting your application. RushPi administration may request
+            additional documents during review.
           </p>
         </div>
 
@@ -2301,14 +2304,11 @@ export default function SellerVerificationWorkspace() {
                       : "Submit for verification"}
                 </button>
 
-                {!allRequiredReady ? (
+                {submitEligibleDocuments.length <
+                minimumDocumentsRequired ? (
                   <p className="mt-2 text-center text-[11px] leading-5 text-slate-400">
-                    All required documents must be security-scanned and ready
-                    before submission.
-                  </p>
-                ) : hasBlockedDocument ? (
-                  <p className="mt-2 text-center text-[11px] leading-5 text-slate-400">
-                    Some documents are still waiting for security scanning.
+                    Upload at least {minimumDocumentsRequired} documents before
+                    submitting for verification.
                   </p>
                 ) : null}
               </div>
