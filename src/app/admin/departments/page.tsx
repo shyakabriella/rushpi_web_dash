@@ -101,6 +101,15 @@ type DepartmentForm = {
   sort_order: string;
 };
 
+type RootCategoryForm = {
+  name: string;
+  slug: string;
+  description: string;
+  image_path: string;
+  is_active: boolean;
+  sort_order: string;
+};
+
 type CategorySelection = {
   category_public_id: string;
   sort_order: number;
@@ -109,6 +118,15 @@ type CategorySelection = {
 };
 
 const EMPTY_FORM: DepartmentForm = {
+  name: "",
+  slug: "",
+  description: "",
+  image_path: "",
+  is_active: true,
+  sort_order: "0",
+};
+
+const EMPTY_ROOT_CATEGORY_FORM: RootCategoryForm = {
   name: "",
   slug: "",
   description: "",
@@ -408,6 +426,23 @@ export default function AdminDepartmentsPage() {
   ] = useState<Department | null>(null);
 
   const [
+    categoryCreateDepartment,
+    setCategoryCreateDepartment,
+  ] = useState<Department | null>(null);
+
+  const [
+    categoryCreating,
+    setCategoryCreating,
+  ] = useState(false);
+
+  const [
+    rootCategoryForm,
+    setRootCategoryForm,
+  ] = useState<RootCategoryForm>(
+    EMPTY_ROOT_CATEGORY_FORM,
+  );
+
+  const [
     categorySelections,
     setCategorySelections,
   ] = useState<
@@ -705,7 +740,7 @@ export default function AdminDepartmentsPage() {
         await apiRequest<
           ApiEnvelope<Category[]>
         >(
-          "/admin/categories?per_page=100",
+          "/admin/categories?per_page=100&root_only=1",
         );
 
       setCategories(
@@ -717,6 +752,202 @@ export default function AdminDepartmentsPage() {
       throw error;
     } finally {
       setCategoriesLoading(false);
+    }
+  }
+
+  function openRootCategoryCreator(
+    department: Department,
+  ) {
+    setActionMenu(null);
+    setCategoryModalDepartment(null);
+    setCategorySelections({});
+    setCategoryCreateDepartment(
+      department,
+    );
+    setRootCategoryForm(
+      EMPTY_ROOT_CATEGORY_FORM,
+    );
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function closeRootCategoryCreator() {
+    if (categoryCreating) {
+      return;
+    }
+
+    setCategoryCreateDepartment(null);
+    setRootCategoryForm(
+      EMPTY_ROOT_CATEGORY_FORM,
+    );
+  }
+
+  async function createRootCategory(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (!categoryCreateDepartment) {
+      return;
+    }
+
+    const name =
+      rootCategoryForm.name.trim();
+
+    if (!name) {
+      setErrorMessage(
+        "Category name is required.",
+      );
+      return;
+    }
+
+    setCategoryCreating(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      /*
+       * Step 1:
+       * Create the category as a ROOT category.
+       */
+      const categoryPayload =
+        await apiRequest<
+          ApiEnvelope<Category>
+        >(
+          "/admin/categories",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              parent_id: null,
+              name,
+              slug:
+                rootCategoryForm.slug.trim() ||
+                slugFromName(name),
+              description:
+                rootCategoryForm.description.trim() ||
+                null,
+              image_path:
+                rootCategoryForm.image_path.trim() ||
+                null,
+              is_active:
+                rootCategoryForm.is_active,
+              sort_order:
+                Number(
+                  rootCategoryForm.sort_order,
+                ) || 0,
+            }),
+          },
+        );
+
+      const createdCategory =
+        categoryPayload.data;
+
+      if (!createdCategory?.public_id) {
+        throw new Error(
+          "The category was created but its public ID was not returned.",
+        );
+      }
+
+      /*
+       * Step 2:
+       * Load the department's current assignments so
+       * creating one category never removes the others.
+       */
+      const departmentPayload =
+        await apiRequest<
+          ApiEnvelope<Department>
+        >(
+          `/admin/departments/${encodeURIComponent(
+            categoryCreateDepartment.public_id,
+          )}`,
+        );
+
+      const department =
+        departmentPayload.data;
+
+      if (!department) {
+        throw new Error(
+          "The department could not be reloaded for category assignment.",
+        );
+      }
+
+      const existingSelections =
+        (department.categories ?? []).map(
+          (category) => ({
+            category_public_id:
+              category.public_id,
+            sort_order:
+              category.sort_order ?? 0,
+            is_featured:
+              category.is_featured ?? false,
+            is_active:
+              category.assignment_active ??
+              true,
+          }),
+        );
+
+      existingSelections.push({
+        category_public_id:
+          createdCategory.public_id,
+        sort_order:
+          Number(
+            rootCategoryForm.sort_order,
+          ) || 0,
+        is_featured: false,
+        is_active: true,
+      });
+
+      /*
+       * Step 3:
+       * Automatically assign the newly-created root
+       * category to the department.
+       */
+      await apiRequest(
+        `/admin/departments/${encodeURIComponent(
+          categoryCreateDepartment.public_id,
+        )}/categories`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            move_existing: true,
+            categories:
+              existingSelections,
+          }),
+        },
+      );
+
+      const departmentName =
+        categoryCreateDepartment.name;
+
+      setCategoryCreateDepartment(null);
+      setRootCategoryForm(
+        EMPTY_ROOT_CATEGORY_FORM,
+      );
+
+      setSuccessMessage(
+        `Root category "${createdCategory.name}" created inside ${departmentName}.`,
+      );
+
+      /*
+       * Refresh both views so the new category appears
+       * immediately in the department count and manager.
+       */
+      await Promise.all([
+        loadDepartments(
+          page,
+          search,
+          activeFilter,
+        ),
+        loadAllCategories(),
+      ]);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Root category could not be created.",
+      );
+    } finally {
+      setCategoryCreating(false);
     }
   }
 
@@ -1235,21 +1466,36 @@ export default function AdminDepartmentsPage() {
                         </td>
 
                         <td className="px-5 py-4">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void openCategoryManager(
-                                department,
-                              )
-                            }
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                          >
-                            <Boxes className="h-3.5 w-3.5" />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void openCategoryManager(
+                                  department,
+                                )
+                              }
+                              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            >
+                              <Boxes className="h-3.5 w-3.5" />
 
-                            {department.categories_count ??
-                              0}{" "}
-                            categories
-                          </button>
+                              {department.categories_count ??
+                                0}{" "}
+                              categories
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openRootCategoryCreator(
+                                  department,
+                                )
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add category
+                            </button>
+                          </div>
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-600">
@@ -1294,6 +1540,19 @@ export default function AdminDepartmentsPage() {
                               >
                                 <Edit3 className="h-4 w-4" />
                                 Edit department
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openRootCategoryCreator(
+                                    department,
+                                  )
+                                }
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                              >
+                                <Plus className="h-4 w-4" />
+                                Add root category
                               </button>
 
                               <button
@@ -1616,6 +1875,233 @@ export default function AdminDepartmentsPage() {
         </ModalShell>
       ) : null}
 
+      {/* Create a root category directly inside a department */}
+      {categoryCreateDepartment ? (
+        <ModalShell
+          title={`Add category · ${categoryCreateDepartment.name}`}
+          description="Create a new root category directly inside this department. It will be assigned automatically after creation."
+          onClose={closeRootCategoryCreator}
+          disabled={categoryCreating}
+        >
+          <form
+            onSubmit={createRootCategory}
+            className="space-y-4"
+          >
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-800">
+              Department:{" "}
+              <span className="font-semibold">
+                {categoryCreateDepartment.name}
+              </span>
+              . You do not need to choose the department again.
+            </div>
+
+            <FieldLabel
+              label="Category name"
+              required
+            >
+              <input
+                value={
+                  rootCategoryForm.name
+                }
+                onChange={(event) => {
+                  const name =
+                    event.target.value;
+
+                  setRootCategoryForm(
+                    (current) => ({
+                      ...current,
+                      name,
+                      slug:
+                        slugFromName(
+                          name,
+                        ),
+                    }),
+                  );
+                }}
+                placeholder="Computers & Laptops"
+                className={inputClass}
+                autoFocus
+              />
+            </FieldLabel>
+
+            <FieldLabel label="Slug">
+              <input
+                value={
+                  rootCategoryForm.slug
+                }
+                onChange={(event) =>
+                  setRootCategoryForm(
+                    (current) => ({
+                      ...current,
+                      slug:
+                        event.target
+                          .value,
+                    }),
+                  )
+                }
+                placeholder="computers-laptops"
+                className={inputClass}
+              />
+            </FieldLabel>
+
+            <FieldLabel label="Description">
+              <textarea
+                value={
+                  rootCategoryForm.description
+                }
+                onChange={(event) =>
+                  setRootCategoryForm(
+                    (current) => ({
+                      ...current,
+                      description:
+                        event.target
+                          .value,
+                    }),
+                  )
+                }
+                rows={4}
+                placeholder="Laptops, desktops, monitors and computing accessories."
+                className={`${inputClass} min-h-28 py-3`}
+              />
+            </FieldLabel>
+
+            <FieldLabel label="Image path">
+              <input
+                value={
+                  rootCategoryForm.image_path
+                }
+                onChange={(event) =>
+                  setRootCategoryForm(
+                    (current) => ({
+                      ...current,
+                      image_path:
+                        event.target
+                          .value,
+                    }),
+                  )
+                }
+                placeholder="/storage/categories/computers-laptops.webp"
+                className={inputClass}
+              />
+            </FieldLabel>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldLabel label="Sort order">
+                <input
+                  type="number"
+                  min="0"
+                  value={
+                    rootCategoryForm.sort_order
+                  }
+                  onChange={(event) =>
+                    setRootCategoryForm(
+                      (current) => ({
+                        ...current,
+                        sort_order:
+                          event.target
+                            .value,
+                      }),
+                    )
+                  }
+                  className={inputClass}
+                />
+              </FieldLabel>
+
+              <div>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Availability
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRootCategoryForm(
+                      (current) => ({
+                        ...current,
+                        is_active:
+                          !current.is_active,
+                      }),
+                    )
+                  }
+                  className={[
+                    "flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm font-medium transition",
+                    rootCategoryForm.is_active
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-slate-200 bg-slate-50 text-slate-600",
+                  ].join(" ")}
+                >
+                  <span>
+                    {rootCategoryForm.is_active
+                      ? "Active"
+                      : "Inactive"}
+                  </span>
+
+                  <span
+                    className={[
+                      "relative h-5 w-9 rounded-full transition",
+                      rootCategoryForm.is_active
+                        ? "bg-emerald-600"
+                        : "bg-slate-300",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition",
+                        rootCategoryForm.is_active
+                          ? "left-[18px]"
+                          : "left-0.5",
+                      ].join(" ")}
+                    />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+              This creates a root category with{" "}
+              <code className="font-semibold">
+                parent_id: null
+              </code>{" "}
+              and automatically assigns it to{" "}
+              <span className="font-semibold">
+                {categoryCreateDepartment.name}
+              </span>
+              .
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={
+                  closeRootCategoryCreator
+                }
+                disabled={
+                  categoryCreating
+                }
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={
+                  categoryCreating
+                }
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+              >
+                {categoryCreating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Create category
+              </button>
+            </div>
+          </form>
+        </ModalShell>
+      ) : null}
+
       {/* Category assignment modal */}
       {categoryModalDepartment ? (
         <ModalShell
@@ -1649,7 +2135,22 @@ export default function AdminDepartmentsPage() {
             </div>
 
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-800">
-              Assign the main/root category to a department. Its child categories remain connected through the existing category parent hierarchy.
+              Existing root categories can be attached here. To create a new category directly inside this department, use Create root category.
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  openRootCategoryCreator(
+                    categoryModalDepartment,
+                  )
+                }
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white transition hover:bg-blue-800"
+              >
+                <Plus className="h-4 w-4" />
+                Create root category
+              </button>
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-slate-200">
