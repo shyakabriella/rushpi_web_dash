@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Edit3,
+  Filter,
   ImageOff,
   Loader2,
   MoreHorizontal,
@@ -77,6 +78,17 @@ type ProductMedia = {
   url?: string | null;
   path?: string | null;
   alt_text?: string | null;
+};
+
+type CatalogOption = {
+  public_id: string;
+  name: string;
+  label?: string | null;
+};
+
+type FormOptionsData = {
+  categories?: CatalogOption[];
+  brands?: CatalogOption[];
 };
 
 type Product = {
@@ -710,6 +722,26 @@ export default function SellerProductsPage() {
     >("all");
 
   const [
+    categoryFilter,
+    setCategoryFilter,
+  ] = useState("");
+
+  const [
+    brandFilter,
+    setBrandFilter,
+  ] = useState("");
+
+  const [
+    categoryOptions,
+    setCategoryOptions,
+  ] = useState<CatalogOption[]>([]);
+
+  const [
+    brandOptions,
+    setBrandOptions,
+  ] = useState<CatalogOption[]>([]);
+
+  const [
     page,
     setPage,
   ] = useState(1);
@@ -832,6 +864,49 @@ export default function SellerProductsPage() {
       [],
     );
 
+  const loadFormOptions =
+    useCallback(
+      async (
+        sellerProfileId: string,
+      ) => {
+        if (!sellerProfileId) {
+          setCategoryOptions([]);
+          setBrandOptions([]);
+          return;
+        }
+
+        try {
+          const payload =
+            await apiRequest<
+              ApiEnvelope<FormOptionsData>
+            >(
+              `/seller/profiles/${encodeURIComponent(
+                sellerProfileId,
+              )}/products/form-options`,
+            );
+
+          const data =
+            payload.data &&
+            typeof payload.data === "object" &&
+            !Array.isArray(payload.data)
+              ? payload.data
+              : null;
+
+          setCategoryOptions(
+            data?.categories ?? [],
+          );
+
+          setBrandOptions(
+            data?.brands ?? [],
+          );
+        } catch {
+          setCategoryOptions([]);
+          setBrandOptions([]);
+        }
+      },
+      [],
+    );
+
   const loadProducts =
     useCallback(
       async (
@@ -840,6 +915,10 @@ export default function SellerProductsPage() {
           search,
         requestedStatus =
           status,
+        requestedCategory =
+          categoryFilter,
+        requestedBrand =
+          brandFilter,
       ) => {
         if (
           !selectedProfileId
@@ -893,6 +972,24 @@ export default function SellerProductsPage() {
             );
           }
 
+          if (
+            requestedCategory
+          ) {
+            params.set(
+              "category",
+              requestedCategory,
+            );
+          }
+
+          if (
+            requestedBrand
+          ) {
+            params.set(
+              "brand",
+              requestedBrand,
+            );
+          }
+
           const payload =
             await apiRequest<
               ApiEnvelope<
@@ -931,6 +1028,8 @@ export default function SellerProductsPage() {
         }
       },
       [
+        brandFilter,
+        categoryFilter,
         page,
         search,
         selectedProfileId,
@@ -941,6 +1040,21 @@ export default function SellerProductsPage() {
   useEffect(() => {
     void loadProfiles();
   }, [loadProfiles]);
+
+  useEffect(() => {
+    if (!selectedProfileId) {
+      setCategoryOptions([]);
+      setBrandOptions([]);
+      return;
+    }
+
+    void loadFormOptions(
+      selectedProfileId,
+    );
+  }, [
+    loadFormOptions,
+    selectedProfileId,
+  ]);
 
   useEffect(() => {
     if (
@@ -956,6 +1070,8 @@ export default function SellerProductsPage() {
             page,
             search,
             status,
+            categoryFilter,
+            brandFilter,
           );
         },
         search
@@ -968,6 +1084,8 @@ export default function SellerProductsPage() {
         timer,
       );
   }, [
+    brandFilter,
+    categoryFilter,
     loadProducts,
     page,
     search,
@@ -1258,6 +1376,8 @@ export default function SellerProductsPage() {
                     .value,
                 );
 
+                setCategoryFilter("");
+                setBrandFilter("");
                 setPage(1);
               }}
               className="h-10 min-w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400"
@@ -1324,62 +1444,109 @@ export default function SellerProductsPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-black text-slate-800">
+            <Filter className="h-4 w-4 text-blue-700" />
+            Filter your products
+          </div>
 
-            <input
-              value={search}
-              onChange={(
-                event,
-              ) => {
-                setSearch(
-                  event.target
-                    .value,
-                );
-
+          {search ||
+          status !== "all" ||
+          categoryFilter ||
+          brandFilter ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setStatus("all");
+                setCategoryFilter("");
+                setBrandFilter("");
                 setPage(1);
               }}
-              placeholder="Search product, SKU or description..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+              className="text-xs font-black text-blue-700 hover:underline"
+            >
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_180px_220px_200px]">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search name, SKU or description..."
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
             />
           </label>
 
           <select
             value={status}
-            onChange={(
-              event,
-            ) => {
+            onChange={(event) => {
               setStatus(
-                event.target
-                  .value as
+                event.target.value as
                   | "all"
                   | ProductStatus,
               );
-
               setPage(1);
             }}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400"
+            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400"
           >
-            {STATUS_OPTIONS.map(
-              (option) => (
-                <option
-                  key={
-                    option.value
-                  }
-                  value={
-                    option.value
-                  }
-                >
-                  {option.label}
-                </option>
-              ),
-            )}
+            {STATUS_OPTIONS.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(event) => {
+              setCategoryFilter(event.target.value);
+              setPage(1);
+            }}
+            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400"
+          >
+            <option value="">All categories</option>
+            {categoryOptions.map((category) => (
+              <option
+                key={category.public_id}
+                value={category.public_id}
+              >
+                {category.label ?? category.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={brandFilter}
+            onChange={(event) => {
+              setBrandFilter(event.target.value);
+              setPage(1);
+            }}
+            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-400"
+          >
+            <option value="">All brands</option>
+            {brandOptions.map((brand) => (
+              <option
+                key={brand.public_id}
+                value={brand.public_id}
+              >
+                {brand.name}
+              </option>
+            ))}
           </select>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <h2 className="text-xl font-black text-slate-950">
@@ -1435,7 +1602,7 @@ export default function SellerProductsPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {products.map(
                 (product) => {
                   const stock =
@@ -1470,9 +1637,9 @@ export default function SellerProductsPage() {
                       key={
                         product.public_id
                       }
-                      className="group relative flex min-h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/60"
+                      className="group relative flex min-h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-200/60"
                     >
-                      <div className="relative aspect-[4/3] overflow-hidden bg-slate-50">
+                      <div className="relative aspect-square overflow-hidden bg-slate-50">
                         {imageUrl ? (
                           <img
                             src={
@@ -1484,7 +1651,7 @@ export default function SellerProductsPage() {
                                 ?.alt_text ??
                               product.name
                             }
-                            className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
+                            className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-[1.03]"
                             loading="lazy"
                           />
                         ) : (
@@ -1630,7 +1797,7 @@ export default function SellerProductsPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-1 flex-col p-4">
+                      <div className="flex flex-1 flex-col p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -1648,7 +1815,7 @@ export default function SellerProductsPage() {
                                   ? `/seller/products/${product.public_id}/edit`
                                   : "/seller/products"
                               }
-                              className="mt-1 line-clamp-2 block min-h-12 text-base font-black leading-6 text-slate-950 transition hover:text-blue-700"
+                              className="mt-1 line-clamp-2 block min-h-10 text-sm font-black leading-5 text-slate-950 transition hover:text-blue-700"
                             >
                               {
                                 product.name
@@ -1667,7 +1834,7 @@ export default function SellerProductsPage() {
                           </span>
                         </div>
 
-                        <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
+                        <p className="mt-1.5 line-clamp-2 min-h-9 text-xs leading-5 text-slate-500">
                           {product
                             .short_description ??
                             product
@@ -1676,8 +1843,8 @@ export default function SellerProductsPage() {
                             "Marketplace product"}
                         </p>
 
-                        <div className="mt-4">
-                          <p className="text-lg font-black text-slate-950">
+                        <div className="mt-3">
+                          <p className="text-base font-black text-slate-950">
                             {formatPrice(
                               product,
                             )}
@@ -1692,8 +1859,8 @@ export default function SellerProductsPage() {
                           ) : null}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
                             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
                               <Warehouse className="h-3.5 w-3.5" />
                               Stock
@@ -1710,7 +1877,7 @@ export default function SellerProductsPage() {
                             </p>
                           </div>
 
-                          <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                          <div className="rounded-xl bg-slate-50 px-2.5 py-2">
                             <div className="text-xs font-bold text-slate-500">
                               Setup
                             </div>
