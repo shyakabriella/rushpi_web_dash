@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Edit3,
   Filter,
+  FolderTree,
   ListChecks,
   Loader2,
   MoreHorizontal,
@@ -87,6 +88,20 @@ type SpecificationDefinition = {
   updated_at?: string | null;
 };
 
+type CategorySummary = {
+  public_id: string;
+  name: string;
+  slug?: string | null;
+};
+
+type Category = {
+  public_id: string;
+  name: string;
+  slug?: string | null;
+  is_active: boolean;
+  parent?: CategorySummary | null;
+};
+
 type PaginationMeta = {
   current_page?: number;
   last_page?: number;
@@ -120,6 +135,7 @@ type YesNoFilter =
   | "no";
 
 type SpecificationForm = {
+  category_public_id: string;
   name: string;
   code: string;
   description: string;
@@ -135,6 +151,7 @@ type SpecificationForm = {
   max_items: string;
   pattern: string;
   default_value: string;
+  is_required: boolean;
   is_filterable: boolean;
   is_variant_attribute: boolean;
   is_active: boolean;
@@ -191,6 +208,7 @@ const DATA_TYPE_OPTIONS: Array<{
 ];
 
 const EMPTY_FORM: SpecificationForm = {
+  category_public_id: "",
   name: "",
   code: "",
   description: "",
@@ -206,6 +224,7 @@ const EMPTY_FORM: SpecificationForm = {
   max_items: "",
   pattern: "",
   default_value: "",
+  is_required: false,
   is_filterable: false,
   is_variant_attribute: false,
   is_active: true,
@@ -372,6 +391,40 @@ function extractMeta(
   return {};
 }
 
+function extractDataObject<T>(
+  payload: unknown,
+): T | null {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload
+  ) {
+    const data = (
+      payload as { data?: unknown }
+    ).data;
+
+    if (
+      data &&
+      typeof data === "object" &&
+      !Array.isArray(data)
+    ) {
+      return data as T;
+    }
+  }
+
+  return null;
+}
+
+function categoryLabel(
+  category: Category,
+): string {
+  if (category.parent?.name) {
+    return `${category.parent.name} → ${category.name}`;
+  }
+
+  return category.name;
+}
+
 function codeFromName(
   value: string,
 ): string {
@@ -513,6 +566,16 @@ export default function AdminSpecificationsPage() {
     SpecificationDefinition[]
   >([]);
 
+  const [
+    categories,
+    setCategories,
+  ] = useState<Category[]>([]);
+
+  const [
+    loadingCategories,
+    setLoadingCategories,
+  ] = useState(true);
+
   const [meta, setMeta] =
     useState<PaginationMeta>({});
 
@@ -613,6 +676,102 @@ export default function AdminSpecificationsPage() {
   ] = useState<string | null>(
     null,
   );
+
+  const loadCategories =
+    useCallback(
+      async () => {
+        setLoadingCategories(true);
+
+        try {
+          const allCategories: Category[] =
+            [];
+          let requestedPage = 1;
+          let lastPage = 1;
+
+          do {
+            const params =
+              new URLSearchParams();
+
+            params.set(
+              "page",
+              String(requestedPage),
+            );
+            params.set(
+              "per_page",
+              "100",
+            );
+            params.set(
+              "is_active",
+              "1",
+            );
+
+            const payload =
+              await apiRequest<
+                ApiEnvelope<Category[]>
+              >(
+                `/admin/categories?${params.toString()}`,
+              );
+
+            allCategories.push(
+              ...extractArray<Category>(
+                payload,
+              ),
+            );
+
+            const categoryMeta =
+              extractMeta(payload);
+
+            lastPage =
+              Math.max(
+                categoryMeta.last_page ??
+                  1,
+                1,
+              );
+
+            requestedPage += 1;
+          } while (
+            requestedPage <= lastPage &&
+            requestedPage <= 50
+          );
+
+          const uniqueCategories =
+            Array.from(
+              new Map(
+                allCategories.map(
+                  (category) => [
+                    category.public_id,
+                    category,
+                  ],
+                ),
+              ).values(),
+            ).sort(
+              (first, second) =>
+                categoryLabel(
+                  first,
+                ).localeCompare(
+                  categoryLabel(
+                    second,
+                  ),
+                ),
+            );
+
+          setCategories(
+            uniqueCategories,
+          );
+        } catch (error) {
+          setCategories([]);
+
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Categories could not be loaded.",
+          );
+        } finally {
+          setLoadingCategories(false);
+        }
+      },
+      [],
+    );
 
   const loadDefinitions =
     useCallback(
@@ -790,6 +949,10 @@ export default function AdminSpecificationsPage() {
     );
 
   useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
     const timeout =
       window.setTimeout(
         () => {
@@ -807,6 +970,20 @@ export default function AdminSpecificationsPage() {
     loadDefinitions,
     search,
   ]);
+
+  const selectedCategory =
+    useMemo(
+      () =>
+        categories.find(
+          (category) =>
+            category.public_id ===
+            form.category_public_id,
+        ) ?? null,
+      [
+        categories,
+        form.category_public_id,
+      ],
+    );
 
   const totalDefinitions =
     meta.total ??
@@ -838,7 +1015,13 @@ export default function AdminSpecificationsPage() {
 
   function openCreateModal() {
     setEditingDefinition(null);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      category_public_id:
+        categories.length === 1
+          ? categories[0].public_id
+          : "",
+    });
     setActionMenu(null);
     setErrorMessage("");
     setSuccessMessage("");
@@ -858,6 +1041,7 @@ export default function AdminSpecificationsPage() {
     );
 
     setForm({
+      category_public_id: "",
       name: definition.name,
       code: definition.code,
       description:
@@ -931,6 +1115,7 @@ export default function AdminSpecificationsPage() {
         defaultValueToText(
           definition.default_value,
         ),
+      is_required: false,
       is_filterable:
         definition.is_filterable,
       is_variant_attribute:
@@ -1154,10 +1339,50 @@ export default function AdminSpecificationsPage() {
       : null;
   }
 
+  async function assignDefinitionToCategory(
+    definitionPublicId: string,
+    categoryPublicId: string,
+  ): Promise<void> {
+    await apiRequest(
+      `/admin/categories/${encodeURIComponent(
+        categoryPublicId,
+      )}/specifications`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          specification_definition_public_id:
+            definitionPublicId,
+          is_required:
+            form.is_required,
+          is_filterable:
+            form.is_filterable,
+          is_variant_attribute:
+            form.is_variant_attribute,
+          is_active:
+            form.is_active,
+          sort_order:
+            Number(
+              form.sort_order,
+            ) || 0,
+        }),
+      },
+    );
+  }
+
   async function submitDefinition(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      !editingDefinition &&
+      !form.category_public_id
+    ) {
+      setErrorMessage(
+        "Choose the category that will use this specification.",
+      );
+      return;
+    }
 
     if (!form.name.trim()) {
       setErrorMessage(
@@ -1273,18 +1498,64 @@ export default function AdminSpecificationsPage() {
           `Specification "${payload.name}" updated successfully.`,
         );
       } else {
-        await apiRequest(
-          "/admin/specification-definitions",
-          {
-            method: "POST",
-            body: JSON.stringify(
-              payload,
-            ),
-          },
-        );
+        const createdPayload =
+          await apiRequest<
+            ApiEnvelope<SpecificationDefinition>
+          >(
+            "/admin/specification-definitions",
+            {
+              method: "POST",
+              body: JSON.stringify(
+                payload,
+              ),
+            },
+          );
+
+        const createdDefinition =
+          extractDataObject<
+            SpecificationDefinition
+          >(createdPayload);
+
+        if (
+          !createdDefinition?.public_id
+        ) {
+          throw new Error(
+            "Specification was created but its identifier was not returned.",
+          );
+        }
+
+        try {
+          await assignDefinitionToCategory(
+            createdDefinition.public_id,
+            form.category_public_id,
+          );
+        } catch (assignmentError) {
+          /*
+           * The UI presents creation + category assignment as one action.
+           * If assignment fails, remove the newly-created unassigned
+           * definition when possible so the admin does not get orphan rows.
+           */
+          try {
+            await apiRequest(
+              `/admin/specification-definitions/${encodeURIComponent(
+                createdDefinition.public_id,
+              )}`,
+              {
+                method: "DELETE",
+              },
+            );
+          } catch {
+            // Best-effort rollback only.
+          }
+
+          throw assignmentError;
+        }
 
         setSuccessMessage(
-          `Specification "${payload.name}" created successfully.`,
+          `Specification "${payload.name}" created and assigned to ${
+            selectedCategory?.name ??
+            "the selected category"
+          } successfully.`,
         );
       }
 
@@ -1423,9 +1694,9 @@ export default function AdminSpecificationsPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Define reusable marketplace attributes such as RAM,
-            storage, processor, material, size, shade and battery
-            capacity. Categories decide which definitions are used.
+            Create the specification and choose its category in one place.
+            RushPi automatically creates the reusable definition and assigns it
+            to the selected category when you save.
           </p>
         </div>
 
@@ -1433,14 +1704,21 @@ export default function AdminSpecificationsPage() {
           <button
             type="button"
             onClick={() =>
-              void loadDefinitions()
+              void Promise.all([
+                loadDefinitions(),
+                loadCategories(),
+              ])
             }
-            disabled={loading}
+            disabled={
+              loading ||
+              loadingCategories
+            }
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
               className={`h-4 w-4 ${
-                loading
+                loading ||
+                loadingCategories
                   ? "animate-spin"
                   : ""
               }`}
@@ -2021,7 +2299,9 @@ export default function AdminSpecificationsPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Define a reusable standard field. Seller-specific extra details will be handled separately.
+                  {editingDefinition
+                    ? "Update the reusable specification."
+                    : "Choose a category, define the specification and save once. Category assignment happens automatically."}
                 </p>
               </div>
 
@@ -2045,6 +2325,73 @@ export default function AdminSpecificationsPage() {
               }
               className="space-y-6 p-6"
             >
+              {!editingDefinition ? (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                  <FormField
+                    label="Category"
+                    required
+                    hint="Choose where this specification will be used. It will be assigned automatically when you save."
+                  >
+                    <select
+                      value={
+                        form.category_public_id
+                      }
+                      disabled={
+                        loadingCategories
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setForm(
+                          (
+                            current,
+                          ) => ({
+                            ...current,
+                            category_public_id:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      className="form-input"
+                    >
+                      <option value="">
+                        {loadingCategories
+                          ? "Loading categories..."
+                          : "Choose category"}
+                      </option>
+
+                      {categories.map(
+                        (category) => (
+                          <option
+                            key={
+                              category.public_id
+                            }
+                            value={
+                              category.public_id
+                            }
+                          >
+                            {categoryLabel(
+                              category,
+                            )}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </FormField>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  This specification is already connected to{" "}
+                  <span className="font-semibold text-slate-900">
+                    {editingDefinition.category_assignments_count ?? 0}
+                  </span>{" "}
+                  categor
+                  {(editingDefinition.category_assignments_count ?? 0) === 1
+                    ? "y"
+                    : "ies"}.
+                </div>
+              )}
+
               <div className="grid gap-5 md:grid-cols-2">
                 <FormField
                   label="Name"
@@ -2666,6 +3013,29 @@ export default function AdminSpecificationsPage() {
                 </SectionTitle>
 
                 <div className="grid gap-3 md:grid-cols-3">
+                  {!editingDefinition ? (
+                    <ToggleCard
+                      title="Required"
+                      description="Seller must provide this value for products in the selected category."
+                      checked={
+                        form.is_required
+                      }
+                      onChange={(
+                        checked,
+                      ) =>
+                        setForm(
+                          (
+                            current,
+                          ) => ({
+                            ...current,
+                            is_required:
+                              checked,
+                          }),
+                        )
+                      }
+                    />
+                  ) : null}
+
                   <ToggleCard
                     title="Filterable"
                     description="Use this specification in marketplace search filters."
@@ -2708,26 +3078,28 @@ export default function AdminSpecificationsPage() {
                     }
                   />
 
-                  <ToggleCard
-                    title="Active"
-                    description="Make this definition available for category assignment."
-                    checked={
-                      form.is_active
-                    }
-                    onChange={(
-                      checked,
-                    ) =>
-                      setForm(
-                        (
-                          current,
-                        ) => ({
-                          ...current,
-                          is_active:
-                            checked,
-                        }),
-                      )
-                    }
-                  />
+                  {editingDefinition ? (
+                    <ToggleCard
+                      title="Active"
+                      description="Make this definition available for category assignment."
+                      checked={
+                        form.is_active
+                      }
+                      onChange={(
+                        checked,
+                      ) =>
+                        setForm(
+                          (
+                            current,
+                          ) => ({
+                            ...current,
+                            is_active:
+                              checked,
+                          }),
+                        )
+                      }
+                    />
+                  ) : null}
                 </div>
               </div>
 
@@ -2762,7 +3134,7 @@ export default function AdminSpecificationsPage() {
               </div>
 
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                Keep standard specifications broad and reusable. A seller-specific feature that does not fit these fields should later be stored as an additional product attribute instead of creating duplicate global definitions.
+                Brand is not required here. The seller chooses the brand when creating a product. This specification is controlled by the selected category, keeping product creation simple.
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
@@ -2794,7 +3166,7 @@ export default function AdminSpecificationsPage() {
 
                   {editingDefinition
                     ? "Save changes"
-                    : "Create specification"}
+                    : "Create & assign"}
                 </button>
               </div>
             </form>
