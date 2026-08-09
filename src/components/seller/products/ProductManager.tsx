@@ -2,8 +2,6 @@
 
 import type {
   ChangeEvent,
-  ElementType,
-  FormEvent,
   ReactNode,
 } from "react";
 
@@ -17,16 +15,13 @@ import {
 import {
   AlertCircle,
   ArrowLeft,
-  BadgeDollarSign,
   Boxes,
   Check,
   ChevronRight,
-  CircleCheck,
   FileImage,
   Loader2,
   Package,
   Plus,
-  RefreshCcw,
   Save,
   Send,
   Star,
@@ -34,7 +29,22 @@ import {
   Warehouse,
 } from "lucide-react";
 
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  catalogId,
+  collectionFromResponse,
+  getSellerBrands,
+  getSellerCategories,
+  getSellerCategorySpecifications,
+  getSellerDepartments,
+  type SellerBrand,
+  type SellerCategory,
+  type SellerCategorySpecification,
+  type SellerDepartment,
+} from "@/lib/seller-catalog-api";
 
 import {
   adjustVariantInventory,
@@ -46,8 +56,11 @@ import {
   getSellerProduct,
   listProductMedia,
   listProductVariants,
+  recordId,
   setPrimaryProductMedia,
   submitSellerProduct,
+  unwrapData,
+  unwrapList,
   updateSellerProduct,
   updateVariantPrice,
   uploadProductMedia,
@@ -57,1033 +70,2378 @@ type ProductManagerProps = {
   productId?: string;
 };
 
-type Tab =
-  | "product"
+type Step =
+  | "classification"
+  | "information"
+  | "specifications"
   | "variants"
   | "pricing"
   | "inventory"
   | "media"
   | "review";
 
-type ProductFormState = {
+type ProductState = {
+  department: string;
+  category: string;
+  subcategory: string;
+  brand: string;
   name: string;
-  description: string;
-  category_id: string;
-  brand_id: string;
   model: string;
+  condition: string;
+  description: string;
 };
 
-type VariantFormState = {
+type VariantState = {
   name: string;
   sku: string;
   barcode: string;
+  attributes: Record<
+    string,
+    string | string[] | boolean | number
+  >;
 };
 
-type PriceFormState = {
-  amount: string;
-  currency: string;
-  compare_at_price: string;
-};
-
-type InventoryFormState = {
-  quantity: string;
-  reason: string;
-};
-
-const initialProduct: ProductFormState = {
+const initialProduct: ProductState = {
+  department: "",
+  category: "",
+  subcategory: "",
+  brand: "",
   name: "",
-  description: "",
-  category_id: "",
-  brand_id: "",
   model: "",
+  condition: "new",
+  description: "",
 };
 
-const initialVariant: VariantFormState = {
+const initialVariant: VariantState = {
   name: "",
   sku: "",
   barcode: "",
+  attributes: {},
 };
 
-const initialPrice: PriceFormState = {
-  amount: "",
-  currency: "RWF",
-  compare_at_price: "",
-};
-
-const initialInventory: InventoryFormState = {
-  quantity: "",
-  reason: "Initial stock",
-};
-
-function extractData(response: any) {
-  if (!response) {
-    return response;
-  }
-
-  return response.data ?? response;
-}
-
-function extractList(response: any): any[] {
-  const data = extractData(response);
-
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.data)) {
-    return data.data;
-  }
-
-  if (Array.isArray(data?.items)) {
-    return data.items;
-  }
-
-  return [];
-}
-
-function getSellerProfileId(): string {
+function getSellerProfileId() {
   if (typeof window === "undefined") {
     return "";
   }
 
   return (
-    localStorage.getItem("seller_profile_id") ||
-    localStorage.getItem("sellerProfileId") ||
+    localStorage.getItem(
+      "seller_profile_id",
+    ) ||
+    localStorage.getItem(
+      "sellerProfileId",
+    ) ||
     ""
   );
 }
 
-function getId(record: any): string {
-  return String(
-    record?.id ??
-      record?.uuid ??
-      record?.product_id ??
-      record?.variant_id ??
-      record?.media_id ??
-      "",
+function specificationCode(
+  assignment: SellerCategorySpecification,
+) {
+  return (
+    assignment
+      .specification_definition
+      ?.code ||
+    String(
+      assignment.public_id ??
+        assignment.id ??
+        "",
+    )
   );
 }
 
-const tabs: {
-  key: Tab;
-  label: string;
-  icon: ElementType;
-}[] = [
-  {
-    key: "product",
-    label: "Product",
-    icon: Package,
-  },
-  {
-    key: "variants",
-    label: "Variants",
-    icon: Boxes,
-  },
-  {
-    key: "pricing",
-    label: "Pricing",
-    icon: BadgeDollarSign,
-  },
-  {
-    key: "inventory",
-    label: "Inventory",
-    icon: Warehouse,
-  },
-  {
-    key: "media",
-    label: "Images",
-    icon: FileImage,
-  },
-  {
-    key: "review",
-    label: "Review",
-    icon: CircleCheck,
-  },
-];
+function specificationName(
+  assignment: SellerCategorySpecification,
+) {
+  return (
+    assignment.label ||
+    assignment
+      .specification_definition
+      ?.name ||
+    specificationCode(
+      assignment,
+    )
+  );
+}
+
+function specificationOptions(
+  assignment: SellerCategorySpecification,
+): unknown[] {
+  if (
+    Array.isArray(
+      assignment.options,
+    )
+  ) {
+    return assignment.options;
+  }
+
+  const options =
+    assignment
+      .specification_definition
+      ?.options;
+
+  return Array.isArray(options)
+    ? options
+    : [];
+}
+
+function optionText(
+  value: unknown,
+) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    return String(value);
+  }
+
+  if (
+    value &&
+    typeof value === "object"
+  ) {
+    const item =
+      value as Record<
+        string,
+        unknown
+      >;
+
+    return String(
+      item.value ??
+        item.label ??
+        item.name ??
+        "",
+    );
+  }
+
+  return "";
+}
+
+function finalCategory(
+  product: ProductState,
+) {
+  return (
+    product.subcategory ||
+    product.category
+  );
+}
 
 export default function ProductManager({
   productId: initialProductId,
 }: ProductManagerProps) {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<Tab>("product");
+  const [
+    step,
+    setStep,
+  ] =
+    useState<Step>(
+      "classification",
+    );
 
-  const [sellerProfileId, setSellerProfileId] = useState("");
-  const [productId, setProductId] = useState(initialProductId || "");
-
-  const [product, setProduct] =
-    useState<ProductFormState>(initialProduct);
-
-  const [variants, setVariants] = useState<any[]>([]);
-  const [selectedVariantId, setSelectedVariantId] =
+  const [
+    sellerProfileId,
+    setSellerProfileId,
+  ] =
     useState("");
 
-  const [variantForm, setVariantForm] =
-    useState<VariantFormState>(initialVariant);
+  const [
+    productId,
+    setProductId,
+  ] =
+    useState(
+      initialProductId || "",
+    );
 
-  const [priceForm, setPriceForm] =
-    useState<PriceFormState>(initialPrice);
+  const [
+    product,
+    setProduct,
+  ] =
+    useState<ProductState>(
+      initialProduct,
+    );
 
-  const [inventoryForm, setInventoryForm] =
-    useState<InventoryFormState>(initialInventory);
+  const [
+    departments,
+    setDepartments,
+  ] =
+    useState<
+      SellerDepartment[]
+    >([]);
 
-  const [media, setMedia] = useState<any[]>([]);
+  const [
+    categories,
+    setCategories,
+  ] =
+    useState<
+      SellerCategory[]
+    >([]);
 
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(
-    Boolean(initialProductId),
-  );
+  const [
+    subcategories,
+    setSubcategories,
+  ] =
+    useState<
+      SellerCategory[]
+    >([]);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [
+    brands,
+    setBrands,
+  ] =
+    useState<
+      SellerBrand[]
+    >([]);
 
-  const isEditing = Boolean(productId);
+  const [
+    specifications,
+    setSpecifications,
+  ] =
+    useState<
+      SellerCategorySpecification[]
+    >([]);
 
-  const selectedVariant = useMemo(
-    () =>
-      variants.find(
-        (variant) => getId(variant) === selectedVariantId,
+  const [
+    productSpecificationValues,
+    setProductSpecificationValues,
+  ] =
+    useState<
+      Record<
+        string,
+        unknown
+      >
+    >({});
+
+  const [
+    variants,
+    setVariants,
+  ] =
+    useState<any[]>([]);
+
+  const [
+    selectedVariantId,
+    setSelectedVariantId,
+  ] =
+    useState("");
+
+  const [
+    variant,
+    setVariant,
+  ] =
+    useState<VariantState>(
+      initialVariant,
+    );
+
+  const [
+    price,
+    setPrice,
+  ] =
+    useState({
+      amount: "",
+      compare_at_price: "",
+      currency: "RWF",
+    });
+
+  const [
+    inventory,
+    setInventory,
+  ] =
+    useState({
+      quantity: "",
+      reason:
+        "Initial stock",
+    });
+
+  const [
+    media,
+    setMedia,
+  ] =
+    useState<any[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
+  const [
+    pageLoading,
+    setPageLoading,
+  ] =
+    useState(
+      Boolean(
+        initialProductId,
       ),
-    [variants, selectedVariantId],
-  );
+    );
 
-  void selectedVariant;
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
 
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    setError("");
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState("");
 
-    window.setTimeout(() => {
-      setSuccess("");
-    }, 3500);
-  };
+  const productSpecifications =
+    useMemo(
+      () =>
+        specifications.filter(
+          (item) =>
+            item.is_active !==
+              false &&
+            !item.is_variant_attribute,
+        ),
+      [specifications],
+    );
 
-  const showError = (caughtError: unknown) => {
-    if (caughtError instanceof Error) {
-      setError(caughtError.message);
-    } else {
-      setError("Something went wrong.");
-    }
+  const variantSpecifications =
+    useMemo(
+      () =>
+        specifications.filter(
+          (item) =>
+            item.is_active !==
+              false &&
+            item.is_variant_attribute,
+        ),
+      [specifications],
+    );
 
-    setSuccess("");
-  };
+  const selectedDepartment =
+    useMemo(
+      () =>
+        departments.find(
+          (item) =>
+            catalogId(item) ===
+            product.department,
+        ),
+      [
+        departments,
+        product.department,
+      ],
+    );
 
-  const loadProduct = useCallback(
-    async (profileId: string, id: string) => {
-      try {
-        setPageLoading(true);
+  const selectedCategory =
+    useMemo(
+      () =>
+        categories.find(
+          (item) =>
+            catalogId(item) ===
+            product.category,
+        ),
+      [
+        categories,
+        product.category,
+      ],
+    );
 
-        const response = await getSellerProduct(
-          profileId,
-          id,
-        );
+  const selectedSubcategory =
+    useMemo(
+      () =>
+        subcategories.find(
+          (item) =>
+            catalogId(item) ===
+            product.subcategory,
+        ),
+      [
+        subcategories,
+        product.subcategory,
+      ],
+    );
 
-        const data = extractData(response);
+  const selectedBrand =
+    useMemo(
+      () =>
+        brands.find(
+          (item) =>
+            catalogId(item) ===
+            product.brand,
+        ),
+      [
+        brands,
+        product.brand,
+      ],
+    );
 
-        setProduct({
-          name: data?.name ?? data?.title ?? "",
-          description: data?.description ?? "",
-          category_id: String(data?.category_id ?? ""),
-          brand_id: String(data?.brand_id ?? ""),
-          model: data?.model ?? "",
-        });
-      } catch (caughtError) {
-        showError(caughtError);
-      } finally {
-        setPageLoading(false);
-      }
-    },
-    [],
-  );
-
-  const loadVariants = useCallback(
-    async (
-      profileId: string,
-      id: string,
-      currentSelectedVariantId = "",
+  const showError =
+    (
+      caught: unknown,
     ) => {
-      try {
-        const response = await listProductVariants(
-          profileId,
-          id,
-        );
+      setSuccess("");
 
-        const items = extractList(response);
-
-        setVariants(items);
-
-        if (
-          items.length > 0 &&
-          !currentSelectedVariantId
-        ) {
-          setSelectedVariantId(getId(items[0]));
-        }
-      } catch (caughtError) {
-        showError(caughtError);
-      }
-    },
-    [],
-  );
-
-  const loadMedia = useCallback(
-    async (profileId: string, id: string) => {
-      try {
-        const response = await listProductMedia(
-          profileId,
-          id,
-        );
-
-        setMedia(extractList(response));
-      } catch (caughtError) {
-        showError(caughtError);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const profileId = getSellerProfileId();
-
-    setSellerProfileId(profileId);
-
-    if (!profileId) {
-      setPageLoading(false);
       setError(
-        "Seller profile ID was not found. Save seller_profile_id after seller login/profile loading.",
+        caught instanceof Error
+          ? caught.message
+          : "Something went wrong.",
+      );
+    };
+
+  const showSuccess =
+    (
+      message: string,
+    ) => {
+      setError("");
+      setSuccess(message);
+
+      window.setTimeout(
+        () =>
+          setSuccess(""),
+        3000,
+      );
+    };
+
+  const loadBaseCatalog =
+    useCallback(
+      async () => {
+        try {
+          const [
+            departmentResponse,
+            brandResponse,
+          ] =
+            await Promise.all([
+              getSellerDepartments(),
+              getSellerBrands(),
+            ]);
+
+          setDepartments(
+            collectionFromResponse<
+              SellerDepartment
+            >(
+              departmentResponse,
+            ),
+          );
+
+          setBrands(
+            collectionFromResponse<
+              SellerBrand
+            >(
+              brandResponse,
+            ),
+          );
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [],
+    );
+
+  const loadCategories =
+    useCallback(
+      async (
+        department: string,
+      ) => {
+        if (!department) {
+          setCategories([]);
+          return;
+        }
+
+        try {
+          const response =
+            await getSellerCategories({
+              department,
+              rootOnly: true,
+            });
+
+          setCategories(
+            collectionFromResponse<
+              SellerCategory
+            >(response),
+          );
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [],
+    );
+
+  const loadSubcategories =
+    useCallback(
+      async (
+        parent: string,
+      ) => {
+        if (!parent) {
+          setSubcategories([]);
+          return;
+        }
+
+        try {
+          const response =
+            await getSellerCategories({
+              parent,
+            });
+
+          setSubcategories(
+            collectionFromResponse<
+              SellerCategory
+            >(response),
+          );
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [],
+    );
+
+  const loadSpecifications =
+    useCallback(
+      async (
+        category: string,
+      ) => {
+        if (!category) {
+          setSpecifications(
+            [],
+          );
+
+          setProductSpecificationValues(
+            {},
+          );
+
+          return;
+        }
+
+        try {
+          const response =
+            await getSellerCategorySpecifications(
+              category,
+            );
+
+          setSpecifications(
+            collectionFromResponse<
+              SellerCategorySpecification
+            >(
+              response,
+            ),
+          );
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [],
+    );
+
+  const loadVariants =
+    useCallback(
+      async (
+        profile: string,
+        productIdentifier: string,
+      ) => {
+        try {
+          const response =
+            await listProductVariants(
+              profile,
+              productIdentifier,
+            );
+
+          const items =
+            unwrapList(
+              response,
+            );
+
+          setVariants(items);
+
+          if (
+            items.length >
+              0 &&
+            !selectedVariantId
+          ) {
+            setSelectedVariantId(
+              recordId(
+                items[0],
+              ),
+            );
+          }
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [
+        selectedVariantId,
+      ],
+    );
+
+  const loadMedia =
+    useCallback(
+      async (
+        profile: string,
+        productIdentifier: string,
+      ) => {
+        try {
+          const response =
+            await listProductMedia(
+              profile,
+              productIdentifier,
+            );
+
+          setMedia(
+            unwrapList(
+              response,
+            ),
+          );
+        } catch (
+          caught
+        ) {
+          showError(caught);
+        }
+      },
+      [],
+    );
+
+  useEffect(
+    () => {
+      const profile =
+        getSellerProfileId();
+
+      setSellerProfileId(
+        profile,
       );
 
-      return;
-    }
+      if (!profile) {
+        setError(
+          "Seller profile ID is missing. Store seller_profile_id after loading the authenticated seller profile.",
+        );
+      }
 
-    if (initialProductId) {
-      void loadProduct(profileId, initialProductId);
-      void loadVariants(profileId, initialProductId);
-      void loadMedia(profileId, initialProductId);
-    }
-  }, [
-    initialProductId,
-    loadMedia,
-    loadProduct,
-    loadVariants,
-  ]);
+      void loadBaseCatalog();
 
-  const saveProduct = async (
-    event?: FormEvent<HTMLFormElement>,
-  ) => {
-    event?.preventDefault();
-
-    if (!sellerProfileId) {
-      setError("Seller profile ID is missing.");
-      return;
-    }
-
-    if (!product.name.trim()) {
-      setError("Product name is required.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const payload = {
-        name: product.name.trim(),
-        description: product.description.trim() || null,
-        category_id: product.category_id
-          ? Number(product.category_id)
-          : null,
-        brand_id: product.brand_id
-          ? Number(product.brand_id)
-          : null,
-        model: product.model.trim() || null,
-      };
-
-      if (!productId) {
-        const response = await createSellerProduct(
-          sellerProfileId,
-          payload,
+      if (
+        !initialProductId ||
+        !profile
+      ) {
+        setPageLoading(
+          false,
         );
 
-        const created = extractData(response);
-        const id = getId(created);
+        return;
+      }
 
-        if (!id) {
-          throw new Error(
-            "Product was created but the API did not return a product ID.",
+      const loadExisting =
+        async () => {
+          try {
+            setPageLoading(
+              true,
+            );
+
+            const response =
+              await getSellerProduct(
+                profile,
+                initialProductId,
+              );
+
+            const data =
+              unwrapData(
+                response,
+              );
+
+            const department =
+              String(
+                data
+                  ?.department
+                  ?.public_id ??
+                  data
+                    ?.department_public_id ??
+                  data
+                    ?.department_id ??
+                  "",
+              );
+
+            const category =
+              String(
+                data
+                  ?.parent_category
+                  ?.public_id ??
+                  data
+                    ?.parent_category_public_id ??
+                  data
+                    ?.category
+                    ?.public_id ??
+                  data
+                    ?.category_public_id ??
+                  data
+                    ?.category_id ??
+                  "",
+              );
+
+            const subcategory =
+              String(
+                data
+                  ?.subcategory
+                  ?.public_id ??
+                  data
+                    ?.subcategory_public_id ??
+                  "",
+              );
+
+            const brand =
+              String(
+                data
+                  ?.brand
+                  ?.public_id ??
+                  data
+                    ?.brand_public_id ??
+                  data
+                    ?.brand_id ??
+                  "",
+              );
+
+            setProduct({
+              department,
+              category,
+              subcategory,
+              brand,
+              name:
+                data?.name ??
+                "",
+              model:
+                data?.model ??
+                "",
+              condition:
+                data?.condition ??
+                "new",
+              description:
+                data?.description ??
+                "",
+            });
+
+            setProductSpecificationValues(
+              data
+                ?.specifications ??
+                data
+                  ?.specification_values ??
+                {},
+            );
+
+            if (
+              department
+            ) {
+              await loadCategories(
+                department,
+              );
+            }
+
+            if (category) {
+              await loadSubcategories(
+                category,
+              );
+            }
+
+            const selectedFinalCategory =
+              subcategory ||
+              category;
+
+            if (
+              selectedFinalCategory
+            ) {
+              await loadSpecifications(
+                selectedFinalCategory,
+              );
+            }
+
+            await Promise.all([
+              loadVariants(
+                profile,
+                initialProductId,
+              ),
+              loadMedia(
+                profile,
+                initialProductId,
+              ),
+            ]);
+          } catch (
+            caught
+          ) {
+            showError(caught);
+          } finally {
+            setPageLoading(
+              false,
+            );
+          }
+        };
+
+      void loadExisting();
+    },
+    [
+      initialProductId,
+      loadBaseCatalog,
+      loadCategories,
+      loadMedia,
+      loadSpecifications,
+      loadSubcategories,
+      loadVariants,
+    ],
+  );
+
+  const onDepartmentChange =
+    async (
+      department: string,
+    ) => {
+      setProduct(
+        (current) => ({
+          ...current,
+          department,
+          category: "",
+          subcategory: "",
+        }),
+      );
+
+      setCategories([]);
+      setSubcategories([]);
+      setSpecifications([]);
+      setProductSpecificationValues(
+        {},
+      );
+
+      await loadCategories(
+        department,
+      );
+    };
+
+  const onCategoryChange =
+    async (
+      category: string,
+    ) => {
+      setProduct(
+        (current) => ({
+          ...current,
+          category,
+          subcategory: "",
+        }),
+      );
+
+      setSubcategories([]);
+      setSpecifications([]);
+      setProductSpecificationValues(
+        {},
+      );
+
+      await Promise.all([
+        loadSubcategories(
+          category,
+        ),
+        loadSpecifications(
+          category,
+        ),
+      ]);
+    };
+
+  const onSubcategoryChange =
+    async (
+      subcategory: string,
+    ) => {
+      setProduct(
+        (current) => ({
+          ...current,
+          subcategory,
+        }),
+      );
+
+      setSpecifications([]);
+      setProductSpecificationValues(
+        {},
+      );
+
+      await loadSpecifications(
+        subcategory ||
+          product.category,
+      );
+    };
+
+  const validateClassification =
+    () => {
+      if (
+        !product.department
+      ) {
+        setError(
+          "Select a department.",
+        );
+        return false;
+      }
+
+      if (
+        !product.category
+      ) {
+        setError(
+          "Select a category.",
+        );
+        return false;
+      }
+
+      if (!product.brand) {
+        setError(
+          "Select a brand.",
+        );
+        return false;
+      }
+
+      setError("");
+      return true;
+    };
+
+  const validateSpecifications =
+    () => {
+      const missing =
+        productSpecifications.find(
+          (item) => {
+            if (
+              !item.is_required
+            ) {
+              return false;
+            }
+
+            const value =
+              productSpecificationValues[
+                specificationCode(
+                  item,
+                )
+              ];
+
+            return (
+              value ===
+                undefined ||
+              value === null ||
+              value === "" ||
+              (Array.isArray(
+                value,
+              ) &&
+                value.length ===
+                  0)
+            );
+          },
+        );
+
+      if (missing) {
+        setError(
+          `${specificationName(
+            missing,
+          )} is required.`,
+        );
+
+        return false;
+      }
+
+      return true;
+    };
+
+  const saveProduct =
+    async () => {
+      if (
+        !sellerProfileId
+      ) {
+        setError(
+          "Seller profile ID is missing.",
+        );
+        return false;
+      }
+
+      if (
+        !validateClassification()
+      ) {
+        return false;
+      }
+
+      if (
+        !product.name.trim()
+      ) {
+        setError(
+          "Product name is required.",
+        );
+        return false;
+      }
+
+      if (
+        !validateSpecifications()
+      ) {
+        return false;
+      }
+
+      try {
+        setLoading(true);
+
+        /*
+         * IMPORTANT
+         * ----------
+         * This is the desired structured seller payload.
+         *
+         * Verify these exact request keys against
+         * StoreSellerProductRequest / UpdateSellerProductRequest.
+         */
+        const payload = {
+          department_public_id:
+            product.department,
+
+          category_public_id:
+            finalCategory(
+              product,
+            ),
+
+          brand_public_id:
+            product.brand,
+
+          name:
+            product.name.trim(),
+
+          model:
+            product.model.trim() ||
+            null,
+
+          condition:
+            product.condition,
+
+          description:
+            product.description.trim() ||
+            null,
+
+          specifications:
+            productSpecificationValues,
+        };
+
+        if (!productId) {
+          const response =
+            await createSellerProduct(
+              sellerProfileId,
+              payload,
+            );
+
+          const created =
+            unwrapData(
+              response,
+            );
+
+          const identifier =
+            recordId(
+              created,
+            );
+
+          if (!identifier) {
+            throw new Error(
+              "The product was created but no product identifier was returned.",
+            );
+          }
+
+          setProductId(
+            identifier,
+          );
+
+          window.history.replaceState(
+            null,
+            "",
+            `/seller/products/${identifier}`,
+          );
+
+          showSuccess(
+            "Product draft created.",
+          );
+        } else {
+          await updateSellerProduct(
+            sellerProfileId,
+            productId,
+            payload,
+          );
+
+          showSuccess(
+            "Product updated.",
           );
         }
 
-        setProductId(id);
-
-        window.history.replaceState(
-          null,
-          "",
-          `/seller/products/${id}`,
-        );
-
-        showSuccess("Product draft created.");
-        setActiveTab("variants");
-      } else {
-        await updateSellerProduct(
-          sellerProfileId,
-          productId,
-          payload,
-        );
-
-        showSuccess("Product information saved.");
+        return true;
+      } catch (
+        caught
+      ) {
+        showError(caught);
+        return false;
+      } finally {
+        setLoading(false);
       }
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createVariant = async () => {
-    if (!productId) {
-      setError(
-        "Save the product before adding variants.",
-      );
-      return;
-    }
-
-    if (!variantForm.name.trim()) {
-      setError("Variant name is required.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await createProductVariant(
-        sellerProfileId,
-        productId,
-        {
-          name: variantForm.name.trim(),
-          sku: variantForm.sku.trim() || null,
-          barcode: variantForm.barcode.trim() || null,
-        },
-      );
-
-      const created = extractData(response);
-      const id = getId(created);
-
-      setVariantForm(initialVariant);
-
-      await loadVariants(
-        sellerProfileId,
-        productId,
-        id,
-      );
-
-      if (id) {
-        setSelectedVariantId(id);
-      }
-
-      showSuccess("Variant created.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeVariant = async (
-    variantId: string,
-  ) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this variant?",
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      await deleteProductVariant(
-        sellerProfileId,
-        productId,
-        variantId,
-      );
-
-      const nextSelectedVariantId =
-        selectedVariantId === variantId
-          ? ""
-          : selectedVariantId;
-
-      if (selectedVariantId === variantId) {
-        setSelectedVariantId("");
-      }
-
-      await loadVariants(
-        sellerProfileId,
-        productId,
-        nextSelectedVariantId,
-      );
-
-      showSuccess("Variant deleted.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const savePrice = async () => {
-    if (!selectedVariantId) {
-      setError("Select a variant first.");
-      return;
-    }
-
-    if (!priceForm.amount) {
-      setError("Enter the selling price.");
-      return;
-    }
-
-    const payload = {
-      amount: Number(priceForm.amount),
-      currency: priceForm.currency,
-      compare_at_price: priceForm.compare_at_price
-        ? Number(priceForm.compare_at_price)
-        : null,
     };
 
-    try {
-      setLoading(true);
+  const saveAndContinue =
+    async (
+      nextStep: Step,
+    ) => {
+      const saved =
+        await saveProduct();
+
+      if (saved) {
+        setStep(nextStep);
+      }
+    };
+
+  const addVariant =
+    async () => {
+      if (!productId) {
+        setError(
+          "Save the product before adding variants.",
+        );
+        return;
+      }
+
+      const missing =
+        variantSpecifications.find(
+          (item) => {
+            if (
+              !item.is_required
+            ) {
+              return false;
+            }
+
+            const value =
+              variant.attributes[
+                specificationCode(
+                  item,
+                )
+              ];
+
+            return (
+              value ===
+                undefined ||
+              value === null ||
+              value === "" ||
+              (Array.isArray(
+                value,
+              ) &&
+                value.length ===
+                  0)
+            );
+          },
+        );
+
+      if (missing) {
+        setError(
+          `${specificationName(
+            missing,
+          )} is required for the variant.`,
+        );
+
+        return;
+      }
 
       try {
-        await updateVariantPrice(
+        setLoading(true);
+
+        const generatedName =
+          variantSpecifications
+            .map(
+              (item) => {
+                const value =
+                  variant
+                    .attributes[
+                    specificationCode(
+                      item,
+                    )
+                  ];
+
+                if (
+                  Array.isArray(
+                    value,
+                  )
+                ) {
+                  return value.join(
+                    " / ",
+                  );
+                }
+
+                return value
+                  ? String(
+                      value,
+                    )
+                  : "";
+              },
+            )
+            .filter(Boolean)
+            .join(" / ");
+
+        const response =
+          await createProductVariant(
+            sellerProfileId,
+            productId,
+            {
+              name:
+                variant.name.trim() ||
+                generatedName ||
+                "Default",
+
+              sku:
+                variant.sku.trim() ||
+                null,
+
+              barcode:
+                variant.barcode.trim() ||
+                null,
+
+              attributes:
+                variant.attributes,
+            },
+          );
+
+        const created =
+          unwrapData(
+            response,
+          );
+
+        const identifier =
+          recordId(
+            created,
+          );
+
+        setVariant(
+          initialVariant,
+        );
+
+        await loadVariants(
           sellerProfileId,
           productId,
-          selectedVariantId,
-          payload,
         );
-      } catch {
-        await createVariantPrice(
-          sellerProfileId,
-          productId,
-          selectedVariantId,
-          payload,
+
+        if (identifier) {
+          setSelectedVariantId(
+            identifier,
+          );
+        }
+
+        showSuccess(
+          "Variant created.",
         );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const removeVariant =
+    async (
+      variantId: string,
+    ) => {
+      if (
+        !window.confirm(
+          "Delete this variant?",
+        )
+      ) {
+        return;
       }
 
-      showSuccess("Price saved.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
 
-  const adjustStock = async () => {
-    if (!selectedVariantId) {
-      setError("Select a variant first.");
-      return;
-    }
+        await deleteProductVariant(
+          sellerProfileId,
+          productId,
+          variantId,
+        );
 
-    if (!inventoryForm.quantity) {
-      setError("Enter stock quantity.");
-      return;
-    }
+        if (
+          selectedVariantId ===
+          variantId
+        ) {
+          setSelectedVariantId(
+            "",
+          );
+        }
 
-    try {
-      setLoading(true);
+        await loadVariants(
+          sellerProfileId,
+          productId,
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      await adjustVariantInventory(
-        sellerProfileId,
-        productId,
-        selectedVariantId,
-        {
-          quantity: Number(inventoryForm.quantity),
+  const savePrice =
+    async () => {
+      if (
+        !selectedVariantId
+      ) {
+        setError(
+          "Select a variant.",
+        );
+        return;
+      }
+
+      if (!price.amount) {
+        setError(
+          "Enter selling price.",
+        );
+        return;
+      }
+
+      const payload = {
+        amount:
+          Number(
+            price.amount,
+          ),
+
+        compare_at_price:
+          price.compare_at_price
+            ? Number(
+                price.compare_at_price,
+              )
+            : null,
+
+        currency:
+          price.currency,
+      };
+
+      try {
+        setLoading(true);
+
+        try {
+          await updateVariantPrice(
+            sellerProfileId,
+            productId,
+            selectedVariantId,
+            payload,
+          );
+        } catch {
+          await createVariantPrice(
+            sellerProfileId,
+            productId,
+            selectedVariantId,
+            payload,
+          );
+        }
+
+        showSuccess(
+          "Price saved.",
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const adjustStock =
+    async () => {
+      if (
+        !selectedVariantId
+      ) {
+        setError(
+          "Select a variant.",
+        );
+        return;
+      }
+
+      if (
+        !inventory.quantity
+      ) {
+        setError(
+          "Enter stock quantity.",
+        );
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        await adjustVariantInventory(
+          sellerProfileId,
+          productId,
+          selectedVariantId,
+          {
+            quantity:
+              Number(
+                inventory.quantity,
+              ),
+
+            reason:
+              inventory.reason ||
+              "Seller stock adjustment",
+          },
+        );
+
+        setInventory({
+          quantity: "",
           reason:
-            inventoryForm.reason ||
-            "Seller stock adjustment",
-        },
-      );
+            "Stock adjustment",
+        });
 
-      setInventoryForm(initialInventory);
-      showSuccess("Inventory adjusted.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileUpload = async (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = event.target.files;
-
-    if (!files?.length || !productId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-
-        /*
-         * IMPORTANT:
-         * If your Swagger request body uses "image"
-         * instead of "file", change this line to:
-         *
-         * formData.append("image", file);
-         */
-        formData.append("file", file);
-
-        await uploadProductMedia(
-          sellerProfileId,
-          productId,
-          formData,
+        showSuccess(
+          "Inventory updated.",
         );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const uploadImages =
+    async (
+      event: ChangeEvent<HTMLInputElement>,
+    ) => {
+      if (!productId) {
+        return;
       }
 
-      await loadMedia(
-        sellerProfileId,
-        productId,
-      );
+      const files =
+        event.target.files;
 
-      event.target.value = "";
+      if (!files?.length) {
+        return;
+      }
 
-      showSuccess("Product image uploaded.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        setLoading(true);
 
-  const setPrimaryImage = async (
-    mediaId: string,
-  ) => {
-    try {
-      setLoading(true);
+        for (
+          const file of
+          Array.from(files)
+        ) {
+          const formData =
+            new FormData();
 
-      await setPrimaryProductMedia(
-        sellerProfileId,
-        productId,
-        mediaId,
-      );
+          /*
+           * If your backend expects "image"
+           * instead of "file", change this key.
+           */
+          formData.append(
+            "file",
+            file,
+          );
 
-      await loadMedia(
-        sellerProfileId,
-        productId,
-      );
+          await uploadProductMedia(
+            sellerProfileId,
+            productId,
+            formData,
+          );
+        }
 
-      showSuccess("Primary image changed.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
+        event.target.value =
+          "";
 
-  const removeImage = async (
-    mediaId: string,
-  ) => {
-    if (
-      !window.confirm(
-        "Delete this product image?",
-      )
-    ) {
-      return;
-    }
+        await loadMedia(
+          sellerProfileId,
+          productId,
+        );
 
-    try {
-      setLoading(true);
+        showSuccess(
+          "Images uploaded.",
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      await deleteProductMedia(
-        sellerProfileId,
-        productId,
-        mediaId,
-      );
+  const makePrimary =
+    async (
+      mediaId: string,
+    ) => {
+      try {
+        setLoading(true);
 
-      await loadMedia(
-        sellerProfileId,
-        productId,
-      );
+        await setPrimaryProductMedia(
+          sellerProfileId,
+          productId,
+          mediaId,
+        );
 
-      showSuccess("Product image deleted.");
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
+        await loadMedia(
+          sellerProfileId,
+          productId,
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const submitProduct = async () => {
-    if (!productId) {
-      setError(
-        "Create the product before submitting.",
-      );
-      return;
-    }
+  const removeImage =
+    async (
+      mediaId: string,
+    ) => {
+      if (
+        !window.confirm(
+          "Delete this image?",
+        )
+      ) {
+        return;
+      }
 
-    if (
-      !window.confirm(
-        "Submit this product for moderation? After submission some information may become locked.",
-      )
-    ) {
-      return;
-    }
+      try {
+        setLoading(true);
 
-    try {
-      setLoading(true);
+        await deleteProductMedia(
+          sellerProfileId,
+          productId,
+          mediaId,
+        );
 
-      await submitSellerProduct(
-        sellerProfileId,
-        productId,
-      );
+        await loadMedia(
+          sellerProfileId,
+          productId,
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      showSuccess(
-        "Product submitted for moderation.",
-      );
+  const submitProduct =
+    async () => {
+      if (!productId) {
+        setError(
+          "Save the product first.",
+        );
+        return;
+      }
 
-      window.setTimeout(() => {
-        router.push("/seller/products");
-      }, 1500);
-    } catch (caughtError) {
-      showError(caughtError);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (
+        variants.length ===
+        0
+      ) {
+        setError(
+          "Create at least one variant.",
+        );
+        return;
+      }
+
+      if (
+        media.length ===
+        0
+      ) {
+        setError(
+          "Upload at least one product image.",
+        );
+        return;
+      }
+
+      if (
+        !window.confirm(
+          "Submit this product for moderation?",
+        )
+      ) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        await submitSellerProduct(
+          sellerProfileId,
+          productId,
+        );
+
+        showSuccess(
+          "Product submitted for moderation.",
+        );
+
+        window.setTimeout(
+          () =>
+            router.push(
+              "/seller/products",
+            ),
+          1200,
+        );
+      } catch (
+        caught
+      ) {
+        showError(caught);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   if (pageLoading) {
     return (
       <div className="flex min-h-[500px] items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading product...
-        </div>
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 border-b pb-6 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-4">
           <button
             type="button"
             onClick={() =>
-              router.push("/seller/products")
+              router.push(
+                "/seller/products",
+              )
             }
-            className="mt-1 rounded-lg border p-2 transition hover:bg-muted"
+            className="rounded-lg border p-2 hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
 
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {isEditing
+            <h1 className="text-2xl font-semibold">
+              {productId
                 ? "Manage product"
                 : "Create product"}
             </h1>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add product information, variants,
-              prices, inventory and product images.
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+              Department, category, brand and specifications come from
+              the administrator catalog. The seller only selects them
+              and enters the product data.
             </p>
-
-            {productId && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Product ID:{" "}
-                <span className="font-mono">
-                  {productId}
-                </span>
-              </p>
-            )}
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void saveProduct()}
+            onClick={() =>
+              void saveProduct()
+            }
             disabled={loading}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition hover:bg-muted disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
           >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-
+            <Save className="h-4 w-4" />
             Save draft
           </button>
 
           <button
             type="button"
-            onClick={() => void submitProduct()}
+            onClick={() =>
+              void submitProduct()
+            }
             disabled={
               loading ||
               !productId
             }
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
-            Submit for moderation
+            Submit
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-          <span>{error}</span>
+        <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          {error}
         </div>
       )}
 
       {success && (
-        <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
-          <Check className="mt-0.5 h-5 w-5 shrink-0" />
-          <span>{success}</span>
+        <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+          <Check className="h-5 w-5 shrink-0" />
+          {success}
         </div>
       )}
 
       <div className="overflow-x-auto border-b">
-        <div className="flex min-w-max gap-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
+        <div className="flex min-w-max">
+          {[
+            [
+              "classification",
+              "Classification",
+            ],
+            [
+              "information",
+              "Information",
+            ],
+            [
+              "specifications",
+              "Specifications",
+            ],
+            [
+              "variants",
+              "Variants",
+            ],
+            [
+              "pricing",
+              "Pricing",
+            ],
+            [
+              "inventory",
+              "Inventory",
+            ],
+            [
+              "media",
+              "Images",
+            ],
+            [
+              "review",
+              "Review",
+            ],
+          ].map(
+            ([
+              key,
+              label,
+            ]) => {
+              const disabled =
+                [
+                  "variants",
+                  "pricing",
+                  "inventory",
+                  "media",
+                  "review",
+                ].includes(
+                  key,
+                ) &&
+                !productId;
 
-            const disabled =
-              tab.key !== "product" &&
-              !productId;
-
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                disabled={disabled}
-                onClick={() =>
-                  setActiveTab(tab.key)
-                }
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
-                  activeTab === tab.key
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                } ${
-                  disabled
-                    ? "cursor-not-allowed opacity-40"
-                    : ""
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={
+                    disabled
+                  }
+                  onClick={() =>
+                    setStep(
+                      key as Step,
+                    )
+                  }
+                  className={`border-b-2 px-4 py-3 text-sm font-medium ${
+                    step === key
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground"
+                  } ${
+                    disabled
+                      ? "cursor-not-allowed opacity-40"
+                      : ""
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            },
+          )}
         </div>
       </div>
 
-      {activeTab === "product" && (
-        <form
-          onSubmit={(event) => void saveProduct(event)}
-          className="rounded-xl border bg-card"
+      {step ===
+        "classification" && (
+        <Panel
+          title="1. Product classification"
+          description="Select values configured by the administrator."
         >
-          <div className="border-b p-6">
-            <h2 className="font-semibold">
-              Product information
-            </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field
+              label="Department"
+              required
+            >
+              <select
+                className="input"
+                value={
+                  product.department
+                }
+                onChange={(
+                  event,
+                ) =>
+                  void onDepartmentChange(
+                    event
+                      .target
+                      .value,
+                  )
+                }
+              >
+                <option value="">
+                  Select department
+                </option>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enter the general information customers
-              will see for this product.
+                {departments.map(
+                  (
+                    item,
+                  ) => (
+                    <option
+                      key={catalogId(
+                        item,
+                      )}
+                      value={catalogId(
+                        item,
+                      )}
+                    >
+                      {item.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </Field>
+
+            <Field
+              label="Category"
+              required
+            >
+              <select
+                className="input"
+                disabled={
+                  !product.department
+                }
+                value={
+                  product.category
+                }
+                onChange={(
+                  event,
+                ) =>
+                  void onCategoryChange(
+                    event
+                      .target
+                      .value,
+                  )
+                }
+              >
+                <option value="">
+                  Select category
+                </option>
+
+                {categories.map(
+                  (
+                    item,
+                  ) => (
+                    <option
+                      key={catalogId(
+                        item,
+                      )}
+                      value={catalogId(
+                        item,
+                      )}
+                    >
+                      {item.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </Field>
+
+            <Field label="Subcategory">
+              <select
+                className="input"
+                disabled={
+                  !product.category
+                }
+                value={
+                  product.subcategory
+                }
+                onChange={(
+                  event,
+                ) =>
+                  void onSubcategoryChange(
+                    event
+                      .target
+                      .value,
+                  )
+                }
+              >
+                <option value="">
+                  Use selected category
+                </option>
+
+                {subcategories.map(
+                  (
+                    item,
+                  ) => (
+                    <option
+                      key={catalogId(
+                        item,
+                      )}
+                      value={catalogId(
+                        item,
+                      )}
+                    >
+                      {item.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </Field>
+
+            <Field
+              label="Brand"
+              required
+            >
+              <select
+                className="input"
+                value={
+                  product.brand
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setProduct(
+                    (
+                      current,
+                    ) => ({
+                      ...current,
+                      brand:
+                        event
+                          .target
+                          .value,
+                    }),
+                  )
+                }
+              >
+                <option value="">
+                  Select brand
+                </option>
+
+                {brands.map(
+                  (
+                    item,
+                  ) => (
+                    <option
+                      key={catalogId(
+                        item,
+                      )}
+                      value={catalogId(
+                        item,
+                      )}
+                    >
+                      {item.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Selected structure
+            </p>
+
+            <p className="mt-1 text-sm font-medium">
+              {[
+                selectedDepartment
+                  ?.name,
+                selectedCategory
+                  ?.name,
+                selectedSubcategory
+                  ?.name,
+                selectedBrand
+                  ?.name,
+              ]
+                .filter(
+                  Boolean,
+                )
+                .join(
+                  " → ",
+                ) ||
+                "Nothing selected yet"}
             </p>
           </div>
 
-          <div className="grid gap-5 p-6 md:grid-cols-2">
+          <PanelFooter>
+            <NextButton
+              onClick={() => {
+                if (
+                  validateClassification()
+                ) {
+                  setStep(
+                    "information",
+                  );
+                }
+              }}
+            />
+          </PanelFooter>
+        </Panel>
+      )}
+
+      {step ===
+        "information" && (
+        <Panel
+          title="2. Basic product information"
+          description="Information that applies to the whole product."
+        >
+          <div className="grid gap-5 md:grid-cols-2">
             <Field
               label="Product name"
               required
             >
               <input
-                value={product.name}
-                onChange={(event) =>
-                  setProduct((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                placeholder="Example: iPhone 16 Pro Max"
                 className="input"
+                placeholder="Example: iPhone 16 Pro"
+                value={
+                  product.name
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setProduct(
+                    (
+                      current,
+                    ) => ({
+                      ...current,
+                      name:
+                        event
+                          .target
+                          .value,
+                    }),
+                  )
+                }
               />
             </Field>
 
             <Field label="Model">
               <input
-                value={product.model}
-                onChange={(event) =>
-                  setProduct((current) => ({
-                    ...current,
-                    model: event.target.value,
-                  }))
-                }
+                className="input"
                 placeholder="Example: A3296"
-                className="input"
+                value={
+                  product.model
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setProduct(
+                    (
+                      current,
+                    ) => ({
+                      ...current,
+                      model:
+                        event
+                          .target
+                          .value,
+                    }),
+                  )
+                }
               />
             </Field>
 
-            <Field label="Category ID">
-              <input
-                value={product.category_id}
-                onChange={(event) =>
-                  setProduct((current) => ({
-                    ...current,
-                    category_id:
-                      event.target.value,
-                  }))
-                }
-                placeholder="Category"
+            <Field label="Condition">
+              <select
                 className="input"
-              />
-            </Field>
-
-            <Field label="Brand ID">
-              <input
-                value={product.brand_id}
-                onChange={(event) =>
-                  setProduct((current) => ({
-                    ...current,
-                    brand_id:
-                      event.target.value,
-                  }))
+                value={
+                  product.condition
                 }
-                placeholder="Brand"
-                className="input"
-              />
+                onChange={(
+                  event,
+                ) =>
+                  setProduct(
+                    (
+                      current,
+                    ) => ({
+                      ...current,
+                      condition:
+                        event
+                          .target
+                          .value,
+                    }),
+                  )
+                }
+              >
+                <option value="new">
+                  New
+                </option>
+                <option value="used">
+                  Used
+                </option>
+                <option value="refurbished">
+                  Refurbished
+                </option>
+              </select>
             </Field>
 
             <div className="md:col-span-2">
               <Field label="Description">
                 <textarea
-                  rows={7}
-                  value={product.description}
-                  onChange={(event) =>
-                    setProduct((current) => ({
-                      ...current,
-                      description:
-                        event.target.value,
-                    }))
+                  className="input min-h-40 resize-y"
+                  value={
+                    product.description
                   }
-                  placeholder="Describe this product..."
-                  className="input min-h-[160px] resize-y"
+                  onChange={(
+                    event,
+                  ) =>
+                    setProduct(
+                      (
+                        current,
+                      ) => ({
+                        ...current,
+                        description:
+                          event
+                            .target
+                            .value,
+                      }),
+                    )
+                  }
                 />
               </Field>
             </div>
           </div>
 
-          <FooterActions
-            loading={loading}
-            buttonLabel={
-              productId
-                ? "Save product"
-                : "Create product draft"
-            }
-            onNext={
-              productId
-                ? () => setActiveTab("variants")
-                : undefined
-            }
-          />
-        </form>
+          <PanelFooter>
+            <NextButton
+              onClick={() =>
+                setStep(
+                  "specifications",
+                )
+              }
+            />
+          </PanelFooter>
+        </Panel>
       )}
 
-      {activeTab === "variants" && (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <section className="rounded-xl border bg-card">
-            <div className="flex items-center justify-between border-b p-6">
-              <div>
-                <h2 className="font-semibold">
-                  Product variants
-                </h2>
-
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Add different configurations such as
-                  storage, RAM, color or size.
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y">
-              {variants.length === 0 ? (
-                <EmptyState
-                  icon={Boxes}
-                  title="No variants yet"
-                  description="Create at least one variant before adding price and inventory."
-                />
-              ) : (
-                variants.map((variant) => {
-                  const id = getId(variant);
+      {step ===
+        "specifications" && (
+        <Panel
+          title="3. Product specifications"
+          description="Automatically loaded from the selected category."
+        >
+          {productSpecifications.length ===
+          0 ? (
+            <Empty>
+              No product-level
+              specifications are assigned
+              to this category.
+            </Empty>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2">
+              {productSpecifications.map(
+                (
+                  item,
+                ) => {
+                  const code =
+                    specificationCode(
+                      item,
+                    );
 
                   return (
-                    <div
-                      key={id}
-                      className={`flex items-center justify-between gap-4 p-5 ${
-                        selectedVariantId === id
-                          ? "bg-muted/50"
-                          : ""
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedVariantId(id)
-                        }
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <p className="truncate font-medium">
-                          {variant.name ||
-                            variant.title ||
-                            `Variant ${id}`}
-                        </p>
-
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          SKU:{" "}
-                          {variant.sku || "Not set"}
-                        </p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void removeVariant(id)
-                        }
-                        className="rounded-md p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <SpecificationField
+                      key={
+                        code
+                      }
+                      assignment={
+                        item
+                      }
+                      value={
+                        productSpecificationValues[
+                          code
+                        ]
+                      }
+                      onChange={(
+                        value,
+                      ) =>
+                        setProductSpecificationValues(
+                          (
+                            current,
+                          ) => ({
+                            ...current,
+                            [code]:
+                              value,
+                          }),
+                        )
+                      }
+                    />
                   );
-                })
+                },
               )}
             </div>
-          </section>
+          )}
 
-          <section className="h-fit rounded-xl border bg-card">
-            <div className="border-b p-5">
-              <h3 className="font-semibold">
-                Add variant
-              </h3>
-            </div>
+          <PanelFooter>
+            <button
+              type="button"
+              onClick={() =>
+                void saveAndContinue(
+                  "variants",
+                )
+              }
+              disabled={
+                loading
+              }
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
 
-            <div className="space-y-4 p-5">
+              Save product & continue
+            </button>
+          </PanelFooter>
+        </Panel>
+      )}
+
+      {step ===
+        "variants" && (
+        <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+          <Panel
+            title="4. Product variants"
+            description="Each variant has its own attributes, price and stock."
+          >
+            {variants.length ===
+            0 ? (
+              <Empty>
+                No variants yet.
+              </Empty>
+            ) : (
+              <div className="divide-y rounded-lg border">
+                {variants.map(
+                  (
+                    item,
+                  ) => {
+                    const id =
+                      recordId(
+                        item,
+                      );
+
+                    return (
+                      <div
+                        key={
+                          id
+                        }
+                        className={`flex items-center gap-3 p-4 ${
+                          selectedVariantId ===
+                          id
+                            ? "bg-muted/50"
+                            : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() =>
+                            setSelectedVariantId(
+                              id,
+                            )
+                          }
+                        >
+                          <p className="font-medium">
+                            {item.name ||
+                              `Variant ${id}`}
+                          </p>
+
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            SKU:{" "}
+                            {item.sku ||
+                              "Not set"}
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void removeVariant(
+                              id,
+                            )
+                          }
+                          className="rounded-lg p-2 text-muted-foreground hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            )}
+
+            <PanelFooter>
+              <NextButton
+                disabled={
+                  variants.length ===
+                  0
+                }
+                onClick={() =>
+                  setStep(
+                    "pricing",
+                  )
+                }
+              />
+            </PanelFooter>
+          </Panel>
+
+          <Panel
+            title="Add variant"
+            description="Variant fields come from specifications marked as variant attributes."
+          >
+            <div className="space-y-5">
+              {variantSpecifications.map(
+                (
+                  item,
+                ) => {
+                  const code =
+                    specificationCode(
+                      item,
+                    );
+
+                  return (
+                    <SpecificationField
+                      key={
+                        code
+                      }
+                      assignment={
+                        item
+                      }
+                      value={
+                        variant
+                          .attributes[
+                          code
+                        ]
+                      }
+                      onChange={(
+                        value,
+                      ) =>
+                        setVariant(
+                          (
+                            current,
+                          ) => ({
+                            ...current,
+                            attributes:
+                              {
+                                ...current.attributes,
+                                [code]:
+                                  value as
+                                    | string
+                                    | string[]
+                                    | boolean
+                                    | number,
+                              },
+                          }),
+                        )
+                      }
+                    />
+                  );
+                },
+              )}
+
               <Field label="Variant name">
                 <input
                   className="input"
-                  placeholder="256 GB / Black"
-                  value={variantForm.name}
-                  onChange={(event) =>
-                    setVariantForm(
-                      (current) => ({
+                  placeholder="Optional"
+                  value={
+                    variant.name
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setVariant(
+                      (
+                        current,
+                      ) => ({
                         ...current,
-                        name: event.target.value,
+                        name:
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
@@ -1093,13 +2451,21 @@ export default function ProductManager({
               <Field label="SKU">
                 <input
                   className="input"
-                  placeholder="IPH16PM-256-BLK"
-                  value={variantForm.sku}
-                  onChange={(event) =>
-                    setVariantForm(
-                      (current) => ({
+                  value={
+                    variant.sku
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setVariant(
+                      (
+                        current,
+                      ) => ({
                         ...current,
-                        sku: event.target.value,
+                        sku:
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
@@ -1109,14 +2475,21 @@ export default function ProductManager({
               <Field label="Barcode">
                 <input
                   className="input"
-                  placeholder="Optional barcode"
-                  value={variantForm.barcode}
-                  onChange={(event) =>
-                    setVariantForm(
-                      (current) => ({
+                  value={
+                    variant.barcode
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setVariant(
+                      (
+                        current,
+                      ) => ({
                         ...current,
                         barcode:
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
@@ -1125,46 +2498,42 @@ export default function ProductManager({
 
               <button
                 type="button"
-                onClick={() => void createVariant()}
-                disabled={loading}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                onClick={() =>
+                  void addVariant()
+                }
+                disabled={
+                  loading
+                }
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 Add variant
               </button>
             </div>
-          </section>
-
-          <div className="flex justify-end lg:col-span-2">
-            <NextButton
-              onClick={() =>
-                setActiveTab("pricing")
-              }
-              disabled={!variants.length}
-            />
-          </div>
+          </Panel>
         </div>
       )}
 
-      {activeTab === "pricing" && (
-        <section className="rounded-xl border bg-card">
-          <SectionHeader
-            title="Product pricing"
-            description="Set the selling price for each product variant."
-          />
-
-          <div className="grid gap-6 p-6 lg:grid-cols-[300px_1fr]">
+      {step ===
+        "pricing" && (
+        <Panel
+          title="5. Pricing"
+          description="Set price separately for each variant."
+        >
+          <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
             <VariantSelector
-              variants={variants}
-              selectedVariantId={
+              variants={
+                variants
+              }
+              selected={
                 selectedVariantId
               }
-              onChange={
+              onSelect={
                 setSelectedVariantId
               }
             />
 
-            <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               <Field
                 label="Selling price"
                 required
@@ -1172,161 +2541,201 @@ export default function ProductManager({
                 <input
                   type="number"
                   min="0"
-                  value={priceForm.amount}
-                  onChange={(event) =>
-                    setPriceForm(
-                      (current) => ({
+                  className="input"
+                  value={
+                    price.amount
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPrice(
+                      (
+                        current,
+                      ) => ({
                         ...current,
                         amount:
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
-                  placeholder="850000"
-                  className="input"
                 />
               </Field>
 
               <Field label="Currency">
                 <select
-                  value={priceForm.currency}
-                  onChange={(event) =>
-                    setPriceForm(
-                      (current) => ({
+                  className="input"
+                  value={
+                    price.currency
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPrice(
+                      (
+                        current,
+                      ) => ({
                         ...current,
                         currency:
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
-                  className="input"
                 >
-                  <option value="RWF">RWF</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
+                  <option value="RWF">
+                    RWF
+                  </option>
+                  <option value="USD">
+                    USD
+                  </option>
+                  <option value="EUR">
+                    EUR
+                  </option>
                 </select>
               </Field>
 
-              <Field label="Compare at price">
+              <Field label="Compare-at price">
                 <input
                   type="number"
                   min="0"
+                  className="input"
                   value={
-                    priceForm.compare_at_price
+                    price.compare_at_price
                   }
-                  onChange={(event) =>
-                    setPriceForm(
-                      (current) => ({
+                  onChange={(
+                    event,
+                  ) =>
+                    setPrice(
+                      (
+                        current,
+                      ) => ({
                         ...current,
                         compare_at_price:
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                       }),
                     )
                   }
-                  placeholder="Optional old price"
-                  className="input"
                 />
               </Field>
 
               <div className="flex items-end">
                 <button
                   type="button"
-                  onClick={() => void savePrice()}
+                  onClick={() =>
+                    void savePrice()
+                  }
                   disabled={
                     loading ||
                     !selectedVariantId
                   }
-                  className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-                  Save pricing
+                  Save price
                 </button>
               </div>
             </div>
           </div>
 
-          <FooterActions
-            loading={loading}
-            hideSave
-            onNext={() =>
-              setActiveTab("inventory")
-            }
-          />
-        </section>
+          <PanelFooter>
+            <NextButton
+              onClick={() =>
+                setStep(
+                  "inventory",
+                )
+              }
+            />
+          </PanelFooter>
+        </Panel>
       )}
 
-      {activeTab === "inventory" && (
-        <section className="rounded-xl border bg-card">
-          <SectionHeader
-            title="Inventory"
-            description="Manage available stock for each product variant."
-          />
-
-          <div className="grid gap-6 p-6 lg:grid-cols-[300px_1fr]">
+      {step ===
+        "inventory" && (
+        <Panel
+          title="6. Inventory"
+          description="Inventory is managed per variant."
+        >
+          <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
             <VariantSelector
-              variants={variants}
-              selectedVariantId={
+              variants={
+                variants
+              }
+              selected={
                 selectedVariantId
               }
-              onChange={
+              onSelect={
                 setSelectedVariantId
               }
             />
 
-            <div className="max-w-2xl space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Stock adjustment">
+            <div className="space-y-5">
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Quantity adjustment">
                   <input
                     type="number"
+                    className="input"
+                    placeholder="10 or -2"
                     value={
-                      inventoryForm.quantity
+                      inventory.quantity
                     }
-                    onChange={(event) =>
-                      setInventoryForm(
-                        (current) => ({
+                    onChange={(
+                      event,
+                    ) =>
+                      setInventory(
+                        (
+                          current,
+                        ) => ({
                           ...current,
                           quantity:
-                            event.target.value,
+                            event
+                              .target
+                              .value,
                         }),
                       )
                     }
-                    placeholder="Example: 10 or -2"
-                    className="input"
                   />
                 </Field>
 
                 <Field label="Reason">
                   <input
-                    value={inventoryForm.reason}
-                    onChange={(event) =>
-                      setInventoryForm(
-                        (current) => ({
+                    className="input"
+                    value={
+                      inventory.reason
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setInventory(
+                        (
+                          current,
+                        ) => ({
                           ...current,
                           reason:
-                            event.target.value,
+                            event
+                              .target
+                              .value,
                         }),
                       )
                     }
-                    placeholder="Stock received"
-                    className="input"
                   />
                 </Field>
               </div>
 
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-                Use a positive number to increase
-                stock and a negative number to
-                decrease stock.
-              </div>
-
               <button
                 type="button"
-                onClick={() => void adjustStock()}
+                onClick={() =>
+                  void adjustStock()
+                }
                 disabled={
                   loading ||
                   !selectedVariantId
                 }
-                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 <Warehouse className="h-4 w-4" />
                 Adjust stock
@@ -1334,86 +2743,94 @@ export default function ProductManager({
             </div>
           </div>
 
-          <FooterActions
-            loading={loading}
-            hideSave
-            onNext={() =>
-              setActiveTab("media")
-            }
-          />
-        </section>
+          <PanelFooter>
+            <NextButton
+              onClick={() =>
+                setStep(
+                  "media",
+                )
+              }
+            />
+          </PanelFooter>
+        </Panel>
       )}
 
-      {activeTab === "media" && (
-        <section className="rounded-xl border bg-card">
-          <SectionHeader
-            title="Product images"
-            description="Upload images and select the primary image customers will see."
-          />
+      {step ===
+        "media" && (
+        <Panel
+          title="7. Product images"
+          description="Upload gallery images and select the primary product image."
+        >
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center hover:bg-muted/40">
+            <FileImage className="h-8 w-8 text-muted-foreground" />
 
-          <div className="p-6">
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition hover:bg-muted/40">
-              <FileImage className="mb-3 h-8 w-8 text-muted-foreground" />
+            <span className="mt-3 font-medium">
+              Upload product images
+            </span>
 
-              <span className="font-medium">
-                Upload product images
-              </span>
+            <span className="mt-1 text-sm text-muted-foreground">
+              JPG, PNG or WebP
+            </span>
 
-              <span className="mt-1 text-sm text-muted-foreground">
-                PNG, JPG or WebP
-              </span>
+            <input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(
+                event,
+              ) =>
+                void uploadImages(
+                  event,
+                )
+              }
+            />
+          </label>
 
-              <input
-                type="file"
-                multiple
-                accept="image/png,image/jpeg,image/webp"
-                onChange={(event) =>
-                  void handleFileUpload(event)
-                }
-                className="hidden"
-              />
-            </label>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {media.map(
+              (
+                item,
+              ) => {
+                const id =
+                  recordId(
+                    item,
+                  );
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {media.map((item) => {
-                const id = getId(item);
-
-                const imageUrl =
+                const url =
                   item.url ||
                   item.image_url ||
                   item.original_url ||
                   item.path;
 
                 const primary =
-                  item.is_primary ||
-                  item.primary;
+                  Boolean(
+                    item.is_primary ??
+                      item.primary,
+                  );
 
                 return (
                   <div
                     key={id}
-                    className="group overflow-hidden rounded-xl border"
+                    className="overflow-hidden rounded-xl border"
                   >
-                    <div className="relative aspect-square bg-muted">
-                      {imageUrl ? (
+                    <div className="aspect-square bg-muted">
+                      {url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={imageUrl}
+                          src={
+                            url
+                          }
                           alt={
                             item.alt_text ||
                             product.name ||
-                            "Product image"
+                            "Product"
                           }
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
-                          <FileImage className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                      )}
-
-                      {primary && (
-                        <div className="absolute left-2 top-2 rounded-full bg-background/95 px-2 py-1 text-xs font-medium shadow">
-                          Primary
+                          <FileImage className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -1421,136 +2838,177 @@ export default function ProductManager({
                     <div className="flex items-center justify-between gap-2 p-3">
                       <button
                         type="button"
-                        disabled={Boolean(primary)}
-                        onClick={() =>
-                          void setPrimaryImage(id)
+                        disabled={
+                          primary
                         }
-                        className="flex items-center gap-1.5 text-xs font-medium disabled:opacity-40"
+                        onClick={() =>
+                          void makePrimary(
+                            id,
+                          )
+                        }
+                        className="inline-flex items-center gap-1 text-xs disabled:opacity-40"
                       >
                         <Star className="h-3.5 w-3.5" />
-                        Make primary
+                        {primary
+                          ? "Primary"
+                          : "Make primary"}
                       </button>
 
                       <button
                         type="button"
                         onClick={() =>
-                          void removeImage(id)
+                          void removeImage(
+                            id,
+                          )
                         }
-                        className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                        className="rounded p-1.5 text-muted-foreground hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-
-            {!media.length && (
-              <div className="mt-6 text-center text-sm text-muted-foreground">
-                No product images uploaded yet.
-              </div>
+              },
             )}
           </div>
 
-          <FooterActions
-            loading={loading}
-            hideSave
-            onNext={() =>
-              setActiveTab("review")
-            }
-          />
-        </section>
-      )}
-
-      {activeTab === "review" && (
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <SectionHeader
-            title="Review and submit"
-            description="Review your product before sending it to RushPi moderation."
-          />
-
-          <div className="grid gap-6 p-6 lg:grid-cols-2">
-            <ReviewCard
-              title="Product"
-              value={product.name || "Not completed"}
-              completed={Boolean(product.name)}
-            />
-
-            <ReviewCard
-              title="Variants"
-              value={`${variants.length} variant${
-                variants.length === 1
-                  ? ""
-                  : "s"
-              }`}
-              completed={variants.length > 0}
-            />
-
-            <ReviewCard
-              title="Pricing"
-              value="Configure pricing for each variant"
-              completed={variants.length > 0}
-            />
-
-            <ReviewCard
-              title="Inventory"
-              value="Stock can be managed per variant"
-              completed={variants.length > 0}
-            />
-
-            <ReviewCard
-              title="Product images"
-              value={`${media.length} image${
-                media.length === 1
-                  ? ""
-                  : "s"
-              } uploaded`}
-              completed={media.length > 0}
-            />
-
-            <ReviewCard
-              title="Moderation"
-              value="Ready to submit"
-              completed={
-                Boolean(product.name) &&
-                variants.length > 0 &&
-                media.length > 0
+          <PanelFooter>
+            <NextButton
+              onClick={() =>
+                setStep(
+                  "review",
+                )
               }
             />
+          </PanelFooter>
+        </Panel>
+      )}
+
+      {step ===
+        "review" && (
+        <Panel
+          title="8. Review and submit"
+          description="Confirm the complete seller product before moderation."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Review
+              label="Department"
+              value={
+                selectedDepartment
+                  ?.name ||
+                "—"
+              }
+            />
+
+            <Review
+              label="Category"
+              value={
+                selectedSubcategory
+                  ?.name ||
+                selectedCategory
+                  ?.name ||
+                "—"
+              }
+            />
+
+            <Review
+              label="Brand"
+              value={
+                selectedBrand
+                  ?.name ||
+                "—"
+              }
+            />
+
+            <Review
+              label="Product"
+              value={
+                product.name ||
+                "—"
+              }
+            />
+
+            <Review
+              label="Variants"
+              value={String(
+                variants.length,
+              )}
+            />
+
+            <Review
+              label="Images"
+              value={String(
+                media.length,
+              )}
+            />
           </div>
 
-          <div className="border-t bg-muted/20 p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="font-semibold">
-                  Submit product for approval
-                </h3>
+          <div className="mt-6 rounded-xl border p-5">
+            <h3 className="font-medium">
+              Product specifications
+            </h3>
 
-                <p className="mt-1 text-sm text-muted-foreground">
-                  RushPi administrators will review the
-                  product before it becomes available
-                  in the marketplace.
-                </p>
-              </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {productSpecifications.map(
+                (
+                  item,
+                ) => {
+                  const code =
+                    specificationCode(
+                      item,
+                    );
 
-              <button
-                type="button"
-                onClick={() => void submitProduct()}
-                disabled={loading}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+                  const value =
+                    productSpecificationValues[
+                      code
+                    ];
 
-                Submit for moderation
-              </button>
+                  return (
+                    <div
+                      key={
+                        code
+                      }
+                      className="flex justify-between gap-4 rounded-lg bg-muted/30 p-3"
+                    >
+                      <span className="text-sm text-muted-foreground">
+                        {specificationName(
+                          item,
+                        )}
+                      </span>
+
+                      <span className="text-sm font-medium">
+                        {displayValue(
+                          value,
+                        )}
+                      </span>
+                    </div>
+                  );
+                },
+              )}
             </div>
           </div>
-        </section>
+
+          <PanelFooter>
+            <button
+              type="button"
+              onClick={() =>
+                void submitProduct()
+              }
+              disabled={
+                loading
+              }
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+
+              Submit for moderation
+            </button>
+          </PanelFooter>
+        </Panel>
       )}
 
       <style jsx global>{`
@@ -1570,14 +3028,350 @@ export default function ProductManager({
           box-shadow: 0 0 0 2px
             hsl(var(--ring) / 0.15);
         }
+
+        .input:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
       `}</style>
+    </div>
+  );
+}
+
+function SpecificationField({
+  assignment,
+  value,
+  onChange,
+}: {
+  assignment:
+    SellerCategorySpecification;
+  value: unknown;
+  onChange: (
+    value: unknown,
+  ) => void;
+}) {
+  const definition =
+    assignment
+      .specification_definition;
+
+  const dataType =
+    definition?.data_type ||
+    "text";
+
+  const name =
+    specificationName(
+      assignment,
+    );
+
+  const options =
+    specificationOptions(
+      assignment,
+    );
+
+  if (
+    dataType ===
+    "boolean"
+  ) {
+    return (
+      <Field
+        label={name}
+        required={
+          assignment.is_required
+        }
+      >
+        <select
+          className="input"
+          value={
+            value === true
+              ? "1"
+              : value === false
+                ? "0"
+                : ""
+          }
+          onChange={(
+            event,
+          ) => {
+            if (
+              event.target
+                .value === ""
+            ) {
+              onChange("");
+            } else {
+              onChange(
+                event.target
+                  .value ===
+                  "1",
+              );
+            }
+          }}
+        >
+          <option value="">
+            Select
+          </option>
+          <option value="1">
+            Yes
+          </option>
+          <option value="0">
+            No
+          </option>
+        </select>
+      </Field>
+    );
+  }
+
+  if (
+    dataType ===
+      "select" &&
+    options.length >
+      0
+  ) {
+    return (
+      <Field
+        label={name}
+        required={
+          assignment.is_required
+        }
+      >
+        <select
+          className="input"
+          value={String(
+            value ?? "",
+          )}
+          onChange={(
+            event,
+          ) =>
+            onChange(
+              event.target
+                .value,
+            )
+          }
+        >
+          <option value="">
+            Select {name}
+          </option>
+
+          {options.map(
+            (
+              option,
+              index,
+            ) => {
+              const text =
+                optionText(
+                  option,
+                );
+
+              return (
+                <option
+                  key={`${text}-${index}`}
+                  value={
+                    text
+                  }
+                >
+                  {text}
+                </option>
+              );
+            },
+          )}
+        </select>
+      </Field>
+    );
+  }
+
+  if (
+    dataType ===
+      "multiselect" &&
+    options.length >
+      0
+  ) {
+    const selected =
+      Array.isArray(
+        value,
+      )
+        ? value.map(
+            String,
+          )
+        : [];
+
+    return (
+      <Field
+        label={name}
+        required={
+          assignment.is_required
+        }
+      >
+        <select
+          multiple
+          className="input min-h-32"
+          value={
+            selected
+          }
+          onChange={(
+            event,
+          ) =>
+            onChange(
+              Array.from(
+                event
+                  .target
+                  .selectedOptions,
+              ).map(
+                (
+                  option,
+                ) =>
+                  option.value,
+              ),
+            )
+          }
+        >
+          {options.map(
+            (
+              option,
+              index,
+            ) => {
+              const text =
+                optionText(
+                  option,
+                );
+
+              return (
+                <option
+                  key={`${text}-${index}`}
+                  value={
+                    text
+                  }
+                >
+                  {text}
+                </option>
+              );
+            },
+          )}
+        </select>
+      </Field>
+    );
+  }
+
+  const inputType =
+    dataType ===
+      "integer" ||
+    dataType ===
+      "decimal"
+      ? "number"
+      : dataType ===
+          "date"
+        ? "date"
+        : "text";
+
+  return (
+    <Field
+      label={name}
+      required={
+        assignment.is_required
+      }
+    >
+      <input
+        className="input"
+        type={inputType}
+        step={
+          dataType ===
+          "decimal"
+            ? "any"
+            : undefined
+        }
+        value={String(
+          value ?? "",
+        )}
+        placeholder={
+          assignment.help_text ||
+          definition?.description ||
+          ""
+        }
+        onChange={(
+          event,
+        ) => {
+          const raw =
+            event.target
+              .value;
+
+          if (
+            dataType ===
+            "integer"
+          ) {
+            onChange(
+              raw === ""
+                ? ""
+                : Number.parseInt(
+                    raw,
+                    10,
+                  ),
+            );
+
+            return;
+          }
+
+          if (
+            dataType ===
+            "decimal"
+          ) {
+            onChange(
+              raw === ""
+                ? ""
+                : Number(
+                    raw,
+                  ),
+            );
+
+            return;
+          }
+
+          onChange(raw);
+        }}
+      />
+    </Field>
+  );
+}
+
+function Panel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b p-6">
+        <h2 className="font-semibold">
+          {title}
+        </h2>
+
+        <p className="mt-1 text-sm text-muted-foreground">
+          {description}
+        </p>
+      </div>
+
+      <div className="p-6">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function PanelFooter({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="-mx-6 -mb-6 mt-6 flex justify-end border-t bg-muted/20 p-5">
+      {children}
     </div>
   );
 }
 
 function Field({
   label,
-  required,
+  required = false,
   children,
 }: {
   label: string;
@@ -1601,59 +3395,6 @@ function Field({
   );
 }
 
-function SectionHeader({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="border-b p-6">
-      <h2 className="font-semibold">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function FooterActions({
-  loading,
-  buttonLabel,
-  onNext,
-  hideSave = false,
-}: {
-  loading: boolean;
-  buttonLabel?: string;
-  onNext?: () => void;
-  hideSave?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-end gap-3 border-t bg-muted/20 p-5">
-      {!hideSave && (
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-
-          {buttonLabel || "Save"}
-        </button>
-      )}
-
-      {onNext && (
-        <NextButton onClick={onNext} />
-      )}
-    </div>
-  );
-}
-
 function NextButton({
   onClick,
   disabled = false,
@@ -1664,9 +3405,13 @@ function NextButton({
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition hover:bg-muted disabled:opacity-40"
+      onClick={
+        onClick
+      }
+      disabled={
+        disabled
+      }
+      className="inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium hover:bg-muted disabled:opacity-40"
     >
       Continue
       <ChevronRight className="h-4 w-4" />
@@ -1674,111 +3419,129 @@ function NextButton({
   );
 }
 
-function VariantSelector({
-  variants,
-  selectedVariantId,
-  onChange,
+function Empty({
+  children,
 }: {
-  variants: any[];
-  selectedVariantId: string;
-  onChange: (id: string) => void;
+  children: ReactNode;
 }) {
   return (
-    <div>
+    <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function VariantSelector({
+  variants,
+  selected,
+  onSelect,
+}: {
+  variants: any[];
+  selected: string;
+  onSelect: (
+    id: string,
+  ) => void;
+}) {
+  return (
+    <div className="space-y-2">
       <p className="mb-3 text-sm font-medium">
         Select variant
       </p>
 
-      <div className="space-y-2">
-        {variants.map((variant) => {
-          const id = getId(variant);
+      {variants.map(
+        (
+          item,
+        ) => {
+          const id =
+            recordId(
+              item,
+            );
 
           return (
             <button
-              key={id}
+              key={
+                id
+              }
               type="button"
-              onClick={() => onChange(id)}
-              className={`w-full rounded-lg border p-3 text-left transition ${
-                selectedVariantId === id
+              onClick={() =>
+                onSelect(
+                  id,
+                )
+              }
+              className={`w-full rounded-lg border p-3 text-left ${
+                selected ===
+                id
                   ? "border-primary bg-primary/5"
                   : "hover:bg-muted"
               }`}
             >
               <p className="text-sm font-medium">
-                {variant.name ||
-                  variant.title ||
+                {item.name ||
                   `Variant ${id}`}
               </p>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                {variant.sku || "No SKU"}
+                {item.sku ||
+                  "No SKU"}
               </p>
             </button>
           );
-        })}
-      </div>
+        },
+      )}
     </div>
   );
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
+function Review({
+  label,
+  value,
 }: {
-  icon: ElementType;
-  title: string;
-  description: string;
+  label: string;
+  value: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="rounded-full bg-muted p-4">
-        <Icon className="h-6 w-6 text-muted-foreground" />
-      </div>
+    <div className="rounded-lg border p-4">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
 
-      <h3 className="mt-4 font-medium">
-        {title}
-      </h3>
-
-      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-        {description}
+      <p className="mt-1 font-medium">
+        {value}
       </p>
     </div>
   );
 }
 
-function ReviewCard({
-  title,
-  value,
-  completed,
-}: {
-  title: string;
-  value: string;
-  completed: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-4 rounded-xl border p-5">
-      <div
-        className={`rounded-full p-2 ${
-          completed
-            ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
-            : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {completed ? (
-          <Check className="h-4 w-4" />
-        ) : (
-          <RefreshCcw className="h-4 w-4" />
-        )}
-      </div>
+function displayValue(
+  value: unknown,
+) {
+  if (
+    Array.isArray(
+      value,
+    )
+  ) {
+    return value.join(
+      ", ",
+    );
+  }
 
-      <div>
-        <p className="font-medium">{title}</p>
+  if (
+    value ===
+      undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return "—";
+  }
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          {value}
-        </p>
-      </div>
-    </div>
-  );
+  if (
+    typeof value ===
+    "boolean"
+  ) {
+    return value
+      ? "Yes"
+      : "No";
+  }
+
+  return String(value);
 }
