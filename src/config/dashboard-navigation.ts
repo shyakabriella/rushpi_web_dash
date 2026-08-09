@@ -9,13 +9,11 @@ import {
   Building2,
   CircleDollarSign,
   ClipboardCheck,
-  FileImage,
   FileText,
   Handshake,
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
-  PackagePlus,
   PackageSearch,
   ReceiptText,
   Settings,
@@ -24,7 +22,6 @@ import {
   Store,
   UserCog,
   Users,
-  Warehouse,
   WalletCards,
 } from "lucide-react";
 
@@ -78,8 +75,6 @@ export const dashboardRoleInformation: Record<
     description: "Commission management account",
   },
 };
-
-
 
 export const dashboardNavigation: Record<
   DashboardRole,
@@ -203,24 +198,9 @@ export const dashboardNavigation: Record<
       title: "Store",
       items: [
         {
-          label: "Products",
+          label: "Product management",
           href: "/seller/products",
           icon: PackageSearch,
-        },
-        {
-          label: "Create product",
-          href: "/seller/products/create",
-          icon: PackagePlus,
-        },
-        {
-          label: "Inventory",
-          href: "/seller/inventory",
-          icon: Warehouse,
-        },
-        {
-          label: "Product media",
-          href: "/seller/media",
-          icon: FileImage,
         },
       ],
     },
