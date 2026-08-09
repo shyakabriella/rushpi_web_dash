@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
+  PackagePlus,
   PackageSearch,
   ReceiptText,
   Settings,
@@ -88,7 +89,6 @@ export const dashboardNavigation: Record<
   | ADMIN
   |--------------------------------------------------------------------------
   */
-
   admin: [
     {
       title: "Overview",
@@ -206,7 +206,6 @@ export const dashboardNavigation: Record<
   | SELLER
   |--------------------------------------------------------------------------
   */
-
   seller: [
     {
       title: "Overview",
@@ -226,6 +225,11 @@ export const dashboardNavigation: Record<
           label: "Products",
           href: "/seller/products",
           icon: PackageSearch,
+        },
+        {
+          label: "Create product",
+          href: "/seller/products/create",
+          icon: PackagePlus,
         },
         {
           label: "Inventory",
@@ -294,7 +298,6 @@ export const dashboardNavigation: Record<
   | DEALER
   |--------------------------------------------------------------------------
   */
-
   dealer: [
     {
       title: "Overview",
@@ -381,7 +384,6 @@ export const dashboardNavigation: Record<
   | COMMISSIONER
   |--------------------------------------------------------------------------
   */
-
   commissioner: [
     {
       title: "Overview",
