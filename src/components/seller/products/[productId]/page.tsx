@@ -2,16 +2,19 @@ import ProductManager from "@/components/seller/products/ProductManager";
 
 type PageProps = {
   params: Promise<{
-    productId: string;
+    product: string;
   }>;
 };
 
 export default async function SellerProductPage({
   params,
 }: PageProps) {
-  const { productId } = await params;
+  const { product } =
+    await params;
 
   return (
-    <ProductManager productId={productId} />
+    <ProductManager
+      productId={product}
+    />
   );
 }
