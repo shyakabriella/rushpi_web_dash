@@ -9,12 +9,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit3,
+  FileText,
   FolderTree,
+  Layers3,
+  ListChecks,
   Loader2,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
+  Tags,
   Trash2,
   X,
 } from "lucide-react";
@@ -25,6 +29,11 @@ import {
   useMemo,
   useState,
 } from "react";
+
+import AdminBrandsPage from "../brands/page";
+import AdminCategoriesPage from "../categories/page";
+import AdminCategorySpecificationsPage from "../category-specifications/page";
+import AdminSpecificationsPage from "../specifications/page";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -335,7 +344,204 @@ function extractMeta(
   return {};
 }
 
+type CatalogWorkspaceSection =
+  | "departments"
+  | "categories"
+  | "subcategories"
+  | "brands"
+  | "specifications"
+  | "category-specifications";
+
+const CATALOG_WORKSPACE_ITEMS: Array<{
+  key: CatalogWorkspaceSection;
+  label: string;
+  description: string;
+  icon: typeof Building2;
+}> = [
+  {
+    key: "departments",
+    label: "Departments",
+    description: "Top-level marketplace sections",
+    icon: Building2,
+  },
+  {
+    key: "categories",
+    label: "Categories",
+    description: "Main categories inside departments",
+    icon: Boxes,
+  },
+  {
+    key: "subcategories",
+    label: "Subcategories",
+    description: "Child categories under a category",
+    icon: Layers3,
+  },
+  {
+    key: "brands",
+    label: "Brands",
+    description: "Marketplace product brands",
+    icon: Tags,
+  },
+  {
+    key: "specifications",
+    label: "Specifications",
+    description: "Reusable product fields",
+    icon: ListChecks,
+  },
+  {
+    key: "category-specifications",
+    label: "Category specifications",
+    description: "Fields assigned to each category",
+    icon: FileText,
+  },
+];
+
 export default function AdminDepartmentsPage() {
+  const [
+    activeWorkspaceSection,
+    setActiveWorkspaceSection,
+  ] = useState<CatalogWorkspaceSection>(
+    "departments",
+  );
+
+  const activeItem =
+    CATALOG_WORKSPACE_ITEMS.find(
+      (item) =>
+        item.key ===
+        activeWorkspaceSection,
+    ) ?? CATALOG_WORKSPACE_ITEMS[0];
+
+  function renderWorkspaceContent() {
+    switch (activeWorkspaceSection) {
+      case "categories":
+        return <AdminCategoriesPage />;
+
+      case "subcategories":
+        return (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+              <span className="font-semibold">
+                Subcategories
+              </span>{" "}
+              are managed with the same category manager. Create or edit a category and choose its parent category to place it under another category.
+            </div>
+
+            <AdminCategoriesPage />
+          </div>
+        );
+
+      case "brands":
+        return <AdminBrandsPage />;
+
+      case "specifications":
+        return <AdminSpecificationsPage />;
+
+      case "category-specifications":
+        return (
+          <AdminCategorySpecificationsPage />
+        );
+
+      case "departments":
+      default:
+        return <DepartmentsManager />;
+    }
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
+      <aside className="xl:sticky xl:top-6 xl:self-start">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 bg-slate-950 px-4 py-4 text-white">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+              <FolderTree className="h-4 w-4" />
+              Catalog management
+            </div>
+
+            <h2 className="mt-2 text-lg font-semibold">
+              Setup workspace
+            </h2>
+
+            <p className="mt-1 text-xs leading-5 text-slate-300">
+              Manage the catalog from one place.
+            </p>
+          </div>
+
+          <nav className="space-y-1 p-2">
+            {CATALOG_WORKSPACE_ITEMS.map(
+              (item) => {
+                const Icon = item.icon;
+                const active =
+                  item.key ===
+                  activeWorkspaceSection;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      setActiveWorkspaceSection(
+                        item.key,
+                      )
+                    }
+                    className={[
+                      "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition",
+                      active
+                        ? "bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-100"
+                        : "text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        active
+                          ? "bg-blue-700 text-white"
+                          : "bg-slate-100 text-slate-500",
+                      ].join(" ")}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">
+                        {item.label}
+                      </span>
+
+                      <span
+                        className={[
+                          "mt-0.5 block text-xs leading-4",
+                          active
+                            ? "text-blue-600"
+                            : "text-slate-400",
+                        ].join(" ")}
+                      >
+                        {item.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              },
+            )}
+          </nav>
+
+          <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+            <p className="text-xs leading-5 text-slate-500">
+              Current section: {" "}
+              <span className="font-semibold text-slate-700">
+                {activeItem.label}
+              </span>
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <main className="min-w-0">
+        {renderWorkspaceContent()}
+      </main>
+    </div>
+  );
+}
+
+function DepartmentsManager() {
   const [
     departments,
     setDepartments,

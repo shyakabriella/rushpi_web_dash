@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   Store,
-  Tags,
   UserCog,
   Users,
   Warehouse,
@@ -152,29 +151,9 @@ export const dashboardNavigation: Record<
       title: "Catalog setup",
       items: [
         {
-          label: "Departments",
+          label: "Catalog management",
           href: "/admin/departments",
-          icon: Building2,
-        },
-        {
-          label: "Categories",
-          href: "/admin/categories",
           icon: Boxes,
-        },
-        {
-          label: "Brands",
-          href: "/admin/brands",
-          icon: Tags,
-        },
-        {
-          label: "Specifications",
-          href: "/admin/specifications",
-          icon: ListChecks,
-        },
-        {
-          label: "Category specifications",
-          href: "/admin/category-specifications",
-          icon: FileText,
         },
         {
           label: "Commission rules",
