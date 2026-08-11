@@ -1,18 +1,3 @@
-<<<<<<< HEAD
-export default function TemporaryRoutePage() {
-  return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-semibold">
-        Page under development
-      </h1>
-
-      <p className="mt-3">
-        This RushPi page is being prepared.
-      </p>
-    </main>
-  );
-}
-=======
 "use client";
 
 import Link from "next/link";
@@ -1487,4 +1472,3 @@ function Info({
     </div>
   );
 }
->>>>>>> 95fc4c3190f8d736743958aab27aa207f11aaebb
