@@ -7,8 +7,12 @@ import {
   ChevronRight,
   Eye,
   FolderTree,
+  ImageIcon,
   Loader2,
+  Mail,
+  MapPin,
   PackageSearch,
+  Phone,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -27,20 +31,52 @@ const API_BASE_URL = (
   "https://rushpi.asyncafrica.com/api"
 ).replace(/\/+$/, "");
 
-type ProductStatus =
-  | "draft"
-  | "pending_review"
-  | "approved"
-  | "rejected"
-  | "suspended"
-  | "archived"
-  | string;
+const API_ORIGIN =
+  API_BASE_URL.replace(
+    /\/api(?:\/.*)?$/i,
+    "",
+  );
 
-type Seller = {
+type SellerProfile = {
   public_id: string;
+
   legal_business_name?: string | null;
   trading_name?: string | null;
+
   status?: string | null;
+
+  logo?: string | null;
+  logo_url?: string | null;
+
+  cover_image?: string | null;
+  cover_image_url?: string | null;
+
+  description?: string | null;
+  business_type?: string | null;
+
+  business_phone?: string | null;
+  business_email?: string | null;
+  whatsapp?: string | null;
+
+  registration_number?: string | null;
+  tax_identification_number?: string | null;
+
+  addresses?: Array<{
+    public_id?: string;
+    address_line_1?: string | null;
+    address_line_2?: string | null;
+    district?: string | null;
+    city?: string | null;
+    province?: string | null;
+    country?: string | null;
+  }>;
+};
+
+type SellerApplication = {
+  public_id?: string;
+  status?: string | null;
+  seller_profile?: SellerProfile | null;
+  sellerProfile?: SellerProfile | null;
 };
 
 type ProductCategory = {
@@ -52,23 +88,29 @@ type AdminProduct = {
   public_id: string;
   name: string;
   short_description?: string | null;
-  status: ProductStatus;
-  seller?: Seller | null;
+  status: string;
+
+  seller?: SellerProfile | null;
+
   category?: ProductCategory | null;
+
   brand?: {
     public_id: string;
     name?: string | null;
   } | null;
+
   updated_at?: string | null;
 };
 
 type CategoryNode = {
   public_id: string;
   name: string;
+
   parent?: {
     public_id: string;
     name?: string | null;
   } | null;
+
   children?: CategoryNode[];
 };
 
@@ -77,6 +119,7 @@ type Department = {
   name: string;
   description?: string | null;
   sort_order?: number;
+
   categories?: Array<{
     public_id: string;
     name: string;
@@ -99,6 +142,7 @@ type SellerGroup = {
   public_id: string;
   name: string;
   status: string;
+  profile: SellerProfile | null;
   products: AdminProduct[];
 };
 
@@ -115,45 +159,68 @@ type CategoryGroup = {
   products: AdminProduct[];
 };
 
-function getToken(): string | null {
-  if (typeof window === "undefined") {
+function authToken(): string | null {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return null;
   }
 
   return (
-    localStorage.getItem("rushpi_token") ??
-    sessionStorage.getItem("rushpi_token") ??
-    localStorage.getItem("access_token") ??
-    sessionStorage.getItem("access_token") ??
-    localStorage.getItem("token") ??
-    sessionStorage.getItem("token")
+    localStorage.getItem(
+      "rushpi_token",
+    ) ??
+    sessionStorage.getItem(
+      "rushpi_token",
+    ) ??
+    localStorage.getItem(
+      "access_token",
+    ) ??
+    sessionStorage.getItem(
+      "access_token",
+    ) ??
+    localStorage.getItem(
+      "token",
+    ) ??
+    sessionStorage.getItem(
+      "token",
+    )
   );
 }
 
 async function apiRequest<T>(
   path: string,
 ): Promise<T> {
-  const token = getToken();
+  const token =
+    authToken();
 
-  const response = await fetch(
-    `${API_BASE_URL}${path}`,
-    {
-      headers: {
-        Accept: "application/json",
-        ...(token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {}),
+  const response =
+    await fetch(
+      `${API_BASE_URL}${path}`,
+      {
+        headers: {
+          Accept:
+            "application/json",
+
+          ...(token
+            ? {
+                Authorization:
+                  `Bearer ${token}`,
+              }
+            : {}),
+        },
+
+        cache: "no-store",
       },
-      cache: "no-store",
-    },
-  );
+    );
 
-  let payload: any = null;
+  let payload: any =
+    null;
 
   try {
-    payload = await response.json();
+    payload =
+      await response.json();
   } catch {
     payload = null;
   }
@@ -169,67 +236,48 @@ async function apiRequest<T>(
 }
 
 function extractRows<T>(
-  payload: unknown,
+  payload: any,
 ): T[] {
   if (
-    !payload ||
-    typeof payload !== "object"
+    Array.isArray(
+      payload?.data,
+    )
   ) {
-    return [];
-  }
-
-  const data = (
-    payload as {
-      data?: unknown;
-    }
-  ).data;
-
-  if (Array.isArray(data)) {
-    return data as T[];
+    return payload.data;
   }
 
   if (
-    data &&
-    typeof data === "object" &&
     Array.isArray(
-      (
-        data as {
-          data?: unknown;
-        }
-      ).data,
+      payload?.data?.data,
     )
   ) {
-    return (
-      data as {
-        data: T[];
-      }
-    ).data;
+    return payload.data.data;
   }
 
   return [];
 }
 
-function metaOf(
-  payload: unknown,
-): PaginationMeta {
-  if (
-    !payload ||
-    typeof payload !== "object"
-  ) {
-    return {};
-  }
-
-  return (
-    payload as {
-      meta?: PaginationMeta;
-    }
-  ).meta ?? {};
+function lastPageOf(
+  payload: any,
+): number {
+  return Math.max(
+    Number(
+      payload?.meta
+        ?.last_page ??
+        payload?.data
+          ?.last_page ??
+        payload?.data?.meta
+          ?.last_page ??
+        1,
+    ),
+    1,
+  );
 }
 
 async function fetchAll<T>(
   path: string,
 ): Promise<T[]> {
-  const all: T[] = [];
+  const rows: T[] = [];
 
   for (
     let page = 1;
@@ -242,48 +290,47 @@ async function fetchAll<T>(
         : "?";
 
     const payload =
-      await apiRequest<
-        ApiEnvelope<T[]>
-      >(
+      await apiRequest<any>(
         `${path}${separator}page=${page}&per_page=100`,
       );
 
-    const rows =
+    const current =
       extractRows<T>(
         payload,
       );
 
-    all.push(...rows);
-
-    const lastPage =
-      Math.max(
-        Number(
-          metaOf(payload)
-            .last_page ?? 1,
-        ),
-        1,
-      );
+    rows.push(
+      ...current,
+    );
 
     if (
-      page >= lastPage ||
-      rows.length === 0
+      page >=
+        lastPageOf(
+          payload,
+        ) ||
+      current.length === 0
     ) {
       break;
     }
   }
 
-  return all;
+  return rows;
 }
 
 function flattenCategories(
-  categories: CategoryNode[],
+  categories:
+    CategoryNode[],
 ): CategoryNode[] {
-  const result: CategoryNode[] = [];
-  const seen = new Set<string>();
+  const result:
+    CategoryNode[] = [];
 
-  const visit = (
-    category: CategoryNode,
-  ) => {
+  const seen =
+    new Set<string>();
+
+  function visit(
+    category:
+      CategoryNode,
+  ) {
     if (
       seen.has(
         category.public_id,
@@ -295,7 +342,10 @@ function flattenCategories(
     seen.add(
       category.public_id,
     );
-    result.push(category);
+
+    result.push(
+      category,
+    );
 
     for (
       const child of
@@ -303,19 +353,25 @@ function flattenCategories(
     ) {
       visit(child);
     }
-  };
+  }
 
-  categories.forEach(visit);
+  categories.forEach(
+    visit,
+  );
 
   return result;
 }
 
 function sellerName(
-  seller?: Seller | null,
+  seller:
+    | SellerProfile
+    | null
+    | undefined,
 ): string {
   return (
     seller?.trading_name ??
-    seller?.legal_business_name ??
+    seller
+      ?.legal_business_name ??
     "Unnamed seller"
   );
 }
@@ -324,7 +380,10 @@ function statusLabel(
   status: string,
 ): string {
   return status
-    .replace(/_/g, " ")
+    .replace(
+      /_/g,
+      " ",
+    )
     .replace(
       /\b\w/g,
       (letter) =>
@@ -338,17 +397,124 @@ function statusClass(
   switch (status) {
     case "approved":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
+
     case "pending_review":
+    case "pending_verification":
       return "border-blue-200 bg-blue-50 text-blue-700";
+
     case "rejected":
       return "border-red-200 bg-red-50 text-red-700";
+
     case "suspended":
       return "border-orange-200 bg-orange-50 text-orange-700";
+
     case "archived":
       return "border-slate-200 bg-slate-100 text-slate-600";
+
     default:
       return "border-amber-200 bg-amber-50 text-amber-700";
   }
+}
+
+function publicImageUrl(
+  directUrl:
+    | string
+    | null
+    | undefined,
+  path:
+    | string
+    | null
+    | undefined,
+): string | null {
+  const raw =
+    directUrl ??
+    path ??
+    null;
+
+  if (!raw) {
+    return null;
+  }
+
+  if (
+    raw.startsWith(
+      "http://",
+    ) ||
+    raw.startsWith(
+      "https://",
+    )
+  ) {
+    return raw;
+  }
+
+  if (
+    raw.startsWith("/")
+  ) {
+    return `${API_ORIGIN}${raw}`;
+  }
+
+  if (
+    raw.startsWith(
+      "storage/",
+    )
+  ) {
+    return `${API_ORIGIN}/${raw}`;
+  }
+
+  return `${API_ORIGIN}/storage/${raw}`;
+}
+
+function sellerLogo(
+  seller:
+    | SellerProfile
+    | null
+    | undefined,
+): string | null {
+  return publicImageUrl(
+    seller?.logo_url,
+    seller?.logo,
+  );
+}
+
+function sellerCover(
+  seller:
+    | SellerProfile
+    | null
+    | undefined,
+): string | null {
+  return publicImageUrl(
+    seller?.cover_image_url,
+    seller?.cover_image,
+  );
+}
+
+function initials(
+  value: string,
+): string {
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (
+    parts.length === 0
+  ) {
+    return "RS";
+  }
+
+  if (
+    parts.length === 1
+  ) {
+    return parts[0]
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  return (
+    parts[0][0] +
+    parts[
+      parts.length - 1
+    ][0]
+  ).toUpperCase();
 }
 
 function ancestry(
@@ -358,7 +524,9 @@ function ancestry(
     CategoryNode
   >,
 ): string[] {
-  const result: string[] = [];
+  const result:
+    string[] = [];
+
   const visited =
     new Set<string>();
 
@@ -368,15 +536,18 @@ function ancestry(
 
   while (
     current &&
-    !visited.has(current) &&
+    !visited.has(
+      current,
+    ) &&
     result.length < 50
   ) {
     visited.add(current);
     result.push(current);
 
     current =
-      categoryMap.get(current)
-        ?.parent?.public_id ??
+      categoryMap.get(
+        current,
+      )?.parent?.public_id ??
       null;
   }
 
@@ -392,7 +563,8 @@ function belongsToDepartment(
   >,
 ): boolean {
   const categoryId =
-    product.category?.public_id;
+    product.category
+      ?.public_id;
 
   if (!categoryId) {
     return false;
@@ -404,12 +576,14 @@ function belongsToDepartment(
         department.categories ??
         []
       ).map(
-        (item) =>
-          item.public_id,
+        (category) =>
+          category.public_id,
       ),
     );
 
-  if (assigned.size === 0) {
+  if (
+    assigned.size === 0
+  ) {
     return false;
   }
 
@@ -420,6 +594,30 @@ function belongsToDepartment(
     (id) =>
       assigned.has(id),
   );
+}
+
+function businessAddress(
+  seller:
+    | SellerProfile
+    | null,
+): string {
+  const address =
+    seller?.addresses?.[0];
+
+  if (!address) {
+    return "";
+  }
+
+  return [
+    address.address_line_1,
+    address.address_line_2,
+    address.district,
+    address.city,
+    address.province,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export default function AdminProductsPage() {
@@ -448,6 +646,14 @@ export default function AdminProductsPage() {
     );
 
   const [
+    sellerProfiles,
+    setSellerProfiles,
+  ] =
+    useState<
+      SellerProfile[]
+    >([]);
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -468,23 +674,31 @@ export default function AdminProductsPage() {
   ] = useState("");
 
   const [
-    sellerId,
-    setSellerId,
+    selectedSellerId,
+    setSelectedSellerId,
   ] = useState("");
 
   const [
-    departmentKey,
-    setDepartmentKey,
+    selectedDepartmentKey,
+    setSelectedDepartmentKey,
   ] = useState("");
 
   const [
-    categoryKey,
-    setCategoryKey,
+    selectedCategoryKey,
+    setSelectedCategoryKey,
   ] = useState("");
 
   const [
-    viewProduct,
-    setViewProduct,
+    profileTarget,
+    setProfileTarget,
+  ] =
+    useState<SellerProfile | null>(
+      null,
+    );
+
+  const [
+    productTarget,
+    setProductTarget,
   ] =
     useState<AdminProduct | null>(
       null,
@@ -508,41 +722,116 @@ export default function AdminProductsPage() {
             productRows,
             departmentRows,
             categoryRows,
+            applicationRows,
           ] =
             await Promise.all([
               fetchAll<AdminProduct>(
                 "/admin/products?sort=name_asc",
               ),
+
               fetchAll<Department>(
                 "/admin/departments",
               ),
+
               fetchAll<CategoryNode>(
                 "/admin/categories",
               ),
+
+              fetchAll<SellerApplication>(
+                "/admin/seller-applications",
+              ),
             ]);
 
+          const profileMap =
+            new Map<
+              string,
+              SellerProfile
+            >();
+
+          for (
+            const application of
+            applicationRows
+          ) {
+            const profile =
+              application.seller_profile ??
+              application.sellerProfile ??
+              null;
+
+            if (
+              profile?.public_id
+            ) {
+              profileMap.set(
+                profile.public_id,
+                profile,
+              );
+            }
+          }
+
+          const enrichedProducts =
+            productRows.map(
+              (product) => {
+                const existingSeller =
+                  product.seller;
+
+                if (
+                  !existingSeller
+                    ?.public_id
+                ) {
+                  return product;
+                }
+
+                const fullProfile =
+                  profileMap.get(
+                    existingSeller.public_id,
+                  );
+
+                if (
+                  !fullProfile
+                ) {
+                  return product;
+                }
+
+                return {
+                  ...product,
+
+                  seller: {
+                    ...existingSeller,
+                    ...fullProfile,
+                  },
+                };
+              },
+            );
+
           setProducts(
-            productRows,
+            enrichedProducts,
+          );
+
+          setSellerProfiles(
+            Array.from(
+              profileMap.values(),
+            ),
           );
 
           setDepartments(
-            departmentRows.sort(
-              (
-                left,
-                right,
-              ) =>
-                Number(
-                  left.sort_order ??
-                    0,
-                ) -
+            departmentRows
+              .slice()
+              .sort(
+                (
+                  left,
+                  right,
+                ) =>
                   Number(
-                    right.sort_order ??
+                    left.sort_order ??
                       0,
-                  ) ||
-                left.name.localeCompare(
-                  right.name,
-                ),
-            ),
+                  ) -
+                    Number(
+                      right.sort_order ??
+                        0,
+                    ) ||
+                  left.name.localeCompare(
+                    right.name,
+                  ),
+              ),
           );
 
           setCategories(
@@ -554,7 +843,7 @@ export default function AdminProductsPage() {
           setError(
             caught instanceof Error
               ? caught.message
-              : "Unable to load admin products.",
+              : "Unable to load administrator product catalog.",
           );
         } finally {
           setLoading(false);
@@ -567,6 +856,30 @@ export default function AdminProductsPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (
+      !profileTarget &&
+      !productTarget
+    ) {
+      return;
+    }
+
+    const previous =
+      document.body.style
+        .overflow;
+
+    document.body.style.overflow =
+      "hidden";
+
+    return () => {
+      document.body.style.overflow =
+        previous;
+    };
+  }, [
+    profileTarget,
+    productTarget,
+  ]);
 
   const categoryMap =
     useMemo(
@@ -582,67 +895,108 @@ export default function AdminProductsPage() {
       [categories],
     );
 
-  const sellers =
-    useMemo<SellerGroup[]>(
-      () => {
-        const map =
-          new Map<
-            string,
-            SellerGroup
-          >();
+  const profileMap =
+    useMemo(
+      () =>
+        new Map(
+          sellerProfiles.map(
+            (profile) => [
+              profile.public_id,
+              profile,
+            ],
+          ),
+        ),
+      [sellerProfiles],
+    );
 
-        for (
-          const product of
-          products
-        ) {
-          const key =
-            product.seller
-              ?.public_id ??
-            "__unknown__";
+  const sellerGroups =
+    useMemo<
+      SellerGroup[]
+    >(() => {
+      const groups =
+        new Map<
+          string,
+          SellerGroup
+        >();
 
-          const existing =
-            map.get(key);
+      for (
+        const product of
+        products
+      ) {
+        const seller =
+          product.seller;
 
-          if (existing) {
-            existing.products.push(
-              product,
-            );
-            continue;
+        const key =
+          seller?.public_id ??
+          "__unknown__";
+
+        const fullProfile =
+          seller?.public_id
+            ? profileMap.get(
+                seller.public_id,
+              ) ??
+              seller
+            : seller ??
+              null;
+
+        const existing =
+          groups.get(key);
+
+        if (existing) {
+          existing.products.push(
+            product,
+          );
+
+          if (
+            !existing.profile &&
+            fullProfile
+          ) {
+            existing.profile =
+              fullProfile;
           }
 
-          map.set(
-            key,
-            {
-              public_id: key,
-              name:
-                sellerName(
-                  product.seller,
-                ),
-              status:
-                product.seller
-                  ?.status ??
-                "unknown",
-              products: [
-                product,
-              ],
-            },
-          );
+          continue;
         }
 
-        return Array.from(
-          map.values(),
-        ).sort(
-          (
-            left,
-            right,
-          ) =>
-            left.name.localeCompare(
-              right.name,
-            ),
+        groups.set(
+          key,
+          {
+            public_id: key,
+
+            name:
+              sellerName(
+                fullProfile,
+              ),
+
+            status:
+              fullProfile?.status ??
+              "unknown",
+
+            profile:
+              fullProfile,
+
+            products: [
+              product,
+            ],
+          },
         );
-      },
-      [products],
-    );
+      }
+
+      return Array.from(
+        groups.values(),
+      ).sort(
+        (
+          left,
+          right,
+        ) =>
+          left.name.localeCompare(
+            right.name,
+          ),
+      );
+    }, [
+      products,
+      profileMap,
+    ]);
 
   const filteredSellers =
     useMemo(
@@ -653,34 +1007,60 @@ export default function AdminProductsPage() {
             .toLowerCase();
 
         if (!query) {
-          return sellers;
+          return sellerGroups;
         }
 
-        return sellers.filter(
-          (seller) =>
-            seller.name
-              .toLowerCase()
-              .includes(query) ||
-            seller.products.some(
-              (product) =>
-                product.name
-                  .toLowerCase()
-                  .includes(query),
-            ),
+        return sellerGroups.filter(
+          (seller) => {
+            const profile =
+              seller.profile;
+
+            return (
+              seller.name
+                .toLowerCase()
+                .includes(query) ||
+              (
+                profile
+                  ?.legal_business_name ??
+                ""
+              )
+                .toLowerCase()
+                .includes(query) ||
+              (
+                profile
+                  ?.business_email ??
+                ""
+              )
+                .toLowerCase()
+                .includes(query) ||
+              seller.products.some(
+                (product) =>
+                  product.name
+                    .toLowerCase()
+                    .includes(query),
+              )
+            );
+          },
         );
       },
-      [search, sellers],
+      [
+        search,
+        sellerGroups,
+      ],
     );
 
   const selectedSeller =
     useMemo(
       () =>
-        sellers.find(
+        sellerGroups.find(
           (seller) =>
             seller.public_id ===
-            sellerId,
+            selectedSellerId,
         ) ?? null,
-      [sellerId, sellers],
+      [
+        selectedSellerId,
+        sellerGroups,
+      ],
     );
 
   const departmentGroups =
@@ -701,7 +1081,7 @@ export default function AdminProductsPage() {
         const department of
         departments
       ) {
-        const matches =
+        const matching =
           selectedSeller.products.filter(
             (product) =>
               belongsToDepartment(
@@ -712,12 +1092,12 @@ export default function AdminProductsPage() {
           );
 
         if (
-          matches.length === 0
+          matching.length === 0
         ) {
           continue;
         }
 
-        matches.forEach(
+        matching.forEach(
           (product) =>
             assigned.add(
               product.public_id,
@@ -727,10 +1107,14 @@ export default function AdminProductsPage() {
         groups.push({
           key:
             department.public_id,
+
           name:
             department.name,
+
           department,
-          products: matches,
+
+          products:
+            matching,
         });
       }
 
@@ -746,10 +1130,14 @@ export default function AdminProductsPage() {
         unassigned.length > 0
       ) {
         groups.push({
-          key: "__unassigned__",
+          key:
+            "__unassigned__",
+
           name:
             "Unassigned department",
+
           department: null,
+
           products:
             unassigned,
         });
@@ -768,11 +1156,11 @@ export default function AdminProductsPage() {
         departmentGroups.find(
           (group) =>
             group.key ===
-            departmentKey,
+            selectedDepartmentKey,
         ) ?? null,
       [
         departmentGroups,
-        departmentKey,
+        selectedDepartmentKey,
       ],
     );
 
@@ -780,11 +1168,13 @@ export default function AdminProductsPage() {
     useMemo<
       CategoryGroup[]
     >(() => {
-      if (!selectedDepartment) {
+      if (
+        !selectedDepartment
+      ) {
         return [];
       }
 
-      const map =
+      const groups =
         new Map<
           string,
           CategoryGroup
@@ -799,24 +1189,27 @@ export default function AdminProductsPage() {
             ?.public_id ??
           "__uncategorized__";
 
-        const current =
-          map.get(key);
+        const existing =
+          groups.get(key);
 
-        if (current) {
-          current.products.push(
+        if (existing) {
+          existing.products.push(
             product,
           );
+
           continue;
         }
 
-        map.set(
+        groups.set(
           key,
           {
             key,
+
             name:
               product.category
                 ?.name ??
               "Uncategorized",
+
             products: [
               product,
             ],
@@ -825,7 +1218,7 @@ export default function AdminProductsPage() {
       }
 
       return Array.from(
-        map.values(),
+        groups.values(),
       ).sort(
         (
           left,
@@ -843,36 +1236,60 @@ export default function AdminProductsPage() {
         categoryGroups.find(
           (group) =>
             group.key ===
-            categoryKey,
+            selectedCategoryKey,
         ) ?? null,
       [
         categoryGroups,
-        categoryKey,
+        selectedCategoryKey,
       ],
     );
 
   function openSeller(
-    id: string,
+    sellerId: string,
   ) {
-    setSellerId(id);
-    setDepartmentKey("");
-    setCategoryKey("");
+    setSelectedSellerId(
+      sellerId,
+    );
+
+    setSelectedDepartmentKey(
+      "",
+    );
+
+    setSelectedCategoryKey(
+      "",
+    );
+
     setSearch("");
   }
 
-  function backToSellers() {
-    setSellerId("");
-    setDepartmentKey("");
-    setCategoryKey("");
+  function allSellers() {
+    setSelectedSellerId(
+      "",
+    );
+
+    setSelectedDepartmentKey(
+      "",
+    );
+
+    setSelectedCategoryKey(
+      "",
+    );
   }
 
-  function backToDepartments() {
-    setDepartmentKey("");
-    setCategoryKey("");
+  function allDepartments() {
+    setSelectedDepartmentKey(
+      "",
+    );
+
+    setSelectedCategoryKey(
+      "",
+    );
   }
 
-  function backToCategories() {
-    setCategoryKey("");
+  function allCategories() {
+    setSelectedCategoryKey(
+      "",
+    );
   }
 
   if (loading) {
@@ -880,7 +1297,8 @@ export default function AdminProductsPage() {
       <div className="flex min-h-[65vh] items-center justify-center">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-700" />
-          <p className="mt-3 text-sm text-slate-500">
+
+          <p className="mt-3 text-sm font-medium text-slate-500">
             Loading admin product catalog...
           </p>
         </div>
@@ -906,10 +1324,10 @@ export default function AdminProductsPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/admin/moderation"
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
           >
             <ShieldCheck className="h-4 w-4" />
             Moderation
@@ -917,9 +1335,13 @@ export default function AdminProductsPage() {
 
           <button
             type="button"
-            disabled={refreshing}
+            disabled={
+              refreshing
+            }
             onClick={() =>
-              void loadData(true)
+              void loadData(
+                true,
+              )
             }
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
           >
@@ -930,6 +1352,7 @@ export default function AdminProductsPage() {
                   : ""
               }`}
             />
+
             Refresh
           </button>
         </div>
@@ -944,32 +1367,32 @@ export default function AdminProductsPage() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Sellers"
-          value={sellers.length}
+          value={
+            sellerGroups.length
+          }
+        />
+
+        <Metric
+          label="Profiles"
+          value={
+            sellerProfiles.length
+          }
         />
 
         <Metric
           label="Products"
-          value={products.length}
+          value={
+            products.length
+          }
         />
 
         <Metric
-          label="Pending"
+          label="Pending review"
           value={
             products.filter(
               (product) =>
                 product.status ===
                 "pending_review",
-            ).length
-          }
-        />
-
-        <Metric
-          label="Approved"
-          value={
-            products.filter(
-              (product) =>
-                product.status ===
-                "approved",
             ).length
           }
         />
@@ -981,7 +1404,7 @@ export default function AdminProductsPage() {
             <button
               type="button"
               onClick={
-                backToSellers
+                allSellers
               }
               className="rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700"
             >
@@ -995,7 +1418,7 @@ export default function AdminProductsPage() {
                 <button
                   type="button"
                   onClick={
-                    backToDepartments
+                    allDepartments
                   }
                   className="rounded-lg bg-violet-50 px-3 py-1.5 text-violet-700"
                 >
@@ -1013,7 +1436,7 @@ export default function AdminProductsPage() {
                 <button
                   type="button"
                   onClick={
-                    backToCategories
+                    allCategories
                   }
                   className="rounded-lg bg-cyan-50 px-3 py-1.5 text-cyan-700"
                 >
@@ -1039,361 +1462,948 @@ export default function AdminProductsPage() {
         </div>
 
         {!selectedSeller ? (
-          <div className="p-4 sm:p-5">
-            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-blue-600">
-                  Step 1
-                </p>
+          <SellerSelection
+            sellers={
+              filteredSellers
+            }
 
-                <h2 className="mt-1 text-xl font-black text-slate-950">
-                  Select seller
-                </h2>
-              </div>
+            search={
+              search
+            }
 
-              <label className="relative block w-full lg:w-80">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            setSearch={
+              setSearch
+            }
 
-                <input
-                  value={search}
-                  onChange={(event) =>
-                    setSearch(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Search seller or product..."
-                  className="h-10 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-blue-400"
-                />
-              </label>
-            </div>
+            onOpen={
+              openSeller
+            }
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {filteredSellers.map(
-                (seller) => (
-                  <button
-                    key={
-                      seller.public_id
-                    }
-                    type="button"
-                    onClick={() =>
-                      openSeller(
-                        seller.public_id,
-                      )
-                    }
-                    className="group rounded-2xl border border-slate-200 p-4 text-left transition hover:border-blue-300 hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-blue-700">
-                        <Store className="h-5 w-5" />
-                      </div>
-
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-blue-600" />
-                    </div>
-
-                    <h3 className="mt-4 truncate font-black text-slate-950">
-                      {seller.name}
-                    </h3>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span
-                        className={`rounded-full border px-2 py-1 text-[10px] font-black ${statusClass(
-                          seller.status,
-                        )}`}
-                      >
-                        {statusLabel(
-                          seller.status,
-                        )}
-                      </span>
-
-                      <span className="text-xs font-bold text-slate-500">
-                        {
-                          seller.products
-                            .length
-                        }{" "}
-                        products
-                      </span>
-                    </div>
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-        ) : !selectedDepartment ? (
-          <div className="p-4 sm:p-5">
-            <StepHeader
-              step="2"
-              title="Select department"
-              onBack={
-                backToSellers
-              }
-              backLabel="All sellers"
-            />
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {departmentGroups.map(
-                (group) => (
-                  <button
-                    key={group.key}
-                    type="button"
-                    onClick={() => {
-                      setDepartmentKey(
-                        group.key,
-                      );
-                      setCategoryKey(
-                        "",
-                      );
-                    }}
-                    className="group rounded-2xl border border-slate-200 p-4 text-left transition hover:border-violet-300 hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-700">
-                        <Building2 className="h-5 w-5" />
-                      </div>
-
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-violet-600" />
-                    </div>
-
-                    <h3 className="mt-4 font-black text-slate-950">
-                      {group.name}
-                    </h3>
-
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      {group.department
-                        ?.description ??
-                        "Products without a department assignment."}
-                    </p>
-
-                    <div className="mt-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
-                      {
-                        group.products
-                          .length
-                      }{" "}
-                      products
-                    </div>
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-        ) : !selectedCategory ? (
-          <div className="p-4 sm:p-5">
-            <StepHeader
-              step="3"
-              title="Select category"
-              onBack={
-                backToDepartments
-              }
-              backLabel="Departments"
-            />
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {categoryGroups.map(
-                (group) => (
-                  <button
-                    key={group.key}
-                    type="button"
-                    onClick={() =>
-                      setCategoryKey(
-                        group.key,
-                      )
-                    }
-                    className="group rounded-2xl border border-slate-200 p-4 text-left transition hover:border-cyan-300 hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
-                        <FolderTree className="h-5 w-5" />
-                      </div>
-
-                      <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-cyan-600" />
-                    </div>
-
-                    <h3 className="mt-4 font-black text-slate-950">
-                      {group.name}
-                    </h3>
-
-                    <div className="mt-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
-                      {
-                        group.products
-                          .length
-                      }{" "}
-                      products
-                    </div>
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
+            onViewProfile={
+              setProfileTarget
+            }
+          />
         ) : (
-          <div className="p-4 sm:p-5">
-            <StepHeader
-              step="4"
-              title="Products"
-              onBack={
-                backToCategories
+          <>
+            <SellerProfileBanner
+              seller={
+                selectedSeller
               }
-              backLabel="Categories"
+
+              onViewProfile={() =>
+                selectedSeller.profile &&
+                setProfileTarget(
+                  selectedSeller.profile,
+                )
+              }
             />
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {selectedCategory.products.map(
-                (product) => (
-                  <article
-                    key={
-                      product.public_id
-                    }
-                    className="rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-slate-700">
-                        <PackageSearch className="h-5 w-5" />
-                      </div>
+            {!selectedDepartment ? (
+              <DepartmentSelection
+                groups={
+                  departmentGroups
+                }
 
-                      <span
-                        className={`rounded-full border px-2 py-1 text-[10px] font-black ${statusClass(
-                          product.status,
-                        )}`}
-                      >
-                        {statusLabel(
-                          product.status,
-                        )}
-                      </span>
-                    </div>
+                onBack={
+                  allSellers
+                }
 
-                    <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">
-                      {product.brand
-                        ?.name ??
-                        "No brand"}
-                    </p>
+                onOpen={(
+                  key,
+                ) => {
+                  setSelectedDepartmentKey(
+                    key,
+                  );
 
-                    <h3 className="mt-1 line-clamp-2 min-h-12 font-black leading-6 text-slate-950">
-                      {product.name}
-                    </h3>
+                  setSelectedCategoryKey(
+                    "",
+                  );
+                }}
+              />
+            ) : !selectedCategory ? (
+              <CategorySelection
+                groups={
+                  categoryGroups
+                }
 
-                    <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">
-                      {product.short_description ??
-                        "Marketplace product"}
-                    </p>
+                onBack={
+                  allDepartments
+                }
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setViewProduct(
-                          product,
-                        )
-                      }
-                      className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-black text-blue-700 hover:bg-blue-100"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View product
-                    </button>
-                  </article>
-                ),
-              )}
-            </div>
-          </div>
+                onOpen={
+                  setSelectedCategoryKey
+                }
+              />
+            ) : (
+              <ProductSelection
+                group={
+                  selectedCategory
+                }
+
+                onBack={
+                  allCategories
+                }
+
+                onView={
+                  setProductTarget
+                }
+              />
+            )}
+          </>
         )}
       </section>
 
-      {viewProduct ? (
-        <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              setViewProduct(null);
-            }
-          }}
-        >
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-blue-600">
-                  Product
-                </p>
+      {profileTarget ? (
+        <SellerProfileModal
+          seller={
+            profileTarget
+          }
 
-                <h2 className="mt-1 text-xl font-black text-slate-950">
-                  {viewProduct.name}
-                </h2>
+          onClose={() =>
+            setProfileTarget(
+              null,
+            )
+          }
+        />
+      ) : null}
+
+      {productTarget ? (
+        <ProductModal
+          product={
+            productTarget
+          }
+
+          onClose={() =>
+            setProductTarget(
+              null,
+            )
+          }
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SellerSelection({
+  sellers,
+  search,
+  setSearch,
+  onOpen,
+  onViewProfile,
+}: {
+  sellers: SellerGroup[];
+  search: string;
+  setSearch:
+    (value: string) => void;
+  onOpen:
+    (id: string) => void;
+  onViewProfile:
+    (profile: SellerProfile) => void;
+}) {
+  return (
+    <div className="p-4 sm:p-5">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wider text-blue-600">
+            Step 1
+          </p>
+
+          <h2 className="mt-1 text-xl font-black text-slate-950">
+            Select seller
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Seller branding and profile information are shown here before opening their catalog.
+          </p>
+        </div>
+
+        <label className="relative block w-full lg:w-80">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+          <input
+            value={search}
+            onChange={(
+              event,
+            ) =>
+              setSearch(
+                event.target.value,
+              )
+            }
+            placeholder="Search seller or product..."
+            className="h-10 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+          />
+        </label>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {sellers.map(
+          (seller) => {
+            const profile =
+              seller.profile;
+
+            const logo =
+              sellerLogo(
+                profile,
+              );
+
+            const cover =
+              sellerCover(
+                profile,
+              );
+
+            return (
+              <article
+                key={
+                  seller.public_id
+                }
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-lg"
+              >
+                <div className="relative h-28 overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-violet-600">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={`${seller.name} cover`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ImageIcon className="h-9 w-9 text-white/40" />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/35 to-transparent" />
+                </div>
+
+                <div className="relative px-4 pb-4">
+                  <div className="-mt-8 flex items-end justify-between gap-3">
+                    <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-white bg-white text-sm font-black text-blue-700 shadow">
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={`${seller.name} logo`}
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        initials(
+                          seller.name,
+                        )
+                      )}
+                    </div>
+
+                    <span
+                      className={`mb-1 rounded-full border px-2 py-1 text-[10px] font-black ${statusClass(
+                        seller.status,
+                      )}`}
+                    >
+                      {statusLabel(
+                        seller.status,
+                      )}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-3 truncate text-base font-black text-slate-950">
+                    {seller.name}
+                  </h3>
+
+                  {profile?.legal_business_name &&
+                  profile.legal_business_name !==
+                    seller.name ? (
+                    <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
+                      {
+                        profile.legal_business_name
+                      }
+                    </p>
+                  ) : null}
+
+                  <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">
+                    {profile?.description ??
+                      "Seller marketplace profile"}
+                  </p>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                    <span className="text-xs font-bold text-slate-500">
+                      {
+                        seller.products
+                          .length
+                      }{" "}
+                      products
+                    </span>
+
+                    <div className="flex gap-1.5">
+                      {profile ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onViewProfile(
+                              profile,
+                            )
+                          }
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-[11px] font-black text-slate-600 hover:bg-slate-50"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Profile
+                        </button>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpen(
+                            seller.public_id,
+                          )
+                        }
+                        className="inline-flex h-8 items-center gap-1 rounded-lg bg-blue-700 px-2.5 text-[11px] font-black text-white hover:bg-blue-800"
+                      >
+                        Open
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          },
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SellerProfileBanner({
+  seller,
+  onViewProfile,
+}: {
+  seller: SellerGroup;
+  onViewProfile:
+    () => void;
+}) {
+  const profile =
+    seller.profile;
+
+  const logo =
+    sellerLogo(profile);
+
+  const cover =
+    sellerCover(profile);
+
+  return (
+    <div className="border-b border-slate-100 p-4 sm:p-5">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="relative h-32 bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-600 sm:h-40">
+          {cover ? (
+            <img
+              src={cover}
+              alt={`${seller.name} cover`}
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent" />
+        </div>
+
+        <div className="relative px-4 pb-4 sm:px-5">
+          <div className="-mt-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-3">
+              <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-white bg-white text-base font-black text-blue-700 shadow-md">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={`${seller.name} logo`}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  initials(
+                    seller.name,
+                  )
+                )}
               </div>
 
+              <div className="pb-1">
+                <h2 className="text-xl font-black text-slate-950">
+                  {seller.name}
+                </h2>
+
+                <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                  {profile?.business_type ??
+                    "Seller business"}{" "}
+                  ·{" "}
+                  {
+                    seller.products
+                      .length
+                  }{" "}
+                  products
+                </p>
+              </div>
+            </div>
+
+            {profile ? (
+              <button
+                type="button"
+                onClick={
+                  onViewProfile
+                }
+                className="inline-flex h-9 w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                <Eye className="h-4 w-4" />
+                View seller profile
+              </button>
+            ) : null}
+          </div>
+
+          {profile?.description ? (
+            <p className="mt-4 max-w-4xl text-sm leading-6 text-slate-600">
+              {
+                profile.description
+              }
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
+            {profile
+              ?.business_phone ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-blue-600" />
+                {
+                  profile.business_phone
+                }
+              </span>
+            ) : null}
+
+            {profile
+              ?.business_email ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-blue-600" />
+                {
+                  profile.business_email
+                }
+              </span>
+            ) : null}
+
+            {businessAddress(
+              profile,
+            ) ? (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                {businessAddress(
+                  profile,
+                )}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DepartmentSelection({
+  groups,
+  onBack,
+  onOpen,
+}: {
+  groups: DepartmentGroup[];
+  onBack: () => void;
+  onOpen:
+    (key: string) => void;
+}) {
+  return (
+    <div className="p-4 sm:p-5">
+      <StepHeader
+        step="2"
+        title="Select department"
+        onBack={onBack}
+        backLabel="All sellers"
+      />
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {groups.map(
+          (group) => (
+            <button
+              key={group.key}
+              type="button"
+              onClick={() =>
+                onOpen(
+                  group.key,
+                )
+              }
+              className="group rounded-2xl border border-slate-200 p-4 text-left transition hover:border-violet-300 hover:shadow-lg"
+            >
+              <div className="flex items-start justify-between">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-700">
+                  <Building2 className="h-5 w-5" />
+                </div>
+
+                <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-violet-600" />
+              </div>
+
+              <h3 className="mt-4 font-black text-slate-950">
+                {group.name}
+              </h3>
+
+              <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">
+                {group.department
+                  ?.description ??
+                  "Products without a department assignment."}
+              </p>
+
+              <div className="mt-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
+                {
+                  group.products
+                    .length
+                }{" "}
+                products
+              </div>
+            </button>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CategorySelection({
+  groups,
+  onBack,
+  onOpen,
+}: {
+  groups: CategoryGroup[];
+  onBack: () => void;
+  onOpen:
+    (key: string) => void;
+}) {
+  return (
+    <div className="p-4 sm:p-5">
+      <StepHeader
+        step="3"
+        title="Select category"
+        onBack={onBack}
+        backLabel="Departments"
+      />
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {groups.map(
+          (group) => (
+            <button
+              key={group.key}
+              type="button"
+              onClick={() =>
+                onOpen(
+                  group.key,
+                )
+              }
+              className="group rounded-2xl border border-slate-200 p-4 text-left transition hover:border-cyan-300 hover:shadow-lg"
+            >
+              <div className="flex items-start justify-between">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
+                  <FolderTree className="h-5 w-5" />
+                </div>
+
+                <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-cyan-600" />
+              </div>
+
+              <h3 className="mt-4 font-black text-slate-950">
+                {group.name}
+              </h3>
+
+              <div className="mt-4 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500">
+                {
+                  group.products
+                    .length
+                }{" "}
+                products
+              </div>
+            </button>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProductSelection({
+  group,
+  onBack,
+  onView,
+}: {
+  group: CategoryGroup;
+  onBack: () => void;
+  onView:
+    (product: AdminProduct) => void;
+}) {
+  return (
+    <div className="p-4 sm:p-5">
+      <StepHeader
+        step="4"
+        title="Products"
+        onBack={onBack}
+        backLabel="Categories"
+      />
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {group.products.map(
+          (product) => (
+            <article
+              key={
+                product.public_id
+              }
+              className="rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:shadow-lg"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-slate-700">
+                  <PackageSearch className="h-5 w-5" />
+                </div>
+
+                <span
+                  className={`rounded-full border px-2 py-1 text-[10px] font-black ${statusClass(
+                    product.status,
+                  )}`}
+                >
+                  {statusLabel(
+                    product.status,
+                  )}
+                </span>
+              </div>
+
+              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-slate-400">
+                {product.brand
+                  ?.name ??
+                  "No brand"}
+              </p>
+
+              <h3 className="mt-1 line-clamp-2 min-h-12 font-black leading-6 text-slate-950">
+                {product.name}
+              </h3>
+
+              <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">
+                {product.short_description ??
+                  "Marketplace product"}
+              </p>
+
               <button
                 type="button"
                 onClick={() =>
-                  setViewProduct(
-                    null,
+                  onView(
+                    product,
                   )
                 }
-                className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-black text-blue-700 hover:bg-blue-100"
               >
-                <X className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
+                View product
               </button>
-            </div>
+            </article>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <Info
-                label="Seller"
-                value={sellerName(
-                  viewProduct.seller,
-                )}
-              />
+function SellerProfileModal({
+  seller,
+  onClose,
+}: {
+  seller: SellerProfile;
+  onClose: () => void;
+}) {
+  const name =
+    sellerName(seller);
 
-              <Info
-                label="Category"
-                value={
-                  viewProduct.category
-                    ?.name ??
-                  "—"
-                }
-              />
+  const logo =
+    sellerLogo(seller);
 
-              <Info
-                label="Brand"
-                value={
-                  viewProduct.brand
-                    ?.name ??
-                  "—"
-                }
-              />
+  const cover =
+    sellerCover(seller);
 
-              <Info
-                label="Status"
-                value={statusLabel(
-                  viewProduct.status,
-                )}
-              />
-            </div>
+  const address =
+    businessAddress(
+      seller,
+    );
 
-            <p className="mt-5 text-sm leading-7 text-slate-600">
-              {viewProduct.short_description ??
-                "No short description."}
+  return (
+    <div
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-[2px] sm:p-5"
+      onMouseDown={(
+        event,
+      ) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <div className="flex h-[calc(100dvh-24px)] max-h-[820px] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:h-[calc(100dvh-40px)]">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
+              Seller profile
             </p>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setViewProduct(
-                    null,
-                  )
-                }
-                className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-              >
-                Close
-              </button>
+            <h2 className="mt-1 text-xl font-black text-slate-950">
+              {name}
+            </h2>
+          </div>
 
-              <Link
-                href="/admin/moderation"
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Moderate
-              </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="relative h-44 bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-600 sm:h-52">
+            {cover ? (
+              <img
+                src={cover}
+                alt={`${name} cover`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-white/40" />
+              </div>
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
+          </div>
+
+          <div className="relative px-5 pb-6 sm:px-6">
+            <div className="-mt-12 flex items-end gap-4">
+              <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-3xl border-4 border-white bg-white text-xl font-black text-blue-700 shadow-lg">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={`${name} logo`}
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  initials(name)
+                )}
+              </div>
+
+              <div className="pb-1">
+                <h3 className="text-2xl font-black text-slate-950">
+                  {name}
+                </h3>
+
+                <span
+                  className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black ${statusClass(
+                    seller.status ??
+                      "draft",
+                  )}`}
+                >
+                  {statusLabel(
+                    seller.status ??
+                      "draft",
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {seller.description ? (
+              <p className="mt-5 whitespace-pre-line text-sm leading-7 text-slate-600">
+                {
+                  seller.description
+                }
+              </p>
+            ) : null}
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <ProfileInfo
+                label="Legal business name"
+                value={
+                  seller.legal_business_name ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Store name"
+                value={
+                  seller.trading_name ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Business type"
+                value={
+                  seller.business_type ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Registration number"
+                value={
+                  seller.registration_number ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="TIN"
+                value={
+                  seller.tax_identification_number ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Phone"
+                value={
+                  seller.business_phone ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="WhatsApp"
+                value={
+                  seller.whatsapp ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Business email"
+                value={
+                  seller.business_email ??
+                  "—"
+                }
+              />
+
+              <div className="sm:col-span-2">
+                <ProfileInfo
+                  label="Business address"
+                  value={
+                    address ||
+                    "—"
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
-      ) : null}
+
+        <div className="flex justify-end border-t border-slate-100 px-5 py-4 sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductModal({
+  product,
+  onClose,
+}: {
+  product: AdminProduct;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[1050] flex items-center justify-center bg-slate-950/60 p-4"
+      onMouseDown={(
+        event,
+      ) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <div className="w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-blue-600">
+              Product
+            </p>
+
+            <h2 className="mt-1 text-xl font-black text-slate-950">
+              {product.name}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <ProfileInfo
+            label="Seller"
+            value={sellerName(
+              product.seller,
+            )}
+          />
+
+          <ProfileInfo
+            label="Category"
+            value={
+              product.category
+                ?.name ??
+              "—"
+            }
+          />
+
+          <ProfileInfo
+            label="Brand"
+            value={
+              product.brand
+                ?.name ??
+              "—"
+            }
+          />
+
+          <ProfileInfo
+            label="Status"
+            value={statusLabel(
+              product.status,
+            )}
+          />
+        </div>
+
+        <p className="mt-5 text-sm leading-7 text-slate-600">
+          {product.short_description ??
+            "No short description."}
+        </p>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+
+          <Link
+            href="/admin/moderation"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Moderate
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1453,7 +2463,7 @@ function StepHeader({
   );
 }
 
-function Info({
+function ProfileInfo({
   label,
   value,
 }: {
@@ -1466,7 +2476,7 @@ function Info({
         {label}
       </p>
 
-      <p className="mt-1 text-sm font-black text-slate-900">
+      <p className="mt-1 break-words text-sm font-black text-slate-900">
         {value}
       </p>
     </div>
