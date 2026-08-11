@@ -747,10 +747,10 @@ export default function SellerProductsPage() {
   ] = useState(1);
 
   const [
-    actionMenu,
-    setActionMenu,
+    manageTarget,
+    setManageTarget,
   ] =
-    useState<string | null>(
+    useState<Product | null>(
       null,
     );
 
@@ -1130,7 +1130,7 @@ export default function SellerProductsPage() {
       product.public_id,
     );
 
-    setActionMenu(null);
+    setManageTarget(null);
     setErrorMessage("");
     setSuccessMessage("");
 
@@ -1680,16 +1680,13 @@ export default function SellerProductsPage() {
                         <div className="absolute right-2 top-2">
                           <button
                             type="button"
-                            aria-label={`Actions for ${product.name}`}
+                            aria-label={`Manage ${product.name}`}
                             onClick={() =>
-                              setActionMenu(
-                                actionMenu ===
-                                  product.public_id
-                                  ? null
-                                  : product.public_id,
+                              setManageTarget(
+                                product,
                               )
                             }
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/95 text-slate-700 shadow-md backdrop-blur transition hover:bg-white"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/95 text-slate-700 shadow-md backdrop-blur transition hover:bg-white hover:text-blue-700"
                           >
                             {busyProduct ===
                             product.public_id ? (
@@ -1698,102 +1695,6 @@ export default function SellerProductsPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             )}
                           </button>
-
-                          {actionMenu ===
-                          product.public_id ? (
-                            <div className="absolute right-0 top-11 z-40 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-2xl">
-                              {product
-                                .actions
-                                ?.can_edit ? (
-                                <Link
-                                  href={`/seller/products/${product.public_id}/edit`}
-                                  onClick={() =>
-                                    setActionMenu(
-                                      null,
-                                    )
-                                  }
-                                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  <Edit3 className="h-4 w-4" />
-                                  Edit product
-                                </Link>
-                              ) : null}
-
-                              <Link
-                                href={`/seller/products/${product.public_id}/edit#variants`}
-                                onClick={() =>
-                                  setActionMenu(
-                                    null,
-                                  )
-                                }
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                              >
-                                <PackageCheck className="h-4 w-4" />
-                                Variants &
-                                price
-                              </Link>
-
-                              <Link
-                                href={`/seller/products/${product.public_id}/edit#inventory`}
-                                onClick={() =>
-                                  setActionMenu(
-                                    null,
-                                  )
-                                }
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50"
-                              >
-                                <Warehouse className="h-4 w-4" />
-                                Inventory
-                              </Link>
-
-                              {product
-                                .actions
-                                ?.can_submit_for_review ? (
-                                <>
-                                  <div className="my-1 border-t border-slate-100" />
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void submitForReview(
-                                        product,
-                                      )
-                                    }
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-50"
-                                  >
-                                    <Send className="h-4 w-4" />
-                                    Submit for
-                                    review
-                                  </button>
-                                </>
-                              ) : null}
-
-                              {product
-                                .actions
-                                ?.can_archive ? (
-                                <>
-                                  <div className="my-1 border-t border-slate-100" />
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActionMenu(
-                                        null,
-                                      );
-
-                                      setArchiveTarget(
-                                        product,
-                                      );
-                                    }}
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-red-700 transition hover:bg-red-50"
-                                  >
-                                    <Archive className="h-4 w-4" />
-                                    Archive
-                                  </button>
-                                </>
-                              ) : null}
-                            </div>
-                          ) : null}
                         </div>
                       </div>
 
@@ -2033,6 +1934,384 @@ export default function SellerProductsPage() {
           </>
         )}
       </section>
+
+      {manageTarget ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              setManageTarget(null);
+            }
+          }}
+        >
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-50">
+                  {resolveProductImage(
+                    manageTarget,
+                  ) ? (
+                    <img
+                      src={
+                        resolveProductImage(
+                          manageTarget,
+                        ) ?? ""
+                      }
+                      alt={
+                        manageTarget
+                          .primary_media
+                          ?.alt_text ??
+                        manageTarget.name
+                      }
+                      className="h-full w-full object-contain p-2"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-slate-400">
+                      <ImageOff className="h-8 w-8" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${statusClassName(
+                        manageTarget.status,
+                      )}`}
+                    >
+                      {statusLabel(
+                        manageTarget.status,
+                      )}
+                    </span>
+
+                    {manageTarget.condition ? (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                        {manageTarget.condition.replace(
+                          /_/g,
+                          " ",
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <h2 className="mt-2 truncate text-xl font-black text-slate-950">
+                    {manageTarget.name}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {manageTarget.category
+                      ?.name ??
+                      "No category"}
+                    {" · "}
+                    {manageTarget.brand
+                      ?.name ??
+                      "No brand"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Close product management"
+                onClick={() =>
+                  setManageTarget(null)
+                }
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Selling price
+                  </p>
+
+                  <p className="mt-2 text-lg font-black text-slate-950">
+                    {formatPrice(
+                      manageTarget,
+                    )}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Available stock
+                  </p>
+
+                  <p
+                    className={`mt-2 text-lg font-black ${
+                      availableStock(
+                        manageTarget,
+                      ) > 0
+                        ? "text-slate-950"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {availableStock(
+                      manageTarget,
+                    )}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Setup
+                  </p>
+
+                  <p
+                    className={`mt-2 text-sm font-black ${
+                      manageTarget
+                        .publication_readiness
+                        ?.is_ready
+                        ? "text-emerald-700"
+                        : "text-amber-700"
+                    }`}
+                  >
+                    {manageTarget
+                      .publication_readiness
+                      ?.is_ready
+                      ? "Ready"
+                      : readinessErrorCount(
+                            manageTarget,
+                          ) > 0
+                        ? `${readinessErrorCount(
+                            manageTarget,
+                          )} issue${
+                            readinessErrorCount(
+                              manageTarget,
+                            ) === 1
+                              ? ""
+                              : "s"
+                          }`
+                        : "Incomplete"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-black uppercase tracking-[0.12em] text-slate-400">
+                  Manage product
+                </h3>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {manageTarget.actions
+                    ?.can_edit ? (
+                    <Link
+                      href={`/seller/products/${manageTarget.public_id}/edit`}
+                      onClick={() =>
+                        setManageTarget(
+                          null,
+                        )
+                      }
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/50"
+                    >
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700">
+                        <Edit3 className="h-5 w-5" />
+                      </span>
+
+                      <span>
+                        <span className="block text-sm font-black text-slate-900">
+                          Edit product
+                        </span>
+
+                        <span className="mt-1 block text-xs text-slate-500">
+                          Name, category, brand and description
+                        </span>
+                      </span>
+                    </Link>
+                  ) : null}
+
+                  <Link
+                    href={`/seller/products/${manageTarget.public_id}/edit#variants`}
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/50"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700">
+                      <PackageCheck className="h-5 w-5" />
+                    </span>
+
+                    <span>
+                      <span className="block text-sm font-black text-slate-900">
+                        Variants & price
+                      </span>
+
+                      <span className="mt-1 block text-xs text-slate-500">
+                        SKU, product variation and selling price
+                      </span>
+                    </span>
+                  </Link>
+
+                  <Link
+                    href={`/seller/products/${manageTarget.public_id}/edit#inventory`}
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-amber-300 hover:bg-amber-50/50"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700">
+                      <Warehouse className="h-5 w-5" />
+                    </span>
+
+                    <span>
+                      <span className="block text-sm font-black text-slate-900">
+                        Inventory
+                      </span>
+
+                      <span className="mt-1 block text-xs text-slate-500">
+                        Adjust stock and inventory settings
+                      </span>
+                    </span>
+                  </Link>
+
+                  <Link
+                    href={`/seller/products/${manageTarget.public_id}/edit#media`}
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-cyan-300 hover:bg-cyan-50/50"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
+                      <ImageOff className="h-5 w-5" />
+                    </span>
+
+                    <span>
+                      <span className="block text-sm font-black text-slate-900">
+                        Product images
+                      </span>
+
+                      <span className="mt-1 block text-xs text-slate-500">
+                        Upload, replace and organize product media
+                      </span>
+                    </span>
+                  </Link>
+
+                  <Link
+                    href={`/seller/products/${manageTarget.public_id}/edit#return-policy`}
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:bg-emerald-50/50"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                      <ClipboardCheck className="h-5 w-5" />
+                    </span>
+
+                    <span>
+                      <span className="block text-sm font-black text-slate-900">
+                        Return policy
+                      </span>
+
+                      <span className="mt-1 block text-xs text-slate-500">
+                        Manage product return eligibility
+                      </span>
+                    </span>
+                  </Link>
+
+                  {manageTarget.actions
+                    ?.can_submit_for_review ? (
+                    <button
+                      type="button"
+                      disabled={
+                        busyProduct ===
+                        manageTarget.public_id
+                      }
+                      onClick={() =>
+                        void submitForReview(
+                          manageTarget,
+                        )
+                      }
+                      className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100 disabled:opacity-60"
+                    >
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-700 text-white">
+                        {busyProduct ===
+                        manageTarget.public_id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Send className="h-5 w-5" />
+                        )}
+                      </span>
+
+                      <span>
+                        <span className="block text-sm font-black text-blue-900">
+                          Submit for review
+                        </span>
+
+                        <span className="mt-1 block text-xs text-blue-700">
+                          Send this product to administrator moderation
+                        </span>
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {manageTarget.status ===
+                "rejected" &&
+              manageTarget.moderation
+                ?.rejection_reason ? (
+                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-red-600">
+                    Rejection reason
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-red-800">
+                    {
+                      manageTarget
+                        .moderation
+                        .rejection_reason
+                    }
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {manageTarget.actions
+                    ?.can_archive ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const product =
+                          manageTarget;
+
+                        setManageTarget(
+                          null,
+                        );
+
+                        setArchiveTarget(
+                          product,
+                        );
+                      }}
+                      className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-black text-red-700 transition hover:bg-red-50"
+                    >
+                      <Archive className="h-4 w-4" />
+                      Archive product
+                    </button>
+                  ) : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setManageTarget(null)
+                  }
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {archiveTarget ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
