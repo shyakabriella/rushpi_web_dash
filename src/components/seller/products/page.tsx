@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -1083,6 +1084,32 @@ export default function SellerProductsPage() {
     );
 
   useEffect(() => {
+    const modalOpen =
+      manageTarget !== null ||
+      editTarget !== null ||
+      archiveTarget !== null;
+
+    if (!modalOpen) {
+      return;
+    }
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      "hidden";
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+    };
+  }, [
+    archiveTarget,
+    editTarget,
+    manageTarget,
+  ]);
+
+  useEffect(() => {
     void loadProfiles();
   }, [loadProfiles]);
 
@@ -2098,8 +2125,9 @@ export default function SellerProductsPage() {
       </section>
 
       {manageTarget ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-5"
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[1000] flex items-center justify-center overflow-hidden bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-4"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -2109,9 +2137,9 @@ export default function SellerProductsPage() {
             }
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="grid min-h-[520px] lg:grid-cols-[320px_minmax(0,1fr)]">
-              <aside className="border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0 lg:border-r lg:p-6">
+            <div className="h-[calc(100dvh-24px)] max-h-[720px] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl sm:h-[calc(100dvh-32px)]">
+              <div className="grid h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]">
+                <aside className="min-h-0 overflow-y-auto border-b border-slate-100 bg-slate-50 p-4 lg:border-b-0 lg:border-r lg:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <span
                     className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${statusClassName(
@@ -2243,7 +2271,7 @@ export default function SellerProductsPage() {
                 </div>
               </aside>
 
-              <section className="flex min-h-0 flex-col">
+                <section className="flex min-h-0 flex-col">
                 <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
                     Product management
@@ -2460,13 +2488,15 @@ export default function SellerProductsPage() {
                 </div>
               </section>
             </div>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
 
       {editTarget ? (
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-5"
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-[1010] flex items-center justify-center overflow-hidden bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-4"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -2477,7 +2507,7 @@ export default function SellerProductsPage() {
             }
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex h-[calc(100dvh-24px)] max-h-[760px] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:h-[calc(100dvh-32px)]">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
@@ -2505,7 +2535,7 @@ export default function SellerProductsPage() {
               </button>
             </div>
 
-            <div className="max-h-[calc(92vh-150px)] overflow-y-auto p-5 sm:p-6">
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
               {editError ? (
                 <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -2806,12 +2836,14 @@ export default function SellerProductsPage() {
                 Save changes
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
 
       {archiveTarget ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]">
+        <ModalPortal>
+          <div className="fixed inset-0 z-[1020] flex items-center justify-center overflow-hidden bg-slate-950/50 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
               <Archive className="h-6 w-6" />
@@ -2871,10 +2903,29 @@ export default function SellerProductsPage() {
                 Archive
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
     </div>
+  );
+}
+
+function ModalPortal({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  if (
+    typeof document ===
+    "undefined"
+  ) {
+    return null;
+  }
+
+  return createPortal(
+    children,
+    document.body,
   );
 }
 
