@@ -7,7 +7,6 @@ import {
   Heart,
   MapPin,
   Menu,
-  PackageCheck,
   Search,
   ShoppingCart,
   Sparkles,
@@ -18,41 +17,68 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const navigationItems = [
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://rushpi.asyncafrica.com/api"
+).replace(/\/+$/, "");
+
+type PublicCategory = {
+  public_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  image_path?: string | null;
+  sort_order?: number;
+  products_count?: number;
+  is_featured?: boolean;
+};
+
+type PublicDepartment = {
+  public_id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  image_path?: string | null;
+  sort_order?: number;
+  categories_count?: number;
+  products_count?: number;
+  categories?: PublicCategory[];
+};
+
+type CatalogResponse<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+};
+
+const fallbackCategories: PublicCategory[] = [
   {
-    label: "New Arrivals",
-    href: "/products?sort=newest",
+    public_id: "fallback-phones",
+    name: "Phones",
+    slug: "phones",
   },
   {
-    label: "Phones",
-    href: "/products?category=phones",
+    public_id: "fallback-computers",
+    name: "Computers",
+    slug: "computers",
   },
   {
-    label: "Computers",
-    href: "/products?category=computers",
+    public_id: "fallback-accessories",
+    name: "Accessories",
+    slug: "accessories",
   },
   {
-    label: "Accessories",
-    href: "/products?category=accessories",
+    public_id: "fallback-gaming",
+    name: "Gaming",
+    slug: "gaming",
   },
   {
-    label: "Gaming",
-    href: "/products?category=gaming",
-  },
-  {
-    label: "Home Electronics",
-    href: "/products?category=home-electronics",
-  },
-  {
-    label: "Deals",
-    href: "/products?sort=price_asc",
-  },
-  {
-    label: "Verified Partners",
-    href: "/products",
+    public_id: "fallback-home-electronics",
+    name: "Home Electronics",
+    slug: "home-electronics",
   },
 ];
 
@@ -60,7 +86,106 @@ export default function SiteHeader() {
   const router = useRouter();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [departmentMenuOpen, setDepartmentMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [departments, setDepartments] = useState<PublicDepartment[]>([]);
+  const [categories, setCategories] = useState<PublicCategory[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCatalogNavigation() {
+      setCatalogLoading(true);
+
+      try {
+        const [departmentsResponse, categoriesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/catalog/departments`, {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }),
+          fetch(`${API_BASE_URL}/catalog/categories`, {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }),
+        ]);
+
+        if (!departmentsResponse.ok || !categoriesResponse.ok) {
+          throw new Error("Unable to load catalog navigation.");
+        }
+
+        const departmentsPayload =
+          (await departmentsResponse.json()) as CatalogResponse<PublicDepartment[]>;
+
+        const categoriesPayload =
+          (await categoriesResponse.json()) as CatalogResponse<PublicCategory[]>;
+
+        if (cancelled) {
+          return;
+        }
+
+        setDepartments(
+          Array.isArray(departmentsPayload.data)
+            ? departmentsPayload.data
+            : [],
+        );
+
+        setCategories(
+          Array.isArray(categoriesPayload.data)
+            ? categoriesPayload.data
+            : [],
+        );
+      } catch {
+        if (!cancelled) {
+          setDepartments([]);
+          setCategories(fallbackCategories);
+        }
+      } finally {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      }
+    }
+
+    void loadCatalogNavigation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!departmentMenuOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDepartmentMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [departmentMenuOpen]);
+
+  const navigationCategories = useMemo(
+    () =>
+      (categories.length > 0 ? categories : fallbackCategories).slice(0, 6),
+    [categories],
+  );
+
+  const extraCategories = useMemo(
+    () =>
+      (categories.length > 0 ? categories : fallbackCategories).slice(6),
+    [categories],
+  );
+
+  const categoryHref = (category: PublicCategory) =>
+    `/products?category=${encodeURIComponent(category.slug || category.public_id)}`;
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -472,19 +597,30 @@ export default function SiteHeader() {
         )}
       </div>
 
-      {/* Sub-header */}
+      {/* Dynamic marketplace sub-header */}
       <nav
         aria-label="Product navigation"
-        className="border-b border-blue-100 bg-[#edf4ff]"
+        className="relative border-b border-blue-100 bg-[#edf4ff]"
       >
         <div className="rushpi-scrollbar-none mx-auto flex max-w-[1600px] items-center gap-2 overflow-x-auto px-4 py-2.5 sm:px-6 lg:px-8">
           <button
             type="button"
+            onClick={() => setDepartmentMenuOpen((current) => !current)}
+            aria-expanded={departmentMenuOpen}
             className="group flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-50 hover:text-blue-700"
           >
             <Menu className="size-4" />
             Departments
-            <ChevronDown className="size-4 transition group-hover:rotate-180" />
+
+            {catalogLoading ? (
+              <span className="size-1.5 animate-pulse rounded-full bg-blue-500" />
+            ) : (
+              <ChevronDown
+                className={`size-4 transition ${
+                  departmentMenuOpen ? "rotate-180" : ""
+                }`}
+              />
+            )}
           </button>
 
           <button
@@ -498,15 +634,29 @@ export default function SiteHeader() {
 
           <span className="mx-1 hidden h-7 w-px shrink-0 bg-blue-200 md:block" />
 
-          {navigationItems.map((item) => (
+          <Link
+            href="/products?sort=newest"
+            className="rushpi-nav-chip shrink-0 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white hover:shadow-md"
+          >
+            New Arrivals
+          </Link>
+
+          {navigationCategories.map((category) => (
             <Link
-              key={item.label}
-              href={item.href}
+              key={category.public_id}
+              href={categoryHref(category)}
               className="rushpi-nav-chip shrink-0 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white hover:shadow-md"
             >
-              {item.label}
+              {category.name}
             </Link>
           ))}
+
+          <Link
+            href="/products"
+            className="rushpi-nav-chip shrink-0 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white hover:shadow-md"
+          >
+            Deals
+          </Link>
 
           <details className="group relative ml-auto shrink-0">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-950 shadow-sm ring-1 ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700">
@@ -514,19 +664,33 @@ export default function SiteHeader() {
               <ChevronDown className="size-4 transition group-open:rotate-180" />
             </summary>
 
-            <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-              <Link
-                href="/register"
-                className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
-              >
-                Earn with RushPi
-              </Link>
+            <div className="absolute right-0 top-[calc(100%+10px)] z-[80] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+              {extraCategories.map((category) => (
+                <Link
+                  key={category.public_id}
+                  href={categoryHref(category)}
+                  className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                >
+                  {category.name}
+                </Link>
+              ))}
+
+              {extraCategories.length > 0 ? (
+                <div className="my-1 border-t border-slate-100" />
+              ) : null}
 
               <Link
                 href="/products"
                 className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
               >
                 All products
+              </Link>
+
+              <Link
+                href="/register"
+                className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+              >
+                Earn with RushPi
               </Link>
 
               <Link
@@ -538,6 +702,76 @@ export default function SiteHeader() {
             </div>
           </details>
         </div>
+
+        {departmentMenuOpen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Close departments"
+              onClick={() => setDepartmentMenuOpen(false)}
+              className="fixed inset-0 top-[100px] z-[51] cursor-default bg-slate-950/10"
+            />
+
+            <div className="absolute left-0 right-0 top-full z-[60] border-t border-blue-100 bg-white shadow-2xl">
+              <div className="mx-auto max-h-[70vh] max-w-[1600px] overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+                {departments.length > 0 ? (
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {departments.map((department) => (
+                      <section
+                        key={department.public_id}
+                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="font-black text-slate-950">
+                              {department.name}
+                            </h3>
+
+                            {department.description ? (
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                                {department.description}
+                              </p>
+                            ) : null}
+                          </div>
+
+                          <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black text-blue-700">
+                            {department.products_count ?? 0} products
+                          </span>
+                        </div>
+
+                        <div className="mt-3 space-y-1">
+                          {(department.categories ?? []).map((category) => (
+                            <Link
+                              key={category.public_id}
+                              href={categoryHref(category)}
+                              onClick={() => setDepartmentMenuOpen(false)}
+                              className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                            >
+                              <span>{category.name}</span>
+
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {category.products_count ?? 0}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-sm font-bold text-slate-700">
+                      No public departments available yet.
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Departments appear after products are approved and published.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
       </nav>
     </header>
   );
