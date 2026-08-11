@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Building2,
@@ -19,6 +20,7 @@ import {
   Store,
   X,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   useCallback,
   useEffect,
@@ -2357,6 +2359,25 @@ function SellerProfileModal({
   );
 }
 
+
+function ModalPortal({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  if (
+    typeof document ===
+    "undefined"
+  ) {
+    return null;
+  }
+
+  return createPortal(
+    children,
+    document.body,
+  );
+}
+
 function ProductModal({
   product,
   onClose,
@@ -2364,111 +2385,156 @@ function ProductModal({
   product: AdminProduct;
   onClose: () => void;
 }) {
-  return (
-    <div
-      className="fixed inset-0 z-[1050] flex items-center justify-center bg-slate-950/60 p-4"
-      onMouseDown={(
-        event,
-      ) => {
-        if (
-          event.target ===
-          event.currentTarget
-        ) {
-          onClose();
-        }
-      }}
-    >
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wider text-blue-600">
-              Product
-            </p>
+  const image =
+    productImage(product);
 
-            <h2 className="mt-1 text-xl font-black text-slate-950">
-              {product.name}
-            </h2>
+  return (
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden bg-slate-950/65 p-3 backdrop-blur-[2px] sm:p-5"
+        onMouseDown={(
+          event,
+        ) => {
+          if (
+            event.target ===
+            event.currentTarget
+          ) {
+            onClose();
+          }
+        }}
+      >
+        <div className="flex max-h-[calc(100dvh-24px)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100dvh-40px)]">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
+                Product details
+              </p>
+
+              <h2 className="mt-1 truncate text-xl font-black text-slate-950 sm:text-2xl">
+                {product.name}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Close product details"
+              onClick={onClose}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+            {image ? (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="flex max-h-[320px] min-h-[210px] items-center justify-center p-4 sm:min-h-[260px]">
+                  <img
+                    src={image}
+                    alt={product.name}
+                    className="max-h-[290px] w-full object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-[210px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+                <div className="text-center text-slate-400">
+                  <PackageSearch className="mx-auto h-10 w-10" />
 
-        {productImage(product) ? (
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-            <div className="aspect-[16/8]">
-              <img
-                src={productImage(product) ?? ""}
-                alt={product.name}
-                className="h-full w-full object-contain p-4"
+                  <p className="mt-2 text-sm font-semibold">
+                    No product image
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <ProfileInfo
+                label="Seller"
+                value={sellerName(
+                  product.seller,
+                )}
               />
+
+              <ProfileInfo
+                label="Category"
+                value={
+                  product.category
+                    ?.name ??
+                  "—"
+                }
+              />
+
+              <ProfileInfo
+                label="Brand"
+                value={
+                  product.brand
+                    ?.name ??
+                  "—"
+                }
+              />
+
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                  Status
+                </p>
+
+                <span
+                  className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${statusClass(
+                    product.status,
+                  )}`}
+                >
+                  {statusLabel(
+                    product.status,
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-100 bg-white">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                  Product description
+                </p>
+              </div>
+
+              <p className="whitespace-pre-line px-4 py-4 text-sm leading-7 text-slate-600">
+                {product.short_description ??
+                  "No short description."}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                Product ID
+              </p>
+
+              <p className="mt-1 break-all text-xs font-semibold text-slate-600">
+                {product.public_id}
+              </p>
             </div>
           </div>
-        ) : null}
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <ProfileInfo
-            label="Seller"
-            value={sellerName(
-              product.seller,
-            )}
-          />
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
 
-          <ProfileInfo
-            label="Category"
-            value={
-              product.category
-                ?.name ??
-              "—"
-            }
-          />
-
-          <ProfileInfo
-            label="Brand"
-            value={
-              product.brand
-                ?.name ??
-              "—"
-            }
-          />
-
-          <ProfileInfo
-            label="Status"
-            value={statusLabel(
-              product.status,
-            )}
-          />
-        </div>
-
-        <p className="mt-5 text-sm leading-7 text-slate-600">
-          {product.short_description ??
-            "No short description."}
-        </p>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            Close
-          </button>
-
-          <Link
-            href="/admin/moderation"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Moderate
-          </Link>
+            <Link
+              href="/admin/moderation"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white transition hover:bg-blue-800"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Moderate product
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
