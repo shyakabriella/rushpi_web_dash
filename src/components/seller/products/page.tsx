@@ -16,6 +16,7 @@ import {
   PackagePlus,
   PackageSearch,
   RefreshCw,
+  Save,
   Search,
   Send,
   Store,
@@ -96,7 +97,9 @@ type Product = {
   name: string;
   slug?: string | null;
   short_description?: string | null;
+  description?: string | null;
   condition?: string | null;
+  warranty_months?: number | null;
   status: ProductStatus;
 
   category?: {
@@ -158,6 +161,16 @@ type Product = {
   };
 
   updated_at?: string | null;
+};
+
+type ProductEditForm = {
+  name: string;
+  category_public_id: string;
+  brand_public_id: string;
+  short_description: string;
+  description: string;
+  condition: string;
+  warranty_months: string;
 };
 
 type PaginationMeta = {
@@ -755,6 +768,38 @@ export default function SellerProductsPage() {
     );
 
   const [
+    editTarget,
+    setEditTarget,
+  ] =
+    useState<Product | null>(
+      null,
+    );
+
+  const [
+    editForm,
+    setEditForm,
+  ] =
+    useState<ProductEditForm>({
+      name: "",
+      category_public_id: "",
+      brand_public_id: "",
+      short_description: "",
+      description: "",
+      condition: "new",
+      warranty_months: "",
+    });
+
+  const [
+    savingEdit,
+    setSavingEdit,
+  ] = useState(false);
+
+  const [
+    editError,
+    setEditError,
+  ] = useState("");
+
+  const [
     errorMessage,
     setErrorMessage,
   ] = useState("");
@@ -1116,6 +1161,123 @@ export default function SellerProductsPage() {
         ).length,
       [products],
     );
+
+  function openEditModal(
+    product: Product,
+  ) {
+    setManageTarget(null);
+    setEditTarget(product);
+    setEditError("");
+
+    setEditForm({
+      name: product.name ?? "",
+      category_public_id:
+        product.category?.public_id ?? "",
+      brand_public_id:
+        product.brand?.public_id ?? "",
+      short_description:
+        product.short_description ?? "",
+      description:
+        product.description ?? "",
+      condition:
+        product.condition ?? "new",
+      warranty_months:
+        product.warranty_months === null ||
+        product.warranty_months === undefined
+          ? ""
+          : String(
+              product.warranty_months,
+            ),
+    });
+  }
+
+  async function updateProduct() {
+    if (
+      !selectedProfileId ||
+      !editTarget
+    ) {
+      return;
+    }
+
+    const name =
+      editForm.name.trim();
+
+    if (name.length < 2) {
+      setEditError(
+        "Product name must contain at least 2 characters.",
+      );
+      return;
+    }
+
+    if (
+      !editForm.category_public_id
+    ) {
+      setEditError(
+        "Please select a product category.",
+      );
+      return;
+    }
+
+    setSavingEdit(true);
+    setEditError("");
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const body: Record<
+        string,
+        unknown
+      > = {
+        name,
+        category_public_id:
+          editForm.category_public_id,
+        brand_public_id:
+          editForm.brand_public_id || null,
+        short_description:
+          editForm.short_description.trim() ||
+          null,
+        description:
+          editForm.description.trim() ||
+          null,
+        condition:
+          editForm.condition,
+        warranty_months:
+          editForm.warranty_months.trim() === ""
+            ? null
+            : Number(
+                editForm.warranty_months,
+              ),
+      };
+
+      await apiRequest(
+        `/seller/profiles/${encodeURIComponent(
+          selectedProfileId,
+        )}/products/${encodeURIComponent(
+          editTarget.public_id,
+        )}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        },
+      );
+
+      setSuccessMessage(
+        `"${name}" updated successfully.`,
+      );
+
+      setEditTarget(null);
+
+      await loadProducts();
+    } catch (error) {
+      setEditError(
+        error instanceof Error
+          ? error.message
+          : "Product could not be updated.",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   async function submitForReview(
     product: Product,
@@ -1937,7 +2099,7 @@ export default function SellerProductsPage() {
 
       {manageTarget ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-5"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -1947,140 +2109,127 @@ export default function SellerProductsPage() {
             }
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
-              <div className="flex min-w-0 items-center gap-4">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-50">
-                  {resolveProductImage(
-                    manageTarget,
-                  ) ? (
-                    <img
-                      src={
-                        resolveProductImage(
-                          manageTarget,
-                        ) ?? ""
-                      }
-                      alt={
-                        manageTarget
-                          .primary_media
-                          ?.alt_text ??
-                        manageTarget.name
-                      }
-                      className="h-full w-full object-contain p-2"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-slate-400">
-                      <ImageOff className="h-8 w-8" />
-                    </div>
-                  )}
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="grid min-h-[520px] lg:grid-cols-[320px_minmax(0,1fr)]">
+              <aside className="border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0 lg:border-r lg:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${statusClassName(
+                      manageTarget.status,
+                    )}`}
+                  >
+                    {statusLabel(
+                      manageTarget.status,
+                    )}
+                  </span>
+
+                  <button
+                    type="button"
+                    aria-label="Close product management"
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black ${statusClassName(
-                        manageTarget.status,
-                      )}`}
-                    >
-                      {statusLabel(
-                        manageTarget.status,
-                      )}
-                    </span>
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <div className="aspect-[4/3]">
+                    {resolveProductImage(
+                      manageTarget,
+                    ) ? (
+                      <img
+                        src={
+                          resolveProductImage(
+                            manageTarget,
+                          ) ?? ""
+                        }
+                        alt={
+                          manageTarget
+                            .primary_media
+                            ?.alt_text ??
+                          manageTarget.name
+                        }
+                        className="h-full w-full object-contain p-4"
+                      />
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+                        <ImageOff className="h-10 w-10" />
+                        <span className="text-xs font-semibold">
+                          No product image
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                    {manageTarget.condition ? (
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                        {manageTarget.condition.replace(
-                          /_/g,
-                          " ",
-                        )}
-                      </span>
-                    ) : null}
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                  {manageTarget.brand
+                    ?.name ??
+                    "No brand"}
+                </p>
+
+                <h2 className="mt-1 text-xl font-black leading-7 text-slate-950">
+                  {manageTarget.name}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {manageTarget.category
+                    ?.name ??
+                    "No category"}
+                </p>
+
+                <div className="mt-5 grid grid-cols-3 gap-2 lg:grid-cols-1">
+                  <div className="rounded-2xl bg-white p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Price
+                    </p>
+                    <p className="mt-1 text-sm font-black text-slate-950">
+                      {formatPrice(
+                        manageTarget,
+                      )}
+                    </p>
                   </div>
 
-                  <h2 className="mt-2 truncate text-xl font-black text-slate-950">
-                    {manageTarget.name}
-                  </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {manageTarget.category
-                      ?.name ??
-                      "No category"}
-                    {" · "}
-                    {manageTarget.brand
-                      ?.name ??
-                      "No brand"}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                aria-label="Close product management"
-                onClick={() =>
-                  setManageTarget(null)
-                }
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Selling price
-                  </p>
-
-                  <p className="mt-2 text-lg font-black text-slate-950">
-                    {formatPrice(
-                      manageTarget,
-                    )}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Available stock
-                  </p>
-
-                  <p
-                    className={`mt-2 text-lg font-black ${
-                      availableStock(
+                  <div className="rounded-2xl bg-white p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Stock
+                    </p>
+                    <p
+                      className={`mt-1 text-sm font-black ${
+                        availableStock(
+                          manageTarget,
+                        ) > 0
+                          ? "text-slate-950"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {availableStock(
                         manageTarget,
-                      ) > 0
-                        ? "text-slate-950"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {availableStock(
-                      manageTarget,
-                    )}
-                  </p>
-                </div>
+                      )}
+                    </p>
+                  </div>
 
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Setup
-                  </p>
-
-                  <p
-                    className={`mt-2 text-sm font-black ${
-                      manageTarget
+                  <div className="rounded-2xl bg-white p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Setup
+                    </p>
+                    <p
+                      className={`mt-1 text-sm font-black ${
+                        manageTarget
+                          .publication_readiness
+                          ?.is_ready
+                          ? "text-emerald-700"
+                          : "text-amber-700"
+                      }`}
+                    >
+                      {manageTarget
                         .publication_readiness
                         ?.is_ready
-                        ? "text-emerald-700"
-                        : "text-amber-700"
-                    }`}
-                  >
-                    {manageTarget
-                      .publication_readiness
-                      ?.is_ready
-                      ? "Ready"
-                      : readinessErrorCount(
-                            manageTarget,
-                          ) > 0
-                        ? `${readinessErrorCount(
+                        ? "Ready"
+                        : `${readinessErrorCount(
                             manageTarget,
                           )} issue${
                             readinessErrorCount(
@@ -2088,226 +2237,574 @@ export default function SellerProductsPage() {
                             ) === 1
                               ? ""
                               : "s"
-                          }`
-                        : "Incomplete"}
+                          }`}
+                    </p>
+                  </div>
+                </div>
+              </aside>
+
+              <section className="flex min-h-0 flex-col">
+                <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
+                    Product management
+                  </p>
+
+                  <h3 className="mt-1 text-2xl font-black text-slate-950">
+                    Manage this product
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Update product information, price, inventory,
+                    media and moderation from one place.
                   </p>
                 </div>
-              </div>
 
-              <div className="mt-6">
-                <h3 className="text-sm font-black uppercase tracking-[0.12em] text-slate-400">
-                  Manage product
-                </h3>
-
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {manageTarget.actions
-                    ?.can_edit ? (
-                    <Link
-                      href={`/seller/products/${manageTarget.public_id}/edit`}
-                      onClick={() =>
-                        setManageTarget(
-                          null,
-                        )
-                      }
-                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/50"
-                    >
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700">
-                        <Edit3 className="h-5 w-5" />
-                      </span>
-
-                      <span>
-                        <span className="block text-sm font-black text-slate-900">
-                          Edit product
+                <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {manageTarget.actions
+                      ?.can_edit ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openEditModal(
+                            manageTarget,
+                          )
+                        }
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/50"
+                      >
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700">
+                          <Edit3 className="h-5 w-5" />
                         </span>
 
-                        <span className="mt-1 block text-xs text-slate-500">
-                          Name, category, brand and description
+                        <span>
+                          <span className="block text-sm font-black text-slate-900">
+                            Edit product
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">
+                            Edit product name, category, brand,
+                            description, condition and warranty.
+                          </span>
+                        </span>
+                      </button>
+                    ) : null}
+
+                    <Link
+                      href={`/seller/products/${manageTarget.public_id}/edit#variants`}
+                      onClick={() =>
+                        setManageTarget(null)
+                      }
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/50"
+                    >
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700">
+                        <PackageCheck className="h-5 w-5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-black text-slate-900">
+                          Variants & price
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Manage SKU, product variation and selling price.
                         </span>
                       </span>
                     </Link>
-                  ) : null}
 
-                  <Link
-                    href={`/seller/products/${manageTarget.public_id}/edit#variants`}
-                    onClick={() =>
-                      setManageTarget(null)
-                    }
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:bg-violet-50/50"
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700">
-                      <PackageCheck className="h-5 w-5" />
-                    </span>
-
-                    <span>
-                      <span className="block text-sm font-black text-slate-900">
-                        Variants & price
-                      </span>
-
-                      <span className="mt-1 block text-xs text-slate-500">
-                        SKU, product variation and selling price
-                      </span>
-                    </span>
-                  </Link>
-
-                  <Link
-                    href={`/seller/products/${manageTarget.public_id}/edit#inventory`}
-                    onClick={() =>
-                      setManageTarget(null)
-                    }
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-amber-300 hover:bg-amber-50/50"
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700">
-                      <Warehouse className="h-5 w-5" />
-                    </span>
-
-                    <span>
-                      <span className="block text-sm font-black text-slate-900">
-                        Inventory
-                      </span>
-
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Adjust stock and inventory settings
-                      </span>
-                    </span>
-                  </Link>
-
-                  <Link
-                    href={`/seller/products/${manageTarget.public_id}/edit#media`}
-                    onClick={() =>
-                      setManageTarget(null)
-                    }
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-cyan-300 hover:bg-cyan-50/50"
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
-                      <ImageOff className="h-5 w-5" />
-                    </span>
-
-                    <span>
-                      <span className="block text-sm font-black text-slate-900">
-                        Product images
-                      </span>
-
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Upload, replace and organize product media
-                      </span>
-                    </span>
-                  </Link>
-
-                  <Link
-                    href={`/seller/products/${manageTarget.public_id}/edit#return-policy`}
-                    onClick={() =>
-                      setManageTarget(null)
-                    }
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:bg-emerald-50/50"
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-                      <ClipboardCheck className="h-5 w-5" />
-                    </span>
-
-                    <span>
-                      <span className="block text-sm font-black text-slate-900">
-                        Return policy
-                      </span>
-
-                      <span className="mt-1 block text-xs text-slate-500">
-                        Manage product return eligibility
-                      </span>
-                    </span>
-                  </Link>
-
-                  {manageTarget.actions
-                    ?.can_submit_for_review ? (
-                    <button
-                      type="button"
-                      disabled={
-                        busyProduct ===
-                        manageTarget.public_id
-                      }
+                    <Link
+                      href={`/seller/products/${manageTarget.public_id}/edit#inventory`}
                       onClick={() =>
-                        void submitForReview(
-                          manageTarget,
-                        )
+                        setManageTarget(null)
                       }
-                      className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100 disabled:opacity-60"
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-amber-300 hover:bg-amber-50/50"
                     >
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-700 text-white">
-                        {busyProduct ===
-                        manageTarget.public_id ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Send className="h-5 w-5" />
-                        )}
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700">
+                        <Warehouse className="h-5 w-5" />
                       </span>
-
                       <span>
-                        <span className="block text-sm font-black text-blue-900">
-                          Submit for review
+                        <span className="block text-sm font-black text-slate-900">
+                          Inventory
                         </span>
-
-                        <span className="mt-1 block text-xs text-blue-700">
-                          Send this product to administrator moderation
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Adjust stock quantity and inventory settings.
                         </span>
                       </span>
-                    </button>
+                    </Link>
+
+                    <Link
+                      href={`/seller/products/${manageTarget.public_id}/edit#media`}
+                      onClick={() =>
+                        setManageTarget(null)
+                      }
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-cyan-300 hover:bg-cyan-50/50"
+                    >
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
+                        <ImageOff className="h-5 w-5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-black text-slate-900">
+                          Product images
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Upload, replace and organize product images.
+                        </span>
+                      </span>
+                    </Link>
+
+                    <Link
+                      href={`/seller/products/${manageTarget.public_id}/edit#return-policy`}
+                      onClick={() =>
+                        setManageTarget(null)
+                      }
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:bg-emerald-50/50"
+                    >
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                        <ClipboardCheck className="h-5 w-5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-black text-slate-900">
+                          Return policy
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Manage customer return eligibility and rules.
+                        </span>
+                      </span>
+                    </Link>
+
+                    {manageTarget.actions
+                      ?.can_submit_for_review ? (
+                      <button
+                        type="button"
+                        disabled={
+                          busyProduct ===
+                          manageTarget.public_id
+                        }
+                        onClick={() =>
+                          void submitForReview(
+                            manageTarget,
+                          )
+                        }
+                        className="flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100 disabled:opacity-60"
+                      >
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-700 text-white">
+                          {busyProduct ===
+                          manageTarget.public_id ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Send className="h-5 w-5" />
+                          )}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-black text-blue-900">
+                            Submit for review
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-blue-700">
+                            Send the completed product to administrator moderation.
+                          </span>
+                        </span>
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {manageTarget.status ===
+                    "rejected" &&
+                  manageTarget.moderation
+                    ?.rejection_reason ? (
+                    <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-xs font-black uppercase tracking-wide text-red-600">
+                        Rejection reason
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-red-800">
+                        {
+                          manageTarget
+                            .moderation
+                            .rejection_reason
+                        }
+                      </p>
+                    </div>
                   ) : null}
                 </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+                  <div>
+                    {manageTarget.actions
+                      ?.can_archive ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const product =
+                            manageTarget;
+
+                          setManageTarget(
+                            null,
+                          );
+
+                          setArchiveTarget(
+                            product,
+                          );
+                        }}
+                        className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-black text-red-700 transition hover:bg-red-50"
+                      >
+                        <Archive className="h-4 w-4" />
+                        Archive
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setManageTarget(null)
+                    }
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editTarget ? (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-5"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+                event.currentTarget &&
+              !savingEdit
+            ) {
+              setEditTarget(null);
+            }
+          }}
+        >
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
+                  Edit product
+                </p>
+
+                <h2 className="mt-1 text-2xl font-black text-slate-950">
+                  {editTarget.name}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Update the main product information without leaving the catalog.
+                </p>
               </div>
 
-              {manageTarget.status ===
-                "rejected" &&
-              manageTarget.moderation
-                ?.rejection_reason ? (
-                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-red-600">
-                    Rejection reason
-                  </p>
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() =>
+                  setEditTarget(null)
+                }
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950 disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-                  <p className="mt-2 text-sm leading-6 text-red-800">
-                    {
-                      manageTarget
-                        .moderation
-                        .rejection_reason
-                    }
-                  </p>
+            <div className="max-h-[calc(92vh-150px)] overflow-y-auto p-5 sm:p-6">
+              {editError ? (
+                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                  <p>{editError}</p>
                 </div>
               ) : null}
 
-              <div className="mt-6 flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <div>
-                  {manageTarget.actions
-                    ?.can_archive ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const product =
-                          manageTarget;
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                    <div className="aspect-square">
+                      {resolveProductImage(
+                        editTarget,
+                      ) ? (
+                        <img
+                          src={
+                            resolveProductImage(
+                              editTarget,
+                            ) ?? ""
+                          }
+                          alt={
+                            editTarget
+                              .primary_media
+                              ?.alt_text ??
+                            editTarget.name
+                          }
+                          className="h-full w-full object-contain p-4"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+                          <ImageOff className="h-10 w-10" />
+                          <span className="text-xs font-semibold">
+                            No product image
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                        setManageTarget(
-                          null,
-                        );
-
-                        setArchiveTarget(
-                          product,
-                        );
-                      }}
-                      className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-black text-red-700 transition hover:bg-red-50"
-                    >
-                      <Archive className="h-4 w-4" />
-                      Archive product
-                    </button>
-                  ) : null}
+                  <p className="mt-3 text-xs leading-5 text-slate-500">
+                    Product images are managed separately from the Product images option.
+                  </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setManageTarget(null)
-                  }
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-                >
-                  Close
-                </button>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="sm:col-span-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Product name
+                    </span>
+
+                    <input
+                      value={editForm.name}
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            name:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Category
+                    </span>
+
+                    <select
+                      value={
+                        editForm.category_public_id
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            category_public_id:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
+                    >
+                      <option value="">
+                        Select category
+                      </option>
+
+                      {categoryOptions.map(
+                        (category) => (
+                          <option
+                            key={
+                              category.public_id
+                            }
+                            value={
+                              category.public_id
+                            }
+                          >
+                            {category.label ??
+                              category.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Brand
+                    </span>
+
+                    <select
+                      value={
+                        editForm.brand_public_id
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            brand_public_id:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
+                    >
+                      <option value="">
+                        No brand
+                      </option>
+
+                      {brandOptions.map(
+                        (brand) => (
+                          <option
+                            key={
+                              brand.public_id
+                            }
+                            value={
+                              brand.public_id
+                            }
+                          >
+                            {brand.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Condition
+                    </span>
+
+                    <select
+                      value={
+                        editForm.condition
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            condition:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
+                    >
+                      <option value="new">
+                        New
+                      </option>
+                      <option value="refurbished">
+                        Refurbished
+                      </option>
+                      <option value="used_like_new">
+                        Used - Like New
+                      </option>
+                      <option value="used_good">
+                        Used - Good
+                      </option>
+                      <option value="used_fair">
+                        Used - Fair
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Warranty months
+                    </span>
+
+                    <input
+                      type="number"
+                      min="0"
+                      max="240"
+                      value={
+                        editForm.warranty_months
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            warranty_months:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      placeholder="0"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                    />
+                  </label>
+
+                  <label className="sm:col-span-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Short description
+                    </span>
+
+                    <input
+                      value={
+                        editForm.short_description
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            short_description:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      maxLength={1000}
+                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                    />
+                  </label>
+
+                  <label className="sm:col-span-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      Full description
+                    </span>
+
+                    <textarea
+                      value={
+                        editForm.description
+                      }
+                      onChange={(event) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            description:
+                              event.target.value,
+                          }),
+                        )
+                      }
+                      rows={5}
+                      maxLength={50000}
+                      className="mt-1.5 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                    />
+                  </label>
+                </div>
               </div>
+
+              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs leading-5 text-amber-800">
+                  Changing the product category may require the product specifications
+                  to match the new category. If the backend reports a specification
+                  validation error, update the category-specific specifications from
+                  the product management page.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 sm:px-6">
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() =>
+                  setEditTarget(null)
+                }
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() =>
+                  void updateProduct()
+                }
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white transition hover:bg-blue-800 disabled:opacity-60"
+              >
+                {savingEdit ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+
+                Save changes
+              </button>
             </div>
           </div>
         </div>
