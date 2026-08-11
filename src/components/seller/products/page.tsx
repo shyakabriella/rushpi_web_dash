@@ -16,7 +16,6 @@ import {
   PackagePlus,
   PackageSearch,
   RefreshCw,
-  Save,
   Search,
   Send,
   Store,
@@ -25,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import ProductManager from "@/components/seller/products/ProductManager";
 import { createPortal } from "react-dom";
 import {
   useCallback,
@@ -162,16 +162,6 @@ type Product = {
   };
 
   updated_at?: string | null;
-};
-
-type ProductEditForm = {
-  name: string;
-  category_public_id: string;
-  brand_public_id: string;
-  short_description: string;
-  description: string;
-  condition: string;
-  warranty_months: string;
 };
 
 type PaginationMeta = {
@@ -777,30 +767,6 @@ export default function SellerProductsPage() {
     );
 
   const [
-    editForm,
-    setEditForm,
-  ] =
-    useState<ProductEditForm>({
-      name: "",
-      category_public_id: "",
-      brand_public_id: "",
-      short_description: "",
-      description: "",
-      condition: "new",
-      warranty_months: "",
-    });
-
-  const [
-    savingEdit,
-    setSavingEdit,
-  ] = useState(false);
-
-  const [
-    editError,
-    setEditError,
-  ] = useState("");
-
-  const [
     errorMessage,
     setErrorMessage,
   ] = useState("");
@@ -1194,116 +1160,6 @@ export default function SellerProductsPage() {
   ) {
     setManageTarget(null);
     setEditTarget(product);
-    setEditError("");
-
-    setEditForm({
-      name: product.name ?? "",
-      category_public_id:
-        product.category?.public_id ?? "",
-      brand_public_id:
-        product.brand?.public_id ?? "",
-      short_description:
-        product.short_description ?? "",
-      description:
-        product.description ?? "",
-      condition:
-        product.condition ?? "new",
-      warranty_months:
-        product.warranty_months === null ||
-        product.warranty_months === undefined
-          ? ""
-          : String(
-              product.warranty_months,
-            ),
-    });
-  }
-
-  async function updateProduct() {
-    if (
-      !selectedProfileId ||
-      !editTarget
-    ) {
-      return;
-    }
-
-    const name =
-      editForm.name.trim();
-
-    if (name.length < 2) {
-      setEditError(
-        "Product name must contain at least 2 characters.",
-      );
-      return;
-    }
-
-    if (
-      !editForm.category_public_id
-    ) {
-      setEditError(
-        "Please select a product category.",
-      );
-      return;
-    }
-
-    setSavingEdit(true);
-    setEditError("");
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      const body: Record<
-        string,
-        unknown
-      > = {
-        name,
-        category_public_id:
-          editForm.category_public_id,
-        brand_public_id:
-          editForm.brand_public_id || null,
-        short_description:
-          editForm.short_description.trim() ||
-          null,
-        description:
-          editForm.description.trim() ||
-          null,
-        condition:
-          editForm.condition,
-        warranty_months:
-          editForm.warranty_months.trim() === ""
-            ? null
-            : Number(
-                editForm.warranty_months,
-              ),
-      };
-
-      await apiRequest(
-        `/seller/profiles/${encodeURIComponent(
-          selectedProfileId,
-        )}/products/${encodeURIComponent(
-          editTarget.public_id,
-        )}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(body),
-        },
-      );
-
-      setSuccessMessage(
-        `"${name}" updated successfully.`,
-      );
-
-      setEditTarget(null);
-
-      await loadProducts();
-    } catch (error) {
-      setEditError(
-        error instanceof Error
-          ? error.message
-          : "Product could not be updated.",
-      );
-    } finally {
-      setSavingEdit(false);
-    }
   }
 
   async function submitForReview(
@@ -2497,345 +2353,62 @@ export default function SellerProductsPage() {
         <ModalPortal>
           <div
             className="fixed inset-0 z-[1010] flex items-center justify-center overflow-hidden bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-4"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-                event.currentTarget &&
-              !savingEdit
-            ) {
-              setEditTarget(null);
-            }
-          }}
-        >
-            <div className="flex h-[calc(100dvh-24px)] max-h-[760px] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:h-[calc(100dvh-32px)]">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
-                  Edit product
-                </p>
-
-                <h2 className="mt-1 text-2xl font-black text-slate-950">
-                  {editTarget.name}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Update the main product information without leaving the catalog.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled={savingEdit}
-                onClick={() =>
-                  setEditTarget(null)
-                }
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950 disabled:opacity-50"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-              {editError ? (
-                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-                  <p>{editError}</p>
-                </div>
-              ) : null}
-
-              <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                setEditTarget(null);
+              }
+            }}
+          >
+            <div className="flex h-[calc(100dvh-24px)] max-h-[900px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl sm:h-[calc(100dvh-32px)]">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
                 <div>
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    <div className="aspect-square">
-                      {resolveProductImage(
-                        editTarget,
-                      ) ? (
-                        <img
-                          src={
-                            resolveProductImage(
-                              editTarget,
-                            ) ?? ""
-                          }
-                          alt={
-                            editTarget
-                              .primary_media
-                              ?.alt_text ??
-                            editTarget.name
-                          }
-                          className="h-full w-full object-contain p-4"
-                        />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
-                          <ImageOff className="h-10 w-10" />
-                          <span className="text-xs font-semibold">
-                            No product image
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-xs leading-5 text-slate-500">
-                    Product images are managed separately from the Product images option.
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-600">
+                    Complete product editor
                   </p>
+
+                  <h2 className="mt-1 text-xl font-black text-slate-950">
+                    Update {editTarget.name}
+                  </h2>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="sm:col-span-2">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Product name
-                    </span>
-
-                    <input
-                      value={editForm.name}
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            name:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </label>
-
-                  <label>
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Category
-                    </span>
-
-                    <select
-                      value={
-                        editForm.category_public_id
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            category_public_id:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
-                    >
-                      <option value="">
-                        Select category
-                      </option>
-
-                      {categoryOptions.map(
-                        (category) => (
-                          <option
-                            key={
-                              category.public_id
-                            }
-                            value={
-                              category.public_id
-                            }
-                          >
-                            {category.label ??
-                              category.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-
-                  <label>
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Brand
-                    </span>
-
-                    <select
-                      value={
-                        editForm.brand_public_id
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            brand_public_id:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
-                    >
-                      <option value="">
-                        No brand
-                      </option>
-
-                      {brandOptions.map(
-                        (brand) => (
-                          <option
-                            key={
-                              brand.public_id
-                            }
-                            value={
-                              brand.public_id
-                            }
-                          >
-                            {brand.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-
-                  <label>
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Condition
-                    </span>
-
-                    <select
-                      value={
-                        editForm.condition
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            condition:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-400"
-                    >
-                      <option value="new">
-                        New
-                      </option>
-                      <option value="refurbished">
-                        Refurbished
-                      </option>
-                      <option value="used_like_new">
-                        Used - Like New
-                      </option>
-                      <option value="used_good">
-                        Used - Good
-                      </option>
-                      <option value="used_fair">
-                        Used - Fair
-                      </option>
-                    </select>
-                  </label>
-
-                  <label>
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Warranty months
-                    </span>
-
-                    <input
-                      type="number"
-                      min="0"
-                      max="240"
-                      value={
-                        editForm.warranty_months
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            warranty_months:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      placeholder="0"
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </label>
-
-                  <label className="sm:col-span-2">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Short description
-                    </span>
-
-                    <input
-                      value={
-                        editForm.short_description
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            short_description:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      maxLength={1000}
-                      className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </label>
-
-                  <label className="sm:col-span-2">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-500">
-                      Full description
-                    </span>
-
-                    <textarea
-                      value={
-                        editForm.description
-                      }
-                      onChange={(event) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            description:
-                              event.target.value,
-                          }),
-                        )
-                      }
-                      rows={5}
-                      maxLength={50000}
-                      className="mt-1.5 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm leading-6 text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  aria-label="Close editor"
+                  onClick={() =>
+                    setEditTarget(null)
+                  }
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-xs leading-5 text-amber-800">
-                  Changing the product category may require the product specifications
-                  to match the new category. If the backend reports a specification
-                  validation error, update the category-specific specifications from
-                  the product management page.
-                </p>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                <ProductManager
+                  productId={
+                    editTarget.public_id
+                  }
+                  embedded
+                  onCancel={() =>
+                    setEditTarget(null)
+                  }
+                  onSaved={() => {
+                    const productName =
+                      editTarget.name;
+
+                    setEditTarget(null);
+
+                    setSuccessMessage(
+                      `"${productName}" updated successfully.`,
+                    );
+
+                    void loadProducts();
+                  }}
+                />
               </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 sm:px-6">
-              <button
-                type="button"
-                disabled={savingEdit}
-                onClick={() =>
-                  setEditTarget(null)
-                }
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={savingEdit}
-                onClick={() =>
-                  void updateProduct()
-                }
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white transition hover:bg-blue-800 disabled:opacity-60"
-              >
-                {savingEdit ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-
-                Save changes
-              </button>
-            </div>
             </div>
           </div>
         </ModalPortal>
