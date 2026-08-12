@@ -706,6 +706,85 @@ export default async function CategoryPage({
           </div>
         </section>
 
+        {/* Full-width category campaign banner */}
+        <section className="mt-8">
+          <Link
+            href={`/products?category=${encodeURIComponent(
+              category.slug,
+            )}`}
+            className="group relative block min-h-[230px] overflow-hidden rounded-[28px] bg-gradient-to-r from-[#17108f] via-[#3510c8] to-[#151067] shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:min-h-[260px]"
+          >
+            {/* subtle grid / glow */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px)",
+                backgroundSize: "42px 42px",
+              }}
+            />
+
+            <div className="absolute -left-20 -top-24 size-72 rounded-full bg-fuchsia-500/25 blur-3xl" />
+            <div className="absolute bottom-[-90px] right-[20%] size-72 rounded-full bg-blue-400/25 blur-3xl" />
+
+            <div className="relative grid min-h-[230px] items-center gap-6 px-6 py-7 sm:min-h-[260px] sm:px-8 md:grid-cols-[260px_1fr_360px] lg:px-12">
+              {/* Left brand block */}
+              <div className="hidden md:block">
+                <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/20 backdrop-blur">
+                  <div className="grid size-11 place-items-center rounded-full bg-amber-400 text-blue-950">
+                    <ShoppingCart className="size-5" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.16em] text-blue-100">
+                      RushPi
+                    </p>
+                    <p className="text-2xl font-black leading-none text-white">
+                      Tech Days
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Center copy */}
+              <div className="relative z-10 text-center text-white md:text-left">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-200">
+                  Featured {category.name}
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                  Upgrade your setup with
+                  <br className="hidden sm:block" /> RushPi picks
+                </h2>
+
+                <p className="mt-2 text-sm font-medium text-blue-100 sm:text-base">
+                  Shop approved products from verified sellers.
+                </p>
+
+                <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-sm">
+                  Shop now
+                  <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+                </span>
+              </div>
+
+              {/* Right product visual */}
+              <div className="relative hidden h-[210px] md:block">
+                {firstProduct?.image_url ? (
+                  <img
+                    src={firstProduct.image_url}
+                    alt={firstProduct.name}
+                    className="absolute bottom-[-12px] right-0 h-[220px] w-full object-contain drop-shadow-2xl transition duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <PackageSearch className="size-28 text-white/60" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </Link>
+        </section>
+
         {/* Trust strip */}
         <section className="mt-10 grid gap-3 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
