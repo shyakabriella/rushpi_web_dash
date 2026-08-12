@@ -3,7 +3,9 @@ import {
   ArrowRight,
   BadgeCheck,
   Box,
+  Heart,
   PackageSearch,
+  Plus,
   ShieldCheck,
   ShoppingCart,
   Store,
@@ -226,6 +228,9 @@ export default async function CategoryPage({
 
   const firstProduct =
     products[0] ?? null;
+
+  const featuredProducts =
+    products.slice(0, 3);
 
   const secondProduct =
     products[1] ?? firstProduct;
@@ -783,6 +788,195 @@ export default async function CategoryPage({
               </div>
             </div>
           </Link>
+        </section>
+
+        {/* Category spotlight + featured products */}
+        <section className="mt-10">
+          <div className="grid gap-6 lg:grid-cols-[1.02fr_1fr]">
+            {/* Left promotional card */}
+            <Link
+              href={`/products?category=${encodeURIComponent(
+                category.slug,
+              )}`}
+              className="group relative min-h-[430px] overflow-hidden rounded-[28px] bg-gradient-to-br from-[#d8ecff] via-[#c4e4fb] to-[#a8d8f4] p-7 shadow-sm ring-1 ring-sky-200 transition hover:-translate-y-0.5 hover:shadow-xl sm:min-h-[470px]"
+            >
+              <div className="relative z-10 max-w-[58%]">
+                <p className="text-sm font-black text-[#07377f]">
+                  Upgrade your everyday
+                </p>
+
+                <h2 className="mt-2 text-4xl font-black leading-[1.02] tracking-tight text-[#062f74] sm:text-5xl">
+                  Better tech.
+                  <br />
+                  Better work.
+                </h2>
+
+                <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-sm ring-1 ring-slate-300">
+                  Shop now
+                  <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </div>
+
+              {firstProduct?.image_url ? (
+                <img
+                  src={firstProduct.image_url}
+                  alt={firstProduct.name}
+                  className="absolute bottom-4 right-0 h-[72%] w-[64%] object-contain p-3 transition duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <PackageSearch className="absolute bottom-16 right-12 size-32 text-blue-700/45" />
+              )}
+
+              <div className="absolute bottom-7 left-7 z-10">
+                <div className="inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-3 text-[#062f74] backdrop-blur">
+                  <ShieldCheck className="size-5" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em]">
+                      RushPi
+                    </p>
+                    <p className="text-lg font-black leading-none">
+                      Verified Tech
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Right product group */}
+            <div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                    Let&apos;s move forward
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Explore more approved products in {category.name}.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/products?category=${encodeURIComponent(
+                    category.slug,
+                  )}`}
+                  className="inline-flex shrink-0 items-center gap-1 text-sm font-black text-slate-700 underline underline-offset-4 transition hover:text-blue-700"
+                >
+                  View all
+                </Link>
+              </div>
+
+              {featuredProducts.length > 0 ? (
+                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {featuredProducts.map(
+                    (product) => {
+                      const price =
+                        formatMoney(
+                          product.price?.minimum,
+                          product.price?.currency ??
+                            "RWF",
+                        );
+
+                      const inStock =
+                        product.inventory
+                          ?.is_available !==
+                        false;
+
+                      return (
+                        <article
+                          key={`spotlight-${product.public_id}`}
+                          className="group min-w-0"
+                        >
+                          <div className="relative overflow-hidden rounded-[22px] bg-white ring-1 ring-slate-200">
+                            <Link
+                              href={`/products/${product.public_id}`}
+                              className="block h-[190px] overflow-hidden"
+                            >
+                              {product.image_url ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.name}
+                                  className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center bg-slate-50">
+                                  <PackageSearch className="size-12 text-slate-300" />
+                                </div>
+                              )}
+                            </Link>
+
+                            <button
+                              type="button"
+                              aria-label={`Save ${product.name}`}
+                              className="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 transition hover:scale-105 hover:text-rose-600"
+                            >
+                              <Heart className="size-4" />
+                            </button>
+                          </div>
+
+                          <div className="pt-3">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[#0754d8] px-3.5 py-2 text-xs font-black text-white transition hover:bg-blue-700"
+                            >
+                              <Plus className="size-4" />
+                              Add
+                            </button>
+
+                            <p className="mt-3 text-lg font-black text-slate-950">
+                              {price}
+                            </p>
+
+                            <Link
+                              href={`/products/${product.public_id}`}
+                              className="mt-1 line-clamp-3 text-sm font-semibold leading-5 text-slate-800 transition hover:text-blue-700"
+                            >
+                              {product.brand?.name
+                                ? `${product.brand.name} `
+                                : ""}
+                              {product.name}
+                            </Link>
+
+                            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+                              <Store className="size-3.5 text-blue-600" />
+                              <span className="truncate">
+                                {product.seller
+                                  ?.trading_name ||
+                                  product.seller
+                                    ?.name ||
+                                  "RushPi seller"}
+                              </span>
+
+                              <BadgeCheck className="size-3.5 shrink-0 text-blue-600" />
+                            </div>
+
+                            <p
+                              className={`mt-2 text-xs font-bold ${
+                                inStock
+                                  ? "text-emerald-700"
+                                  : "text-slate-500"
+                              }`}
+                            >
+                              {inStock
+                                ? "In stock"
+                                : "Currently unavailable"}
+                            </p>
+                          </div>
+                        </article>
+                      );
+                    },
+                  )}
+                </div>
+              ) : (
+                <div className="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                  <PackageSearch className="mx-auto size-10 text-blue-500" />
+
+                  <p className="mt-3 text-sm font-black text-slate-900">
+                    More products will appear here soon.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
         {/* Trust strip */}
