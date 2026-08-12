@@ -227,6 +227,15 @@ export default async function CategoryPage({
   const firstProduct =
     products[0] ?? null;
 
+  const secondProduct =
+    products[1] ?? firstProduct;
+
+  const thirdProduct =
+    products[2] ?? firstProduct;
+
+  const fourthProduct =
+    products[3] ?? secondProduct ?? firstProduct;
+
   return (
     <main className="min-h-screen bg-[#f7f9fc]">
       <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -459,6 +468,267 @@ export default async function CategoryPage({
               </p>
             </div>
           )}
+        </section>
+
+        {/* Category promotional mosaic */}
+        <section className="mt-10">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                Featured in {category.name}
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                More ways to shop
+              </h2>
+            </div>
+
+            <Link
+              href={`/products?category=${encodeURIComponent(
+                category.slug,
+              )}`}
+              className="hidden items-center gap-2 text-sm font-black text-blue-700 transition hover:text-blue-900 sm:inline-flex"
+            >
+              Shop the category
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.35fr_1.1fr_.78fr] lg:grid-rows-[220px_220px]">
+            {/* Large left feature */}
+            <Link
+              href={
+                firstProduct
+                  ? `/products/${firstProduct.public_id}`
+                  : `/products?category=${encodeURIComponent(
+                      category.slug,
+                    )}`
+              }
+              className="group relative min-h-[360px] overflow-hidden rounded-[26px] bg-[#a9def5] p-6 shadow-sm ring-1 ring-sky-200 transition hover:-translate-y-0.5 hover:shadow-lg lg:row-span-2 lg:min-h-0"
+            >
+              <div className="relative z-10 max-w-[62%]">
+                <p className="text-sm font-black text-[#07377f]">
+                  Featured RushPi pick
+                </p>
+
+                <h3 className="mt-2 text-3xl font-black leading-[1.02] tracking-tight text-[#062f74] sm:text-4xl">
+                  {firstProduct?.name ??
+                    `Shop ${category.name}`}
+                </h3>
+
+                {firstProduct ? (
+                  <p className="mt-3 text-2xl font-black text-[#062f74]">
+                    {formatMoney(
+                      firstProduct.price?.minimum,
+                      firstProduct.price?.currency ??
+                        "RWF",
+                    )}
+                  </p>
+                ) : null}
+
+                <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-sm">
+                  Shop now
+                  <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </div>
+
+              {firstProduct?.image_url ? (
+                <img
+                  src={firstProduct.image_url}
+                  alt={firstProduct.name}
+                  className="absolute bottom-3 right-2 h-[62%] w-[58%] object-contain transition duration-300 group-hover:scale-105 sm:h-[68%]"
+                />
+              ) : (
+                <PackageSearch className="absolute bottom-8 right-8 size-28 text-blue-700/60" />
+              )}
+
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-28 opacity-30"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(3,105,161,.45) 1px, transparent 1px), linear-gradient(90deg, rgba(3,105,161,.45) 1px, transparent 1px)",
+                  backgroundSize:
+                    "34px 34px",
+                }}
+              />
+            </Link>
+
+            {/* Middle top feature */}
+            <Link
+              href={
+                secondProduct
+                  ? `/products/${secondProduct.public_id}`
+                  : `/products?category=${encodeURIComponent(
+                      category.slug,
+                    )}`
+              }
+              className="group relative min-h-[220px] overflow-hidden rounded-[26px] bg-[#9fdcf5] p-5 shadow-sm ring-1 ring-sky-200 transition hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className="relative z-10 max-w-[52%]">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-[#07377f]">
+                  New arrivals
+                </p>
+
+                <h3 className="mt-2 text-2xl font-black leading-tight text-[#062f74]">
+                  {secondProduct?.name ??
+                    `Latest ${category.name}`}
+                </h3>
+
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-black text-[#062f74] underline underline-offset-4">
+                  Shop now
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </div>
+
+              {secondProduct?.image_url ? (
+                <img
+                  src={secondProduct.image_url}
+                  alt={secondProduct.name}
+                  className="absolute bottom-0 right-1 h-[88%] w-[48%] object-contain p-3 transition duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <Box className="absolute bottom-8 right-8 size-20 text-blue-700/60" />
+              )}
+            </Link>
+
+            {/* Middle bottom two cards */}
+            <div className="grid min-h-[220px] grid-cols-2 gap-4">
+              <Link
+                href={`/products?category=${encodeURIComponent(
+                  category.slug,
+                )}`}
+                className="group relative overflow-hidden rounded-[24px] bg-[#ffe4a3] p-5 shadow-sm ring-1 ring-amber-200 transition hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative z-10">
+                  <h3 className="text-xl font-black leading-tight text-[#07377f]">
+                    Accessories,
+                    <br />
+                    extras & more
+                  </h3>
+
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-black text-[#07377f] underline underline-offset-4">
+                    Shop now
+                  </span>
+                </div>
+
+                {thirdProduct?.image_url ? (
+                  <img
+                    src={thirdProduct.image_url}
+                    alt={thirdProduct.name}
+                    className="absolute -bottom-5 right-0 h-[55%] w-[80%] object-contain transition duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <ShoppingCart className="absolute bottom-5 right-5 size-16 text-[#07377f]/50" />
+                )}
+
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-20"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(217,119,6,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(217,119,6,.5) 1px, transparent 1px)",
+                    backgroundSize:
+                      "28px 28px",
+                  }}
+                />
+              </Link>
+
+              <Link
+                href={`/products?category=${encodeURIComponent(
+                  category.slug,
+                )}`}
+                className="group relative overflow-hidden rounded-[24px] bg-[#07358f] p-5 text-white shadow-sm ring-1 ring-blue-900 transition hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative z-10">
+                  <h3 className="text-xl font-black leading-tight">
+                    Best picks
+                    <br />
+                    for your setup
+                  </h3>
+
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-black underline underline-offset-4">
+                    Shop now
+                  </span>
+                </div>
+
+                {fourthProduct?.image_url ? (
+                  <img
+                    src={fourthProduct.image_url}
+                    alt={fourthProduct.name}
+                    className="absolute -bottom-3 right-0 h-[57%] w-[82%] object-contain transition duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <Store className="absolute bottom-5 right-5 size-16 text-white/40" />
+                )}
+              </Link>
+            </div>
+
+            {/* Tall right feature */}
+            <Link
+              href={
+                firstProduct
+                  ? `/products/${firstProduct.public_id}`
+                  : `/products?category=${encodeURIComponent(
+                      category.slug,
+                    )}`
+              }
+              className="group relative min-h-[360px] overflow-hidden rounded-[26px] bg-gradient-to-b from-[#b8e7f8] to-[#edfaff] p-5 shadow-sm ring-1 ring-sky-200 transition hover:-translate-y-0.5 hover:shadow-lg lg:row-span-2 lg:min-h-0"
+            >
+              <div className="relative z-10">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-[#07377f]">
+                  Latest from RushPi
+                </p>
+
+                <h3 className="mt-1 text-2xl font-black leading-tight text-[#062f74]">
+                  Shop standout
+                  <br />
+                  {category.name}
+                </h3>
+
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-black text-[#062f74] underline underline-offset-4">
+                  Shop now
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </div>
+
+              {firstProduct?.image_url ? (
+                <img
+                  src={firstProduct.image_url}
+                  alt={firstProduct.name}
+                  className="absolute left-1/2 top-[34%] h-[48%] w-[88%] -translate-x-1/2 object-contain p-2 transition duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <PackageSearch className="absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 text-blue-700/50" />
+              )}
+
+              {firstProduct ? (
+                <div className="absolute bottom-5 left-5 right-5">
+                  <p className="text-xs font-bold text-[#07377f]">
+                    From
+                  </p>
+
+                  <p className="text-2xl font-black text-[#062f74]">
+                    {formatMoney(
+                      firstProduct.price?.minimum,
+                      firstProduct.price?.currency ??
+                        "RWF",
+                    )}
+                  </p>
+                </div>
+              ) : null}
+            </Link>
+          </div>
+
+          <div className="mt-4 sm:hidden">
+            <Link
+              href={`/products?category=${encodeURIComponent(
+                category.slug,
+              )}`}
+              className="inline-flex items-center gap-2 text-sm font-black text-blue-700"
+            >
+              Shop the category
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </section>
 
         {/* Trust strip */}
