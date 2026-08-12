@@ -253,8 +253,63 @@ export default async function CategoryPage({
     products[3] ?? secondProduct ?? firstProduct;
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc]">
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="min-h-screen bg-gradient-to-b from-[#f7f9fc] via-white to-[#f7f9fc]">
+      <style>{`
+        @keyframes rushpiFadeUp {
+          0% {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes rushpiProductIn {
+          0% {
+            opacity: 0;
+            transform: translateY(14px) scale(.985);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes rushpiSoftFloat {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+
+        .rushpi-section-enter {
+          animation: rushpiFadeUp .65s cubic-bezier(.2,.75,.25,1) both;
+        }
+
+        .rushpi-product-enter {
+          opacity: 0;
+          animation: rushpiProductIn .55s cubic-bezier(.2,.75,.25,1) both;
+        }
+
+        .rushpi-soft-float {
+          animation: rushpiSoftFloat 5s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .rushpi-section-enter,
+          .rushpi-product-enter,
+          .rushpi-soft-float {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+        }
+      `}</style>
+      <div className="mx-auto max-w-[1600px] px-4 py-6 pb-14 sm:px-6 lg:px-8 lg:py-8 lg:pb-16">
         {/* Breadcrumb */}
         <nav
           aria-label="Breadcrumb"
@@ -284,7 +339,7 @@ export default async function CategoryPage({
         </nav>
 
         {/* Category hero */}
-        <section className="overflow-hidden rounded-[28px] bg-gradient-to-r from-[#dff4ff] via-[#bfe9fb] to-[#92d8f5] shadow-sm ring-1 ring-sky-200">
+        <section className="rushpi-section-enter overflow-hidden rounded-[28px] bg-gradient-to-r from-[#dff4ff] via-[#bfe9fb] to-[#92d8f5] shadow-sm ring-1 ring-sky-200">
           <div className="grid min-h-[250px] items-center gap-8 px-6 py-8 md:grid-cols-[1fr_320px] lg:px-10">
             <div>
               <Link
@@ -327,7 +382,8 @@ export default async function CategoryPage({
                   <img
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
-                    className="h-full w-full object-contain p-5"
+                    decoding="async"
+                    className="rushpi-soft-float h-full w-full object-contain p-4"
                   />
                 ) : (
                   <PackageSearch className="size-24 text-blue-600" />
@@ -338,7 +394,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Page title + controls */}
-        <section className="mt-9">
+        <section className="rushpi-section-enter mt-9">
           <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
@@ -361,9 +417,9 @@ export default async function CategoryPage({
 
           {/* Products */}
           {products.length > 0 ? (
-            <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(170px,210px))] justify-start gap-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {products.map(
-                (product) => {
+                (product, index) => {
                   const price =
                     formatMoney(
                       product.price?.minimum,
@@ -385,11 +441,14 @@ export default async function CategoryPage({
                       key={
                         product.public_id
                       }
-                      className="group flex w-full max-w-[210px] min-w-0 flex-col overflow-hidden rounded-[18px] bg-white shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+                      style={{
+                        animationDelay: `${Math.min(index, 12) * 55}ms`,
+                      }}
+                      className="rushpi-product-enter group flex min-w-0 flex-col overflow-hidden rounded-[18px] bg-white shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:ring-blue-200"
                     >
                       <Link
                         href={`/products/${product.public_id}`}
-                        className="relative block h-[165px] overflow-hidden bg-white"
+                        className="relative flex h-[185px] items-center justify-center overflow-hidden bg-gradient-to-b from-white to-slate-50 sm:h-[200px]"
                       >
                         {product.image_url ? (
                           <img
@@ -399,7 +458,8 @@ export default async function CategoryPage({
                             alt={
                               product.name
                             }
-                            className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-105"
+                            decoding="async"
+                            className="h-full w-full object-contain p-2.5 transition duration-500 ease-out group-hover:scale-[1.04]"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-slate-50">
@@ -408,7 +468,7 @@ export default async function CategoryPage({
                         )}
 
                         <span
-                          className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black shadow-sm ${
+                          className={`absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-black shadow-sm backdrop-blur ${
                             inStock
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-slate-200 text-slate-600"
@@ -420,7 +480,7 @@ export default async function CategoryPage({
                         </span>
                       </Link>
 
-                      <div className="flex flex-1 flex-col p-3">
+                      <div className="flex flex-1 flex-col p-3.5">
                         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-blue-600">
                           {product.brand?.name ??
                             category.name}
@@ -487,7 +547,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Category promotional mosaic */}
-        <section className="mt-10">
+        <section className="rushpi-section-enter mt-10">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -557,7 +617,7 @@ export default async function CategoryPage({
                 <img
                   src={firstProduct.image_url}
                   alt={firstProduct.name}
-                  className="absolute bottom-8 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-105"
+                  className="absolute bottom-8 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-[1.03]"
                 />
               ) : (
                 <PackageSearch className="absolute bottom-16 left-1/2 size-32 -translate-x-1/2 text-blue-700/55" />
@@ -597,7 +657,7 @@ export default async function CategoryPage({
                   <img
                     src={secondProduct.image_url}
                     alt={secondProduct.name}
-                    className="absolute bottom-2 right-2 h-[86%] w-[44%] object-contain p-2 transition duration-300 group-hover:scale-105"
+                    className="absolute bottom-2 right-2 h-[86%] w-[44%] object-contain p-2 transition duration-300 group-hover:scale-[1.03]"
                   />
                 ) : (
                   <Box className="absolute bottom-8 right-8 size-20 text-blue-700/55" />
@@ -628,7 +688,7 @@ export default async function CategoryPage({
                     <img
                       src={thirdProduct.image_url}
                       alt={thirdProduct.name}
-                      className="absolute bottom-3 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-105"
+                      className="absolute bottom-3 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (
                     <ShoppingCart className="absolute bottom-8 left-1/2 size-20 -translate-x-1/2 text-[#07377f]/45" />
@@ -657,7 +717,7 @@ export default async function CategoryPage({
                     <img
                       src={fourthProduct.image_url}
                       alt={fourthProduct.name}
-                      className="absolute bottom-3 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-105"
+                      className="absolute bottom-3 left-1/2 h-[58%] w-[88%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (
                     <Store className="absolute bottom-8 left-1/2 size-20 -translate-x-1/2 text-white/40" />
@@ -698,7 +758,7 @@ export default async function CategoryPage({
                 <img
                   src={firstProduct.image_url}
                   alt={firstProduct.name}
-                  className="absolute left-1/2 top-[30%] h-[48%] w-[90%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-105"
+                  className="absolute left-1/2 top-[30%] h-[48%] w-[90%] -translate-x-1/2 object-contain transition duration-300 group-hover:scale-[1.03]"
                 />
               ) : (
                 <PackageSearch className="absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 text-blue-700/45" />
@@ -723,7 +783,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Full-width category campaign banner */}
-        <section className="mt-8">
+        <section className="rushpi-section-enter mt-8">
           <Link
             href={`/products?category=${encodeURIComponent(
               category.slug,
@@ -789,7 +849,7 @@ export default async function CategoryPage({
                   <img
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
-                    className="absolute bottom-[-12px] right-0 h-[220px] w-full object-contain drop-shadow-2xl transition duration-300 group-hover:scale-105"
+                    className="absolute bottom-[-12px] right-0 h-[220px] w-full object-contain drop-shadow-2xl transition duration-300 group-hover:scale-[1.03]"
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -802,7 +862,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Category spotlight + featured products */}
-        <section className="mt-10">
+        <section className="rushpi-section-enter mt-10">
           <div className="grid gap-6 lg:grid-cols-[1.02fr_1fr]">
             {/* Left promotional card */}
             <Link
@@ -832,7 +892,7 @@ export default async function CategoryPage({
                 <img
                   src={firstProduct.image_url}
                   alt={firstProduct.name}
-                  className="absolute bottom-4 right-0 h-[72%] w-[64%] object-contain p-3 transition duration-300 group-hover:scale-105"
+                  className="absolute bottom-4 right-0 h-[72%] w-[64%] object-contain p-3 transition duration-300 group-hover:scale-[1.03]"
                 />
               ) : (
                 <PackageSearch className="absolute bottom-16 right-12 size-32 text-blue-700/45" />
@@ -895,7 +955,7 @@ export default async function CategoryPage({
                       return (
                         <article
                           key={`spotlight-${product.public_id}`}
-                          className="group min-w-0"
+                          className="group min-w-0 transition duration-300 hover:-translate-y-1"
                         >
                           <div className="relative overflow-hidden rounded-[22px] bg-white ring-1 ring-slate-200">
                             <Link
@@ -906,7 +966,7 @@ export default async function CategoryPage({
                                 <img
                                   src={product.image_url}
                                   alt={product.name}
-                                  className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-105"
+                                  className="h-full w-full object-contain p-2 transition duration-500 ease-out group-hover:scale-[1.04]"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center bg-slate-50">
@@ -991,7 +1051,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Dynamic category central strip */}
-        <section className="mt-10 border-b border-slate-200 pb-8">
+        <section className="rushpi-section-enter mt-10 border-b border-slate-200 pb-8">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -1036,7 +1096,7 @@ export default async function CategoryPage({
                         shortcut.slug ||
                           shortcut.public_id,
                       )}`}
-                      className="group min-w-0"
+                      className="group min-w-0 transition duration-300 hover:-translate-y-1"
                     >
                       <div className="relative aspect-[1.12/1] overflow-hidden rounded-[22px] bg-[#f3f4f6] ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
                         {visualProduct?.image_url ? (
@@ -1047,7 +1107,7 @@ export default async function CategoryPage({
                             alt={
                               shortcut.name
                             }
-                            className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
+                            className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
@@ -1086,7 +1146,7 @@ export default async function CategoryPage({
         </section>
 
         {/* Trust strip */}
-        <section className="mt-10 grid gap-3 sm:grid-cols-3">
+        <section className="rushpi-section-enter mt-10 grid gap-3 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
             <BadgeCheck className="size-5 shrink-0 text-blue-600" />
             <div>
