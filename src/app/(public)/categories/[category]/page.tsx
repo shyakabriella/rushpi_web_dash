@@ -189,6 +189,7 @@ async function getCategoryData(
 
     return {
       category,
+      categories,
       products: Array.isArray(productsPayload?.data)
         ? productsPayload.data
         : [],
@@ -222,9 +223,19 @@ export default async function CategoryPage({
 
   const {
     category,
+    categories,
     products,
     total,
   } = result;
+
+  const shortcutCategories = [
+    category,
+    ...categories.filter(
+      (item) =>
+        item.public_id !==
+        category.public_id,
+    ),
+  ].slice(0, 6);
 
   const firstProduct =
     products[0] ?? null;
@@ -976,6 +987,101 @@ export default async function CategoryPage({
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* Dynamic category central strip */}
+        <section className="mt-10 border-b border-slate-200 pb-8">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                Explore more
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                {category.name} central
+              </h2>
+            </div>
+
+            <Link
+              href="/categories"
+              className="hidden items-center gap-2 text-sm font-black text-blue-700 transition hover:text-blue-900 sm:inline-flex"
+            >
+              View all
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          {shortcutCategories.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 lg:grid-cols-6">
+              {shortcutCategories.map(
+                (
+                  shortcut,
+                  index,
+                ) => {
+                  const visualProduct =
+                    products.length > 0
+                      ? products[
+                          index %
+                            products.length
+                        ]
+                      : null;
+
+                  return (
+                    <Link
+                      key={
+                        shortcut.public_id
+                      }
+                      href={`/categories/${encodeURIComponent(
+                        shortcut.slug ||
+                          shortcut.public_id,
+                      )}`}
+                      className="group min-w-0"
+                    >
+                      <div className="relative aspect-[1.12/1] overflow-hidden rounded-[22px] bg-[#f3f4f6] ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
+                        {visualProduct?.image_url ? (
+                          <img
+                            src={
+                              visualProduct.image_url
+                            }
+                            alt={
+                              shortcut.name
+                            }
+                            className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <PackageSearch className="size-14 text-blue-600" />
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-center text-sm font-semibold text-slate-700 transition group-hover:text-blue-700 sm:text-base">
+                        {shortcut.name}
+                      </p>
+                    </Link>
+                  );
+                },
+              )}
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+              <PackageSearch className="mx-auto size-10 text-blue-500" />
+
+              <p className="mt-3 text-sm font-black text-slate-900">
+                More categories will appear here automatically.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-5 sm:hidden">
+            <Link
+              href="/categories"
+              className="inline-flex items-center gap-2 text-sm font-black text-blue-700"
+            >
+              View all categories
+              <ArrowRight className="size-4" />
+            </Link>
           </div>
         </section>
 
