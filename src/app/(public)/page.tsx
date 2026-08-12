@@ -10,13 +10,32 @@ import MarketplaceShowcase from "@/components/home/marketplace-showcase";
 import PromoMosaic from "@/components/home/promo-mosaic";
 import RollbacksCarousel from "@/components/home/rollbacks-carousel";
 
-export default function HomePage() {
+import {
+  diversifyBySeller,
+  getHomeProducts,
+} from "@/lib/public-home-catalog";
+
+export default async function HomePage() {
+  const products = await getHomeProducts();
+
+  const diversifiedProducts = diversifyBySeller(
+    products,
+    30,
+  );
+
+  const heroProducts = diversifiedProducts.slice(0, 3);
+  const promoProducts = diversifiedProducts.slice(3, 8);
+  const newArrivalProducts = diversifiedProducts.slice(8, 20);
+
   return (
-    <main>
-      <MarketplaceShowcase />
-      <PromoMosaic />
-      <RollbacksCarousel />
+    <main className="bg-white">
+      <MarketplaceShowcase products={heroProducts} />
+      <PromoMosaic products={promoProducts} />
+      <RollbacksCarousel products={newArrivalProducts} />
+
       <CategoryShortcuts />
+
+      {/* Legacy sections stay for now and can be converted later. */}
       <FurnitureSpotlight />
       <BeautyBestsellers />
       <PatioGardenDeals />
