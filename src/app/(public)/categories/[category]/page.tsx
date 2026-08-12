@@ -331,8 +331,8 @@ export default async function CategoryPage({
           display: block;
           width: auto;
           height: auto;
-          max-width: 100%;
-          max-height: 100%;
+          max-width: 88%;
+          max-height: 88%;
           object-fit: contain;
           object-position: center;
           transition: transform .45s cubic-bezier(.2,.75,.25,1);
@@ -340,7 +340,7 @@ export default async function CategoryPage({
         }
 
         .group:hover .rushpi-promo-image {
-          transform: scale(1.015);
+          transform: scale(1.01);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -427,7 +427,7 @@ export default async function CategoryPage({
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
                     decoding="async"
-                    className="rushpi-product-image rushpi-soft-float max-h-full max-w-full"
+                    className="rushpi-soft-float h-full w-full object-contain p-3"
                   />
                 ) : (
                   <PackageSearch className="size-24 text-blue-600" />
@@ -461,7 +461,7 @@ export default async function CategoryPage({
 
           {/* Products */}
           {products.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {products.map(
                 (product, index) => {
                   const price =
@@ -488,11 +488,11 @@ export default async function CategoryPage({
                       style={{
                         animationDelay: `${Math.min(index, 12) * 55}ms`,
                       }}
-                      className="rushpi-product-enter group flex min-w-0 flex-col overflow-hidden rounded-[18px] bg-white shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:ring-blue-200"
+                      className="rushpi-product-enter group relative flex h-[292px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-200/60"
                     >
                       <Link
                         href={`/products/${product.public_id}`}
-                        className="rushpi-product-stage relative flex h-[190px] items-center justify-center overflow-hidden bg-[#f5f5f5] p-3 sm:h-[205px]"
+                        className="relative h-[118px] shrink-0 overflow-hidden bg-slate-50"
                       >
                         {product.image_url ? (
                           <img
@@ -503,7 +503,7 @@ export default async function CategoryPage({
                               product.name
                             }
                             decoding="async"
-                            className="rushpi-product-image"
+                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-slate-50">
@@ -512,7 +512,7 @@ export default async function CategoryPage({
                         )}
 
                         <span
-                          className={`absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-black shadow-sm backdrop-blur ${
+                          className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-black shadow-sm backdrop-blur ${
                             inStock
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-slate-200 text-slate-600"
@@ -524,7 +524,7 @@ export default async function CategoryPage({
                         </span>
                       </Link>
 
-                      <div className="flex flex-1 flex-col p-3.5">
+                      <div className="flex min-h-0 flex-1 flex-col p-3">
                         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-blue-600">
                           {product.brand?.name ??
                             category.name}
@@ -532,23 +532,23 @@ export default async function CategoryPage({
 
                         <Link
                           href={`/products/${product.public_id}`}
-                          className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-slate-900 transition hover:text-blue-700"
+                          className="mt-0.5 line-clamp-1 text-sm font-black leading-5 text-slate-950 transition hover:text-blue-700"
                         >
                           {product.name}
                         </Link>
 
                         {condition ? (
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 line-clamp-1 text-[11px] leading-4 text-slate-500">
                             Condition:{" "}
                             {condition}
                           </p>
                         ) : null}
 
-                        <p className="mt-2 text-base font-black text-slate-950">
+                        <p className="mt-2 text-sm font-black text-slate-950">
                           {price}
                         </p>
 
-                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
                           <Store className="size-3.5 text-blue-600" />
                           <span className="truncate">
                             {product.seller
@@ -560,10 +560,10 @@ export default async function CategoryPage({
                           <BadgeCheck className="size-3.5 shrink-0 text-blue-600" />
                         </div>
 
-                        <div className="mt-auto pt-4">
+                        <div className="mt-auto pt-2">
                           <Link
                             href={`/products/${product.public_id}`}
-                            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#0754d8] px-3 py-2 text-xs font-black text-white transition hover:bg-blue-700"
+                            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-[#0754d8] px-2.5 text-[11px] font-black text-white transition hover:bg-blue-700"
                           >
                             <ShoppingCart className="size-4" />
                             View product
@@ -1020,16 +1020,16 @@ export default async function CategoryPage({
                           key={`spotlight-${product.public_id}`}
                           className="group min-w-0 transition duration-300 hover:-translate-y-1"
                         >
-                          <div className="rushpi-product-stage relative overflow-hidden rounded-[22px] bg-[#f5f5f5] ring-1 ring-slate-200">
+                          <div className="relative overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200">
                             <Link
                               href={`/products/${product.public_id}`}
-                              className="flex h-[200px] items-center justify-center overflow-hidden p-3"
+                              className="block h-[135px] overflow-hidden"
                             >
                               {product.image_url ? (
                                 <img
                                   src={product.image_url}
                                   alt={product.name}
-                                  className="rushpi-product-image"
+                                  className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center bg-slate-50">
@@ -1161,7 +1161,7 @@ export default async function CategoryPage({
                       )}`}
                       className="group min-w-0 transition duration-300 hover:-translate-y-1"
                     >
-                      <div className="rushpi-product-stage relative aspect-[1.12/1] overflow-hidden rounded-[22px] bg-[#f3f4f6] p-3 ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
+                      <div className="relative h-[145px] overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
                         {visualProduct?.image_url ? (
                           <img
                             src={
@@ -1170,7 +1170,7 @@ export default async function CategoryPage({
                             alt={
                               shortcut.name
                             }
-                            className="rushpi-product-image"
+                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
