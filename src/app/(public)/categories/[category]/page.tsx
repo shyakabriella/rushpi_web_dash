@@ -336,7 +336,7 @@ export default async function CategoryPage({
 
           {/* Products */}
           {products.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(170px,210px))] justify-start gap-4">
               {products.map(
                 (product) => {
                   const price =
@@ -360,11 +360,11 @@ export default async function CategoryPage({
                       key={
                         product.public_id
                       }
-                      className="group flex min-w-0 flex-col overflow-hidden rounded-[22px] bg-white shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                      className="group flex w-full max-w-[210px] min-w-0 flex-col overflow-hidden rounded-[18px] bg-white shadow-sm ring-1 ring-slate-200 transition duration-300 hover:-translate-y-1 hover:shadow-lg"
                     >
                       <Link
                         href={`/products/${product.public_id}`}
-                        className="relative block aspect-square overflow-hidden bg-white"
+                        className="relative block h-[165px] overflow-hidden bg-white"
                       >
                         {product.image_url ? (
                           <img
@@ -374,7 +374,7 @@ export default async function CategoryPage({
                             alt={
                               product.name
                             }
-                            className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
+                            className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-105"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-slate-50">
@@ -395,7 +395,7 @@ export default async function CategoryPage({
                         </span>
                       </Link>
 
-                      <div className="flex flex-1 flex-col p-4">
+                      <div className="flex flex-1 flex-col p-3">
                         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-blue-600">
                           {product.brand?.name ??
                             category.name}
@@ -403,7 +403,7 @@ export default async function CategoryPage({
 
                         <Link
                           href={`/products/${product.public_id}`}
-                          className="mt-1 line-clamp-2 text-[15px] font-bold leading-5 text-slate-900 transition hover:text-blue-700 sm:text-base"
+                          className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-slate-900 transition hover:text-blue-700"
                         >
                           {product.name}
                         </Link>
@@ -415,7 +415,7 @@ export default async function CategoryPage({
                           </p>
                         ) : null}
 
-                        <p className="mt-3 text-lg font-black text-slate-950">
+                        <p className="mt-2 text-base font-black text-slate-950">
                           {price}
                         </p>
 
@@ -434,7 +434,7 @@ export default async function CategoryPage({
                         <div className="mt-auto pt-4">
                           <Link
                             href={`/products/${product.public_id}`}
-                            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#0754d8] px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
+                            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#0754d8] px-3 py-2 text-xs font-black text-white transition hover:bg-blue-700"
                           >
                             <ShoppingCart className="size-4" />
                             View product
