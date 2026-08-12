@@ -32,6 +32,35 @@ type Category = {
   } | null;
 };
 
+type ProductImageAsset = {
+  public_id?: string;
+  alt_text?: string | null;
+  is_primary?: boolean;
+  url?: string | null;
+
+  urls?: {
+    thumbnail?: string | null;
+    card?: string | null;
+    detail?: string | null;
+    original_optimized?: string | null;
+  } | null;
+
+  renditions?: {
+    thumbnail?: {
+      url?: string | null;
+    } | null;
+    card?: {
+      url?: string | null;
+    } | null;
+    detail?: {
+      url?: string | null;
+    } | null;
+    original_optimized?: {
+      url?: string | null;
+    } | null;
+  } | null;
+};
+
 type Product = {
   public_id: string;
   name: string;
@@ -39,7 +68,16 @@ type Product = {
   short_description?: string | null;
   description?: string | null;
   condition?: string | null;
+
+  /*
+   * Public API image_url currently points to card.webp.
+   * card.webp is square and can already be cropped before CSS sees it.
+   * We therefore prefer original_optimized/detail below.
+   */
   image_url?: string | null;
+
+  primary_image?: ProductImageAsset | null;
+  media?: ProductImageAsset[] | null;
 
   category?: {
     public_id: string;
@@ -94,6 +132,31 @@ type ProductsResponse = {
     total?: number;
   };
 };
+
+function productImageUrl(
+  product?: Product | null,
+): string | undefined {
+  if (!product) {
+    return undefined;
+  }
+
+  const primary =
+    product.primary_image ??
+    product.media?.find(
+      (media) => media.is_primary,
+    ) ??
+    product.media?.[0];
+
+  return (
+    primary?.urls?.original_optimized ??
+    primary?.renditions?.original_optimized?.url ??
+    primary?.urls?.detail ??
+    primary?.renditions?.detail?.url ??
+    primary?.url ??
+    product.image_url ??
+    undefined
+  );
+}
 
 function formatMoney(
   value?: string | number | null,
@@ -435,10 +498,10 @@ export default async function CategoryPage({
 
             <div className="hidden justify-center md:flex">
               <div className="rushpi-product-stage flex aspect-square w-[240px] items-center justify-center overflow-hidden rounded-[34px] bg-white/90 p-4 shadow-xl ring-1 ring-white">
-                {firstProduct?.image_url ? (
+                {productImageUrl(firstProduct) ? (
                   <img
-                    src={firstProduct.image_url}
-                    alt={firstProduct.name}
+                    src={productImageUrl(firstProduct) ?? ""}
+                    alt={firstProduct?.name ?? category.name}
                     decoding="async"
                     className="rushpi-safe-image rushpi-soft-float p-4"
                   />
@@ -505,18 +568,16 @@ export default async function CategoryPage({
                     >
                       <Link
                         href={`/products/${product.public_id}`}
-                        className="rushpi-safe-stage relative h-[132px] shrink-0 bg-[#f4f4f5] p-3"
+                        className="rushpi-safe-stage relative h-[150px] shrink-0 bg-[#f4f4f5] p-4"
                       >
-                        {product.image_url ? (
+                        {productImageUrl(product) ? (
                           <img
-                            src={
-                              product.image_url
-                            }
+                            src={productImageUrl(product) ?? ""}
                             alt={
                               product.name
                             }
                             decoding="async"
-                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
+                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.005]"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-slate-50">
@@ -671,10 +732,10 @@ export default async function CategoryPage({
               </div>
 
               <div className="rushpi-safe-stage absolute inset-x-7 bottom-7 top-[245px] rounded-[26px] bg-white/95 p-7 shadow-sm ring-1 ring-white/80">
-                {firstProduct?.image_url ? (
+                {productImageUrl(firstProduct) ? (
                   <img
-                    src={firstProduct.image_url}
-                    alt={firstProduct.name}
+                    src={productImageUrl(firstProduct) ?? ""}
+                    alt={firstProduct?.name ?? category.name}
                     decoding="async"
                     className="rushpi-safe-image"
                   />
@@ -714,10 +775,10 @@ export default async function CategoryPage({
                 </div>
 
                 <div className="rushpi-safe-stage absolute bottom-5 right-5 top-5 w-[43%] rounded-[22px] bg-white/90 p-5 shadow-sm">
-                  {secondProduct?.image_url ? (
+                  {productImageUrl(secondProduct) ? (
                     <img
-                      src={secondProduct.image_url}
-                      alt={secondProduct.name}
+                      src={productImageUrl(secondProduct) ?? ""}
+                      alt={secondProduct?.name ?? category.name}
                       decoding="async"
                       className="rushpi-safe-image"
                     />
@@ -748,10 +809,10 @@ export default async function CategoryPage({
                   </div>
 
                   <div className="rushpi-safe-stage absolute inset-x-4 bottom-4 top-[122px] rounded-[20px] bg-white/65 p-4">
-                    {thirdProduct?.image_url ? (
+                    {productImageUrl(thirdProduct) ? (
                       <img
-                        src={thirdProduct.image_url}
-                        alt={thirdProduct.name}
+                        src={productImageUrl(thirdProduct) ?? ""}
+                        alt={thirdProduct?.name ?? category.name}
                         decoding="async"
                         className="rushpi-safe-image"
                       />
@@ -780,10 +841,10 @@ export default async function CategoryPage({
                   </div>
 
                   <div className="rushpi-safe-stage absolute inset-x-4 bottom-4 top-[122px] rounded-[20px] bg-white/95 p-4">
-                    {fourthProduct?.image_url ? (
+                    {productImageUrl(fourthProduct) ? (
                       <img
-                        src={fourthProduct.image_url}
-                        alt={fourthProduct.name}
+                        src={productImageUrl(fourthProduct) ?? ""}
+                        alt={fourthProduct?.name ?? category.name}
                         decoding="async"
                         className="rushpi-safe-image"
                       />
@@ -824,10 +885,10 @@ export default async function CategoryPage({
               </div>
 
               <div className="rushpi-safe-stage absolute inset-x-5 bottom-[98px] top-[178px] rounded-[22px] bg-white/90 p-5 shadow-sm">
-                {firstProduct?.image_url ? (
+                {productImageUrl(firstProduct) ? (
                   <img
-                    src={firstProduct.image_url}
-                    alt={firstProduct.name}
+                    src={productImageUrl(firstProduct) ?? ""}
+                    alt={firstProduct?.name ?? category.name}
                     decoding="async"
                     className="rushpi-safe-image"
                   />
@@ -918,10 +979,10 @@ export default async function CategoryPage({
               {/* Right product visual */}
               <div className="relative hidden h-[210px] md:block">
                 <div className="rushpi-safe-stage absolute inset-3 rounded-[24px] bg-white/10 p-5">
-                  {firstProduct?.image_url ? (
+                  {productImageUrl(firstProduct) ? (
                     <img
-                      src={firstProduct.image_url}
-                      alt={firstProduct.name}
+                      src={productImageUrl(firstProduct) ?? ""}
+                      alt={firstProduct?.name ?? category.name}
                       decoding="async"
                       className="rushpi-safe-image"
                     />
@@ -962,10 +1023,10 @@ export default async function CategoryPage({
               </div>
 
               <div className="rushpi-safe-stage absolute bottom-8 right-7 top-8 w-[48%] rounded-[28px] bg-white/95 p-8 shadow-sm ring-1 ring-white">
-                {firstProduct?.image_url ? (
+                {productImageUrl(firstProduct) ? (
                   <img
-                    src={firstProduct.image_url}
-                    alt={firstProduct.name}
+                    src={productImageUrl(firstProduct) ?? ""}
+                    alt={firstProduct?.name ?? category.name}
                     decoding="async"
                     className="rushpi-safe-image"
                   />
@@ -1038,11 +1099,11 @@ export default async function CategoryPage({
                               href={`/products/${product.public_id}`}
                               className="rushpi-safe-stage block h-[145px] overflow-hidden bg-slate-50 p-3"
                             >
-                              {product.image_url ? (
+                              {productImageUrl(product) ? (
                                 <img
-                                  src={product.image_url}
+                                  src={productImageUrl(product) ?? ""}
                                   alt={product.name}
-                                  className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
+                                  className="rushpi-safe-image transition duration-300 group-hover:scale-[1.005]"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center bg-slate-50">
@@ -1175,15 +1236,13 @@ export default async function CategoryPage({
                       className="group min-w-0 transition duration-300 hover:-translate-y-1"
                     >
                       <div className="rushpi-safe-stage relative h-[150px] overflow-hidden rounded-2xl bg-[#f4f4f5] p-3 ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
-                        {visualProduct?.image_url ? (
+                        {productImageUrl(visualProduct) ? (
                           <img
-                            src={
-                              visualProduct.image_url
-                            }
+                            src={productImageUrl(visualProduct) ?? ""}
                             alt={
                               shortcut.name
                             }
-                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
+                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.005]"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
