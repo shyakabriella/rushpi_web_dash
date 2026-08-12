@@ -185,7 +185,7 @@ export default function SiteHeader() {
   );
 
   const categoryHref = (category: PublicCategory) =>
-    `/categories/${encodeURIComponent(category.slug || category.public_id)}`;
+    `/products?category=${encodeURIComponent(category.slug || category.public_id)}`;
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
