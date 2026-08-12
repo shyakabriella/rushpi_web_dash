@@ -329,18 +329,31 @@ export default async function CategoryPage({
 
         .rushpi-promo-image {
           display: block;
-          width: auto;
-          height: auto;
-          max-width: 88%;
-          max-height: 88%;
+          width: 100%;
+          height: 100%;
           object-fit: contain;
           object-position: center;
-          transition: transform .45s cubic-bezier(.2,.75,.25,1);
-          filter: drop-shadow(0 12px 18px rgba(15, 23, 42, .10));
+          transition: transform .35s ease;
+          filter: drop-shadow(0 8px 14px rgba(15, 23, 42, .08));
         }
 
         .group:hover .rushpi-promo-image {
-          transform: scale(1.01);
+          transform: scale(1.005);
+        }
+
+        .rushpi-safe-image {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
+        }
+
+        .rushpi-safe-stage {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -427,7 +440,7 @@ export default async function CategoryPage({
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
                     decoding="async"
-                    className="rushpi-soft-float h-full w-full object-contain p-3"
+                    className="rushpi-safe-image rushpi-soft-float p-4"
                   />
                 ) : (
                   <PackageSearch className="size-24 text-blue-600" />
@@ -492,7 +505,7 @@ export default async function CategoryPage({
                     >
                       <Link
                         href={`/products/${product.public_id}`}
-                        className="relative h-[118px] shrink-0 overflow-hidden bg-slate-50"
+                        className="rushpi-safe-stage relative h-[132px] shrink-0 bg-[#f4f4f5] p-3"
                       >
                         {product.image_url ? (
                           <img
@@ -503,7 +516,7 @@ export default async function CategoryPage({
                               product.name
                             }
                             decoding="async"
-                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
+                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-slate-50">
@@ -657,13 +670,13 @@ export default async function CategoryPage({
                 </span>
               </div>
 
-              <div className="absolute inset-x-6 bottom-6 top-[235px] flex items-center justify-center overflow-hidden">
+              <div className="rushpi-safe-stage absolute inset-x-7 bottom-7 top-[245px] rounded-[26px] bg-white/95 p-7 shadow-sm ring-1 ring-white/80">
                 {firstProduct?.image_url ? (
                   <img
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
                     decoding="async"
-                    className="rushpi-promo-image"
+                    className="rushpi-safe-image"
                   />
                 ) : (
                   <PackageSearch className="size-32 text-blue-700/55" />
@@ -700,13 +713,13 @@ export default async function CategoryPage({
                   </span>
                 </div>
 
-                <div className="absolute bottom-4 right-4 top-4 flex w-[45%] items-center justify-center overflow-hidden">
+                <div className="rushpi-safe-stage absolute bottom-5 right-5 top-5 w-[43%] rounded-[22px] bg-white/90 p-5 shadow-sm">
                   {secondProduct?.image_url ? (
                     <img
                       src={secondProduct.image_url}
                       alt={secondProduct.name}
                       decoding="async"
-                      className="rushpi-promo-image"
+                      className="rushpi-safe-image"
                     />
                   ) : (
                     <Box className="size-20 text-blue-700/55" />
@@ -734,13 +747,13 @@ export default async function CategoryPage({
                     </span>
                   </div>
 
-                  <div className="absolute inset-x-4 bottom-4 top-[118px] flex items-center justify-center overflow-hidden">
+                  <div className="rushpi-safe-stage absolute inset-x-4 bottom-4 top-[122px] rounded-[20px] bg-white/65 p-4">
                     {thirdProduct?.image_url ? (
                       <img
                         src={thirdProduct.image_url}
                         alt={thirdProduct.name}
                         decoding="async"
-                        className="rushpi-promo-image"
+                        className="rushpi-safe-image"
                       />
                     ) : (
                       <ShoppingCart className="size-20 text-[#07377f]/45" />
@@ -766,16 +779,16 @@ export default async function CategoryPage({
                     </span>
                   </div>
 
-                  <div className="absolute inset-x-4 bottom-4 top-[118px] flex items-center justify-center overflow-hidden">
+                  <div className="rushpi-safe-stage absolute inset-x-4 bottom-4 top-[122px] rounded-[20px] bg-white/95 p-4">
                     {fourthProduct?.image_url ? (
                       <img
                         src={fourthProduct.image_url}
                         alt={fourthProduct.name}
                         decoding="async"
-                        className="rushpi-promo-image"
+                        className="rushpi-safe-image"
                       />
                     ) : (
-                      <Store className="size-20 text-white/40" />
+                      <Store className="size-20 text-blue-700/40" />
                     )}
                   </div>
                 </Link>
@@ -810,13 +823,13 @@ export default async function CategoryPage({
                 </span>
               </div>
 
-              <div className="absolute inset-x-5 bottom-[92px] top-[170px] flex items-center justify-center overflow-hidden">
+              <div className="rushpi-safe-stage absolute inset-x-5 bottom-[98px] top-[178px] rounded-[22px] bg-white/90 p-5 shadow-sm">
                 {firstProduct?.image_url ? (
                   <img
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
                     decoding="async"
-                    className="rushpi-promo-image"
+                    className="rushpi-safe-image"
                   />
                 ) : (
                   <PackageSearch className="size-24 text-blue-700/45" />
@@ -904,13 +917,13 @@ export default async function CategoryPage({
 
               {/* Right product visual */}
               <div className="relative hidden h-[210px] md:block">
-                <div className="absolute inset-0 flex items-center justify-center overflow-hidden p-3">
+                <div className="rushpi-safe-stage absolute inset-3 rounded-[24px] bg-white/10 p-5">
                   {firstProduct?.image_url ? (
                     <img
                       src={firstProduct.image_url}
                       alt={firstProduct.name}
                       decoding="async"
-                      className="rushpi-promo-image max-h-[205px]"
+                      className="rushpi-safe-image"
                     />
                   ) : (
                     <PackageSearch className="size-28 text-white/60" />
@@ -931,7 +944,7 @@ export default async function CategoryPage({
               )}`}
               className="group relative min-h-[430px] overflow-hidden rounded-[28px] bg-gradient-to-br from-[#d8ecff] via-[#c4e4fb] to-[#a8d8f4] p-7 shadow-sm ring-1 ring-sky-200 transition hover:-translate-y-0.5 hover:shadow-xl sm:min-h-[470px]"
             >
-              <div className="relative z-10 max-w-[58%]">
+              <div className="relative z-10 max-w-[44%]">
                 <p className="text-sm font-black text-[#07377f]">
                   Upgrade your everyday
                 </p>
@@ -948,13 +961,13 @@ export default async function CategoryPage({
                 </span>
               </div>
 
-              <div className="absolute bottom-6 right-5 top-6 flex w-[55%] items-center justify-center overflow-hidden p-2">
+              <div className="rushpi-safe-stage absolute bottom-8 right-7 top-8 w-[48%] rounded-[28px] bg-white/95 p-8 shadow-sm ring-1 ring-white">
                 {firstProduct?.image_url ? (
                   <img
                     src={firstProduct.image_url}
                     alt={firstProduct.name}
                     decoding="async"
-                    className="rushpi-promo-image"
+                    className="rushpi-safe-image"
                   />
                 ) : (
                   <PackageSearch className="size-32 text-blue-700/45" />
@@ -1023,13 +1036,13 @@ export default async function CategoryPage({
                           <div className="relative overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200">
                             <Link
                               href={`/products/${product.public_id}`}
-                              className="block h-[135px] overflow-hidden"
+                              className="rushpi-safe-stage block h-[145px] overflow-hidden bg-slate-50 p-3"
                             >
                               {product.image_url ? (
                                 <img
                                   src={product.image_url}
                                   alt={product.name}
-                                  className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
+                                  className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
                                 />
                               ) : (
                                 <div className="flex h-full items-center justify-center bg-slate-50">
@@ -1161,7 +1174,7 @@ export default async function CategoryPage({
                       )}`}
                       className="group min-w-0 transition duration-300 hover:-translate-y-1"
                     >
-                      <div className="relative h-[145px] overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
+                      <div className="rushpi-safe-stage relative h-[150px] overflow-hidden rounded-2xl bg-[#f4f4f5] p-3 ring-1 ring-slate-200 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
                         {visualProduct?.image_url ? (
                           <img
                             src={
@@ -1170,7 +1183,7 @@ export default async function CategoryPage({
                             alt={
                               shortcut.name
                             }
-                            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-[1.025]"
+                            className="rushpi-safe-image transition duration-300 group-hover:scale-[1.01]"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
