@@ -1,13 +1,21 @@
+"use client";
+
 import {
   ArrowRight,
-  BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
   PackageSearch,
-  ShieldCheck,
-  Sparkles,
+  Pause,
+  Play,
   Truck,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type {
   HomeProduct,
@@ -26,132 +34,280 @@ type MarketplaceShowcaseProps = {
 export default function MarketplaceShowcase({
   products = [],
 }: MarketplaceShowcaseProps) {
+  const [activeIndex, setActiveIndex] =
+    useState(0);
+
+  const [isPlaying, setIsPlaying] =
+    useState(true);
+
+  /*
+   * Rotate available products so the
+   * banner does not remain static.
+   */
+  const visibleProducts = useMemo(() => {
+    if (products.length === 0) {
+      return [];
+    }
+
+    return Array.from(
+      {
+        length: Math.min(
+          3,
+          products.length,
+        ),
+      },
+      (_, index) =>
+        products[
+          (activeIndex + index) %
+            products.length
+        ],
+    );
+  }, [
+    products,
+    activeIndex,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isPlaying ||
+      products.length <= 1
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setInterval(() => {
+        setActiveIndex(
+          (current) =>
+            (current + 1) %
+            products.length,
+        );
+      }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    isPlaying,
+    products.length,
+  ]);
+
+  const previousSlide = () => {
+    if (products.length <= 1) {
+      return;
+    }
+
+    setActiveIndex(
+      (current) =>
+        (
+          current -
+          1 +
+          products.length
+        ) %
+        products.length,
+    );
+  };
+
+  const nextSlide = () => {
+    if (products.length <= 1) {
+      return;
+    }
+
+    setActiveIndex(
+      (current) =>
+        (current + 1) %
+        products.length,
+    );
+  };
+
   const firstProduct =
-    products[0] ?? null;
+    visibleProducts[0] ?? null;
 
   const secondProduct =
-    products[1] ??
+    visibleProducts[1] ??
     firstProduct;
 
   const thirdProduct =
-    products[2] ??
+    visibleProducts[2] ??
     secondProduct ??
     firstProduct;
 
-  const showcaseProducts = [
-    firstProduct,
-    secondProduct,
-    thirdProduct,
-  ];
-
   return (
     <section className="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-[24px] border border-sky-200 bg-[#9edcf6] shadow-sm">
+      <div className="relative overflow-hidden rounded-[18px] bg-[#a6dcf5]">
 
-        {/* Background grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.16]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(3,105,161,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(3,105,161,.5) 1px, transparent 1px)",
-            backgroundSize:
-              "42px 42px",
-          }}
-        />
+        {/* ============================= */}
+        {/* CAROUSEL CONTROLS */}
+        {/* ============================= */}
 
-        {/* Soft background decoration */}
-        <div className="pointer-events-none absolute -left-20 -top-28 size-64 rounded-full bg-white/30 blur-3xl" />
+        <div className="absolute right-4 top-4 z-30 hidden items-center gap-2 md:flex">
+          <button
+            type="button"
+            onClick={previousSlide}
+            disabled={
+              products.length <= 1
+            }
+            aria-label="Previous products"
+            className="grid size-8 place-items-center rounded-full bg-white text-slate-800 shadow-sm transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
 
-        <div className="pointer-events-none absolute -right-20 -bottom-28 size-64 rounded-full bg-blue-400/20 blur-3xl" />
+          <button
+            type="button"
+            onClick={() =>
+              setIsPlaying(
+                (current) =>
+                  !current,
+              )
+            }
+            disabled={
+              products.length <= 1
+            }
+            aria-label={
+              isPlaying
+                ? "Pause banner"
+                : "Play banner"
+            }
+            className="grid h-8 min-w-12 place-items-center rounded-full bg-white px-3 text-slate-900 shadow-sm transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPlaying ? (
+              <Pause className="size-3.5 fill-current" />
+            ) : (
+              <Play className="size-3.5 fill-current" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={nextSlide}
+            disabled={
+              products.length <= 1
+            }
+            aria-label="Next products"
+            className="grid size-8 place-items-center rounded-full bg-white text-slate-800 shadow-sm transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
 
         {/* ============================= */}
         {/* MAIN BANNER */}
         {/* ============================= */}
 
-        <div className="relative grid min-h-[150px] items-center gap-4 px-5 py-4 md:grid-cols-[165px_1fr_330px] lg:grid-cols-[175px_1fr_380px] lg:px-7">
+        <div className="relative grid min-h-[235px] items-center gap-5 px-6 py-5 md:grid-cols-[40%_60%] lg:min-h-[250px] lg:px-8">
 
-          {/* RushPi Express */}
-          <div className="hidden md:flex">
-            <div className="flex h-[112px] w-full items-center justify-center rounded-[22px] border border-white/70 bg-white/95 px-4 shadow-sm">
-              <div className="flex items-center gap-3">
+          {/* ============================= */}
+          {/* LEFT CONTENT */}
+          {/* ============================= */}
 
-                <div className="grid size-11 shrink-0 place-items-center rounded-full bg-amber-400 text-blue-950 shadow-sm">
-                  <Zap className="size-6 fill-current" />
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-blue-500">
-                    RushPi
-                  </p>
-
-                  <p className="text-xl font-black leading-[1.05] text-[#0754d8]">
-                    Express
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Text */}
-          <div className="min-w-0 text-center md:text-left">
-
-            <div className="mb-2 flex justify-center md:justify-start">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-blue-900 shadow-sm backdrop-blur-sm">
-                <Truck className="size-3.5" />
-                Marketplace delivery
-              </span>
-            </div>
-
-            <h1 className="text-[26px] font-black leading-[1.05] tracking-tight text-[#07377f] sm:text-[30px] lg:text-[34px]">
-              Shop products from verified
-              <span className="text-[#0754d8]">
-                {" "}
-                RushPi sellers
-              </span>
-            </h1>
-
-            <p className="mt-1.5 max-w-2xl text-[13px] font-medium leading-5 text-blue-950/75 sm:text-sm">
-              Discover electronics from approved sellers across Rwanda.
+          <div className="relative z-10 flex h-full flex-col justify-center">
+            <p className="text-sm font-black text-[#062f72] sm:text-base lg:text-lg">
+              Verified sellers.
+              Fast marketplace delivery.
             </p>
 
-            <div className="mt-3 flex flex-wrap justify-center gap-2 md:justify-start">
+            <h1 className="mt-1 max-w-[560px] text-[34px] font-black leading-[0.98] tracking-[-0.035em] text-[#052d70] sm:text-[42px] lg:text-[50px]">
+              Find your next
+              <br />
+              tech upgrade
+              <br />
+              on RushPi
+            </h1>
 
+            <div className="mt-5">
               <Link
                 href="/products"
-                className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-slate-950 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-900 bg-white px-5 text-sm font-black text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 Shop now
 
-                <ArrowRight className="size-3.5" />
-              </Link>
-
-              <Link
-                href="/find-for-me"
-                className="inline-flex h-9 items-center gap-2 rounded-full bg-[#0754d8] px-4 text-xs font-black text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md"
-              >
-                <Sparkles className="size-3.5" />
-
-                Find it for me
+                <ArrowRight className="size-4" />
               </Link>
             </div>
           </div>
 
-          {/* Products */}
-          <div className="hidden items-center justify-end gap-3 md:flex">
-            {showcaseProducts.map(
+          {/* ============================= */}
+          {/* RIGHT PRODUCT MOSAIC */}
+          {/* ============================= */}
+
+          <div className="relative hidden h-[205px] grid-cols-[1fr_1fr_0.72fr] gap-4 pr-2 md:grid lg:h-[220px] lg:pr-10">
+
+            {/* PRODUCT 1 */}
+            <ProductTile
+              product={
+                firstProduct
+              }
+              className="bg-[#42adee]"
+              imageClassName="p-4 lg:p-5"
+            />
+
+            {/* PRODUCT 2 */}
+            <ProductTile
+              product={
+                secondProduct
+              }
+              className="bg-[#dceef8]"
+              imageClassName="p-4 lg:p-5"
+            />
+
+            {/* RIGHT SMALL COLUMN */}
+            <div className="grid min-w-0 grid-rows-2 gap-4">
+
+              <ProductTile
+                product={
+                  thirdProduct
+                }
+                className="bg-[#46aee9]"
+                imageClassName="p-3"
+              />
+
+              {/* RushPi Express */}
+              <Link
+                href="/products"
+                className="group flex items-center justify-center overflow-hidden rounded-[22px] bg-white px-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-center gap-2">
+
+                  <div className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100">
+                    <Zap className="size-6 fill-amber-400 text-amber-400" />
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.13em] text-blue-500">
+                      RushPi
+                    </p>
+
+                    <p className="text-lg font-black leading-[1] text-[#0754d8]">
+                      Express
+                    </p>
+
+                    <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-blue-800">
+                      <Truck className="size-3" />
+                      Delivery
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* ============================= */}
+          {/* MOBILE PRODUCT STRIP */}
+          {/* ============================= */}
+
+          <div className="flex min-w-0 gap-3 overflow-x-auto pb-1 md:hidden">
+            {[
+              firstProduct,
+              secondProduct,
+              thirdProduct,
+            ].map(
               (
                 product,
                 index,
               ) => {
                 if (!product) {
-                  return (
-                    <div
-                      key={`empty-${index}`}
-                      className="flex h-[112px] w-[104px] items-center justify-center rounded-[22px] border-[6px] border-white/80 bg-slate-50/90 shadow-md"
-                    >
-                      <PackageSearch className="size-8 text-blue-400" />
-                    </div>
-                  );
+                  return null;
                 }
 
                 const image =
@@ -161,36 +317,20 @@ export default function MarketplaceShowcase({
 
                 return (
                   <Link
-                    key={`${product.public_id}-${index}`}
+                    key={`${product.public_id}-mobile-${index}`}
                     href={`/products/${product.public_id}`}
-                    title={`${product.name} — ${homeSellerName(product)} — ${formatHomePrice(product)}`}
-                    className={[
-                      "group relative flex h-[112px] w-[104px] shrink-0 items-center justify-center",
-                      "overflow-hidden rounded-[22px] border-[6px] border-white/90",
-                      "bg-white shadow-md",
-                      "transition-all duration-300",
-                      "hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl",
-                      "motion-safe:animate-[pulse_5s_ease-in-out_infinite]",
-                      index === 1
-                        ? "lg:h-[126px] lg:w-[116px]"
-                        : "",
-                    ].join(" ")}
-                    style={{
-                      animationDelay:
-                        `${index * 0.8}s`,
-                    }}
+                    className="flex h-[110px] min-w-[110px] items-center justify-center overflow-hidden rounded-[20px] bg-white/80 p-2"
                   >
-
-                    <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white" />
-
                     {image ? (
                       <img
                         src={image}
-                        alt={product.name}
-                        className="relative z-10 h-full w-full object-contain p-2.5 transition-transform duration-500 group-hover:scale-[1.05]"
+                        alt={
+                          product.name
+                        }
+                        className="h-full w-full object-contain"
                       />
                     ) : (
-                      <PackageSearch className="relative z-10 size-8 text-slate-300" />
+                      <PackageSearch className="size-8 text-slate-300" />
                     )}
                   </Link>
                 );
@@ -198,90 +338,75 @@ export default function MarketplaceShowcase({
             )}
           </div>
         </div>
-
-        {/* ============================= */}
-        {/* MOBILE PRODUCTS */}
-        {/* ============================= */}
-
-        <div className="relative flex gap-2 overflow-x-auto px-5 pb-3 md:hidden">
-          {showcaseProducts.map(
-            (
-              product,
-              index,
-            ) => {
-              if (!product) {
-                return null;
-              }
-
-              const image =
-                homeProductImageUrl(
-                  product,
-                );
-
-              return (
-                <Link
-                  key={`${product.public_id}-mobile-${index}`}
-                  href={`/products/${product.public_id}`}
-                  className="group flex h-[86px] min-w-[86px] items-center justify-center overflow-hidden rounded-[18px] border-4 border-white bg-white shadow-sm"
-                >
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={product.name}
-                      className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <PackageSearch className="size-7 text-slate-300" />
-                  )}
-                </Link>
-              );
-            },
-          )}
-        </div>
-
-        {/* ============================= */}
-        {/* TRUST STRIP */}
-        {/* ============================= */}
-
-        <div className="relative grid grid-cols-3 border-t border-sky-200/80 bg-white/45 px-5 py-2.5 backdrop-blur-sm lg:px-7">
-
-          <div className="flex items-center justify-center gap-2 md:justify-start">
-            <BadgeCheck className="size-4 shrink-0 text-blue-700" />
-
-            <span className="hidden text-xs font-bold text-blue-950 sm:inline">
-              Verified sellers
-            </span>
-
-            <span className="text-[10px] font-bold text-blue-950 sm:hidden">
-              Verified
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center gap-2">
-            <ShieldCheck className="size-4 shrink-0 text-blue-700" />
-
-            <span className="hidden text-xs font-bold text-blue-950 sm:inline">
-              Reviewed products
-            </span>
-
-            <span className="text-[10px] font-bold text-blue-950 sm:hidden">
-              Reviewed
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 md:justify-end">
-            <Truck className="size-4 shrink-0 text-blue-700" />
-
-            <span className="hidden text-xs font-bold text-blue-950 sm:inline">
-              Marketplace delivery
-            </span>
-
-            <span className="text-[10px] font-bold text-blue-950 sm:hidden">
-              Delivery
-            </span>
-          </div>
-        </div>
       </div>
     </section>
+  );
+}
+
+/* =========================================================
+ * PRODUCT TILE
+ * ======================================================= */
+
+function ProductTile({
+  product,
+  className = "",
+  imageClassName = "",
+}: {
+  product:
+    | HomeProduct
+    | null;
+  className?: string;
+  imageClassName?: string;
+}) {
+  if (!product) {
+    return (
+      <div
+        className={[
+          "flex min-h-0 items-center justify-center rounded-[22px]",
+          "bg-white/60",
+          className,
+        ].join(" ")}
+      >
+        <PackageSearch className="size-10 text-blue-300" />
+      </div>
+    );
+  }
+
+  const image =
+    homeProductImageUrl(
+      product,
+    );
+
+  return (
+    <Link
+      href={`/products/${product.public_id}`}
+      title={`${product.name} — ${homeSellerName(product)} — ${formatHomePrice(product)}`}
+      className={[
+        "group relative flex min-h-0 min-w-0 items-center justify-center",
+        "overflow-hidden rounded-[22px]",
+        "transition-all duration-500",
+        "hover:-translate-y-1 hover:shadow-lg",
+        className,
+      ].join(" ")}
+    >
+
+      {/* subtle highlight */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent" />
+
+      {image ? (
+        <img
+          src={image}
+          alt={product.name}
+          className={[
+            "relative z-10 h-full w-full object-contain",
+            "transition-transform duration-700",
+            "group-hover:scale-[1.04]",
+            imageClassName,
+          ].join(" ")}
+        />
+      ) : (
+        <PackageSearch className="relative z-10 size-10 text-slate-300" />
+      )}
+    </Link>
   );
 }
