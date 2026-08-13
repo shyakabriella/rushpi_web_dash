@@ -195,7 +195,7 @@ export default function MarketplaceShowcase({
         {/* MAIN BANNER */}
         {/* ============================= */}
 
-        <div className="relative grid min-h-[235px] items-center gap-5 px-6 py-5 md:grid-cols-[40%_60%] lg:min-h-[250px] lg:px-8">
+        <div className="relative grid min-h-[275px] items-center gap-5 px-6 py-5 md:grid-cols-[40%_60%] lg:min-h-[290px] lg:px-8">
 
           {/* ============================= */}
           {/* LEFT CONTENT */}
@@ -231,7 +231,7 @@ export default function MarketplaceShowcase({
           {/* RIGHT PRODUCT MOSAIC */}
           {/* ============================= */}
 
-          <div className="relative hidden h-[205px] grid-cols-[1fr_1fr_0.72fr] gap-4 pr-2 md:grid lg:h-[220px] lg:pr-10">
+          <div className="relative hidden h-[245px] grid-cols-[1fr_1fr_0.72fr] gap-4 pr-2 md:grid lg:h-[260px] lg:pr-10">
 
             {/* PRODUCT 1 */}
             <ProductTile
@@ -239,7 +239,7 @@ export default function MarketplaceShowcase({
                 firstProduct
               }
               className="bg-[#42adee]"
-              imageClassName="p-4 lg:p-5"
+              imageClassName="p-3 lg:p-4"
             />
 
             {/* PRODUCT 2 */}
@@ -248,7 +248,7 @@ export default function MarketplaceShowcase({
                 secondProduct
               }
               className="bg-[#dceef8]"
-              imageClassName="p-4 lg:p-5"
+              imageClassName="p-3 lg:p-4"
             />
 
             {/* RIGHT SMALL COLUMN */}
@@ -259,7 +259,7 @@ export default function MarketplaceShowcase({
                   thirdProduct
                 }
                 className="bg-[#46aee9]"
-                imageClassName="p-3"
+                imageClassName="p-2.5"
               />
 
               {/* RushPi Express */}
@@ -269,7 +269,7 @@ export default function MarketplaceShowcase({
               >
                 <div className="flex items-center gap-2">
 
-                  <div className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100">
                     <Zap className="size-6 fill-amber-400 text-amber-400" />
                   </div>
 
@@ -278,7 +278,7 @@ export default function MarketplaceShowcase({
                       RushPi
                     </p>
 
-                    <p className="text-lg font-black leading-[1] text-[#0754d8]">
+                    <p className="text-xl font-black leading-[1] text-[#0754d8]">
                       Express
                     </p>
 
@@ -319,7 +319,7 @@ export default function MarketplaceShowcase({
                   <Link
                     key={`${product.public_id}-mobile-${index}`}
                     href={`/products/${product.public_id}`}
-                    className="flex h-[110px] min-w-[110px] items-center justify-center overflow-hidden rounded-[20px] bg-white/80 p-2"
+                    className="flex h-[120px] min-w-[120px] items-center justify-center overflow-hidden rounded-[20px] bg-white/80 p-2"
                   >
                     {image ? (
                       <img
@@ -400,7 +400,7 @@ function ProductTile({
           className={[
             "relative z-10 h-full w-full object-contain",
             "transition-transform duration-700",
-            "group-hover:scale-[1.04]",
+            "group-hover:scale-[1.03]",
             imageClassName,
           ].join(" ")}
         />
