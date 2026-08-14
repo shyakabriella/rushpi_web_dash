@@ -23,6 +23,7 @@ import {
   UserCog,
   Users,
   WalletCards,
+  Wrench,
 } from "lucide-react";
 
 export type DashboardNavigationItem = {
@@ -80,11 +81,6 @@ export const dashboardNavigation: Record<
   DashboardRole,
   DashboardNavigationGroup[]
 > = {
-  /*
-  |--------------------------------------------------------------------------
-  | ADMIN
-  |--------------------------------------------------------------------------
-  */
   admin: [
     {
       title: "Overview",
@@ -137,6 +133,11 @@ export const dashboardNavigation: Record<
           icon: ClipboardCheck,
         },
         {
+          label: "Service management",
+          href: "/admin/services",
+          icon: Wrench,
+        },
+        {
           label: "Orders",
           href: "/admin/orders",
           icon: ShoppingBag,
@@ -177,11 +178,6 @@ export const dashboardNavigation: Record<
     },
   ],
 
-  /*
-  |--------------------------------------------------------------------------
-  | SELLER
-  |--------------------------------------------------------------------------
-  */
   seller: [
     {
       title: "Overview",
@@ -201,6 +197,11 @@ export const dashboardNavigation: Record<
           label: "Product management",
           href: "/seller/products",
           icon: PackageSearch,
+        },
+        {
+          label: "Service management",
+          href: "/seller/services",
+          icon: Wrench,
         },
       ],
     },
@@ -254,11 +255,6 @@ export const dashboardNavigation: Record<
     },
   ],
 
-  /*
-  |--------------------------------------------------------------------------
-  | DEALER
-  |--------------------------------------------------------------------------
-  */
   dealer: [
     {
       title: "Overview",
@@ -340,11 +336,6 @@ export const dashboardNavigation: Record<
     },
   ],
 
-  /*
-  |--------------------------------------------------------------------------
-  | COMMISSIONER
-  |--------------------------------------------------------------------------
-  */
   commissioner: [
     {
       title: "Overview",
