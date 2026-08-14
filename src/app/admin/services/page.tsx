@@ -12,6 +12,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+
 import {
   ChangeEvent,
   FormEvent,
@@ -30,6 +31,8 @@ type Unit = "ml" | "l" | "g" | "kg";
 type Paint = {
   id: number;
   public_id: string;
+  service_type: string;
+
   name: string;
   paint_type?: string | null;
   brand_name?: string | null;
@@ -97,147 +100,304 @@ const initialForm: FormState = {
   allow_amount_sale: true,
 };
 
-function money(value: string | number) {
-  return new Intl.NumberFormat("en-RW").format(
-    Number(value || 0),
-  );
+const inputClass =
+  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+
+function money(
+  value: string | number,
+) {
+  return new Intl.NumberFormat(
+    "en-RW",
+  ).format(Number(value || 0));
 }
 
-function getToken() {
+/*
+|--------------------------------------------------------------------------
+| Authentication token
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+| RushPi authentication may store the token in localStorage
+| or sessionStorage.
+|
+*/
+function getToken(): string | null {
   if (typeof window === "undefined") {
-    return "";
+    return null;
   }
 
   return (
-    localStorage.getItem("auth_token") ??
+    localStorage.getItem("rushpi_token") ??
+    sessionStorage.getItem("rushpi_token") ??
     localStorage.getItem("access_token") ??
+    sessionStorage.getItem("access_token") ??
     localStorage.getItem("token") ??
-    ""
+    sessionStorage.getItem("token") ??
+    localStorage.getItem("auth_token") ??
+    sessionStorage.getItem("auth_token")
   );
 }
 
-function extractError(payload: any) {
-  if (payload?.errors) {
-    const first = Object.values(payload.errors)[0];
+function extractError(
+  payload: unknown,
+): string {
+  if (
+    payload &&
+    typeof payload === "object"
+  ) {
+    const data = payload as {
+      message?: string;
+      errors?: Record<
+        string,
+        string[]
+      >;
+    };
 
-    if (Array.isArray(first) && first[0]) {
-      return String(first[0]);
+    if (data.errors) {
+      const first =
+        Object.values(
+          data.errors,
+        )[0];
+
+      if (
+        Array.isArray(first) &&
+        first[0]
+      ) {
+        return first[0];
+      }
+    }
+
+    if (data.message) {
+      return data.message;
     }
   }
 
-  return payload?.message ?? "Request failed.";
+  return "Request failed.";
 }
 
 export default function AdminServicesPage() {
-  const [paints, setPaints] = useState<Paint[]>([]);
-  const [query, setQuery] = useState("");
+  const [paints, setPaints] =
+    useState<Paint[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [query, setQuery] =
+    useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [
+    modalOpen,
+    setModalOpen,
+  ] = useState(false);
 
   const [form, setForm] =
-    useState<FormState>(initialForm);
+    useState<FormState>(
+      initialForm,
+    );
 
   const [image, setImage] =
     useState<File | null>(null);
 
-  const [imagePreview, setImagePreview] =
+  const [
+    imagePreview,
+    setImagePreview,
+  ] = useState("");
+
+  const [error, setError] =
     useState("");
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] =
+    useState("");
 
-  const loadPaints = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  /*
+  |--------------------------------------------------------------------------
+  | Load paints
+  |--------------------------------------------------------------------------
+  */
 
-    try {
-      const token = getToken();
+  const loadPaints =
+    useCallback(async () => {
+      setLoading(true);
+      setError("");
 
-      const response = await fetch(
-        `${API}/admin/services?per_page=100`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          cache: "no-store",
-        },
-      );
+      try {
+        const token =
+          getToken();
 
-      const payload = await response.json();
+        if (!token) {
+          throw new Error(
+            "Your login session was not found. Please sign in again.",
+          );
+        }
 
-      if (!response.ok) {
-        throw new Error(extractError(payload));
+        const response =
+          await fetch(
+            `${API}/admin/services?per_page=100`,
+            {
+              method: "GET",
+
+              headers: {
+                Accept:
+                  "application/json",
+
+                Authorization:
+                  `Bearer ${token}`,
+              },
+
+              cache:
+                "no-store",
+            },
+          );
+
+        let payload: any = null;
+
+        try {
+          payload =
+            await response.json();
+        } catch {
+          payload = null;
+        }
+
+        if (!response.ok) {
+          if (
+            response.status ===
+            401
+          ) {
+            throw new Error(
+              "Unauthenticated. Your login session may have expired. Please sign in again.",
+            );
+          }
+
+          if (
+            response.status ===
+            403
+          ) {
+            throw new Error(
+              "You are authenticated, but you do not have administrator permission.",
+            );
+          }
+
+          throw new Error(
+            extractError(
+              payload,
+            ),
+          );
+        }
+
+        /*
+         * Laravel paginator:
+         *
+         * {
+         *   success: true,
+         *   data: {
+         *      current_page: 1,
+         *      data: [...]
+         *   }
+         * }
+         */
+        const rows =
+          payload?.data?.data ??
+          payload?.data ??
+          [];
+
+        const list =
+          Array.isArray(rows)
+            ? rows
+            : [];
+
+        setPaints(
+          list.filter(
+            (item: Paint) =>
+              item.service_type ===
+              "paint",
+          ),
+        );
+      } catch (
+        requestError
+      ) {
+        setPaints([]);
+
+        setError(
+          requestError instanceof
+            Error
+            ? requestError.message
+            : "Unable to load paints.",
+        );
+      } finally {
+        setLoading(false);
       }
-
-      const rows =
-        payload?.data?.data ??
-        payload?.data ??
-        [];
-
-      setPaints(
-        Array.isArray(rows)
-          ? rows.filter(
-              (item) =>
-                item.service_type === "paint",
-            )
-          : [],
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load paints.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    }, []);
 
   useEffect(() => {
     void loadPaints();
   }, [loadPaints]);
 
-  const filteredPaints = useMemo(() => {
-    const search =
-      query.trim().toLowerCase();
+  /*
+  |--------------------------------------------------------------------------
+  | Search
+  |--------------------------------------------------------------------------
+  */
 
-    if (!search) {
-      return paints;
-    }
+  const filteredPaints =
+    useMemo(() => {
+      const search =
+        query
+          .trim()
+          .toLowerCase();
 
-    return paints.filter((paint) =>
-      [
-        paint.name,
-        paint.paint_type,
-        paint.brand_name,
-        paint.color_name,
-      ]
-        .filter(Boolean)
-        .some((value) =>
-          String(value)
-            .toLowerCase()
-            .includes(search),
-        ),
-    );
-  }, [paints, query]);
+      if (!search) {
+        return paints;
+      }
 
-  const activeCount = paints.filter(
-    (paint) => paint.is_active,
-  ).length;
+      return paints.filter(
+        (paint) =>
+          [
+            paint.name,
+            paint.paint_type,
+            paint.brand_name,
+            paint.color_name,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value)
+                .toLowerCase()
+                .includes(
+                  search,
+                ),
+            ),
+      );
+    }, [paints, query]);
 
-  const volumeCount = paints.filter(
-    (paint) => paint.allow_volume_sale,
-  ).length;
+  const activeCount =
+    paints.filter(
+      (paint) =>
+        paint.is_active,
+    ).length;
 
-  const weightCount = paints.filter(
-    (paint) => paint.allow_weight_sale,
-  ).length;
+  const volumeCount =
+    paints.filter(
+      (paint) =>
+        paint.allow_volume_sale,
+    ).length;
 
-  function updateForm<K extends keyof FormState>(
+  const weightCount =
+    paints.filter(
+      (paint) =>
+        paint.allow_weight_sale,
+    ).length;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Form helpers
+  |--------------------------------------------------------------------------
+  */
+
+  function updateForm<
+    K extends keyof FormState,
+  >(
     key: K,
     value: FormState[K],
   ) {
@@ -259,18 +419,23 @@ export default function AdminServicesPage() {
   }
 
   function closeModal() {
-    if (saving) return;
+    if (saving) {
+      return;
+    }
 
     setModalOpen(false);
     setImage(null);
     setImagePreview("");
+    setError("");
   }
 
   function handleImage(
     event: ChangeEvent<HTMLInputElement>,
   ) {
     const file =
-      event.target.files?.[0] ?? null;
+      event.target
+        .files?.[0] ??
+      null;
 
     setImage(file);
 
@@ -280,9 +445,17 @@ export default function AdminServicesPage() {
     }
 
     setImagePreview(
-      URL.createObjectURL(file),
+      URL.createObjectURL(
+        file,
+      ),
     );
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Create paint
+  |--------------------------------------------------------------------------
+  */
 
   async function createPaint(
     event: FormEvent<HTMLFormElement>,
@@ -293,69 +466,129 @@ export default function AdminServicesPage() {
     setSuccess("");
 
     if (!form.name.trim()) {
-      setError("Paint name is required.");
+      setError(
+        "Paint name is required.",
+      );
+
       return;
     }
 
     if (
-      Number(form.reference_quantity) <= 0 ||
-      Number(form.reference_price_rwf) <= 0
+      Number(
+        form.reference_quantity,
+      ) <= 0
     ) {
       setError(
-        "Reference quantity and price must be greater than zero.",
+        "Reference quantity must be greater than zero.",
       );
+
+      return;
+    }
+
+    if (
+      Number(
+        form.reference_price_rwf,
+      ) <= 0
+    ) {
+      setError(
+        "Reference price must be greater than zero.",
+      );
+
+      return;
+    }
+
+    if (
+      Number(
+        form.stock_quantity ||
+          "0",
+      ) < 0
+    ) {
+      setError(
+        "Stock quantity cannot be negative.",
+      );
+
       return;
     }
 
     if (
       form.allow_volume_sale &&
       form.allow_weight_sale &&
-      Number(form.density_kg_per_l) <= 0
+      Number(
+        form.density_kg_per_l,
+      ) <= 0
     ) {
       setError(
         "Density is required when the paint can be sold by both weight and volume.",
       );
+
+      return;
+    }
+
+    const token =
+      getToken();
+
+    if (!token) {
+      setError(
+        "Your login session was not found. Please sign in again.",
+      );
+
       return;
     }
 
     try {
       setSaving(true);
 
-      const body = new FormData();
+      const body =
+        new FormData();
 
-      body.append("service_type", "paint");
-      body.append("name", form.name);
+      body.append(
+        "service_type",
+        "paint",
+      );
+
+      body.append(
+        "name",
+        form.name.trim(),
+      );
+
       body.append(
         "paint_type",
-        form.paint_type,
+        form.paint_type.trim(),
       );
+
       body.append(
         "brand_name",
-        form.brand_name,
+        form.brand_name.trim(),
       );
+
       body.append(
         "color_name",
-        form.color_name,
+        form.color_name.trim(),
       );
+
       body.append(
         "description",
-        form.description,
+        form.description.trim(),
       );
 
       body.append(
         "reference_quantity",
         form.reference_quantity,
       );
+
       body.append(
         "reference_unit",
         form.reference_unit,
       );
+
       body.append(
         "reference_price_rwf",
         form.reference_price_rwf,
       );
 
-      if (form.density_kg_per_l) {
+      if (
+        form.density_kg_per_l
+      ) {
         body.append(
           "density_kg_per_l",
           form.density_kg_per_l,
@@ -364,8 +597,10 @@ export default function AdminServicesPage() {
 
       body.append(
         "stock_quantity",
-        form.stock_quantity || "0",
+        form.stock_quantity ||
+          "0",
       );
+
       body.append(
         "stock_unit",
         form.stock_unit,
@@ -373,41 +608,86 @@ export default function AdminServicesPage() {
 
       body.append(
         "allow_volume_sale",
-        form.allow_volume_sale ? "1" : "0",
+        form.allow_volume_sale
+          ? "1"
+          : "0",
       );
+
       body.append(
         "allow_weight_sale",
-        form.allow_weight_sale ? "1" : "0",
+        form.allow_weight_sale
+          ? "1"
+          : "0",
       );
+
       body.append(
         "allow_amount_sale",
-        form.allow_amount_sale ? "1" : "0",
+        form.allow_amount_sale
+          ? "1"
+          : "0",
       );
 
-      body.append("is_active", "1");
+      body.append(
+        "is_active",
+        "1",
+      );
 
       if (image) {
-        body.append("image", image);
+        body.append(
+          "image",
+          image,
+        );
       }
 
-      const response = await fetch(
-        `${API}/admin/services`,
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          `${API}/admin/services`,
+          {
+            method: "POST",
 
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${getToken()}`,
+            headers: {
+              Accept:
+                "application/json",
+
+              Authorization:
+                `Bearer ${token}`,
+            },
+
+            body,
           },
+        );
 
-          body,
-        },
-      );
+      let payload: any = null;
 
-      const payload = await response.json();
+      try {
+        payload =
+          await response.json();
+      } catch {
+        payload = null;
+      }
 
       if (!response.ok) {
-        throw new Error(extractError(payload));
+        if (
+          response.status ===
+          401
+        ) {
+          throw new Error(
+            "Unauthenticated. Your login session may have expired.",
+          );
+        }
+
+        if (
+          response.status ===
+          403
+        ) {
+          throw new Error(
+            "Administrator permission is required.",
+          );
+        }
+
+        throw new Error(
+          extractError(payload),
+        );
       }
 
       setSuccess(
@@ -415,14 +695,22 @@ export default function AdminServicesPage() {
       );
 
       setModalOpen(false);
-      setForm(initialForm);
+
+      setForm(
+        initialForm,
+      );
+
       setImage(null);
+
       setImagePreview("");
 
       await loadPaints();
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       setError(
-        requestError instanceof Error
+        requestError instanceof
+          Error
           ? requestError.message
           : "Unable to create paint.",
       );
@@ -446,21 +734,28 @@ export default function AdminServicesPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Register paints, reference prices,
-            available stock and supported selling
+            Register paints,
+            reference prices,
+            available stock and
+            supported selling
             measurements.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={openAddPaint}
+          onClick={
+            openAddPaint
+          }
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
+
           Add Paint
         </button>
       </div>
+
+      {/* SUCCESS */}
 
       {success ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
@@ -468,7 +763,10 @@ export default function AdminServicesPage() {
         </div>
       ) : null}
 
-      {error && !modalOpen ? (
+      {/* ERROR */}
+
+      {error &&
+      !modalOpen ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
@@ -479,41 +777,56 @@ export default function AdminServicesPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
           title="Total paints"
-          value={paints.length}
+          value={
+            paints.length
+          }
           icon={Boxes}
         />
 
         <Stat
           title="Active paints"
-          value={activeCount}
-          icon={CheckCircle2}
+          value={
+            activeCount
+          }
+          icon={
+            CheckCircle2
+          }
         />
 
         <Stat
           title="Volume selling"
-          value={volumeCount}
-          icon={Droplets}
+          value={
+            volumeCount
+          }
+          icon={
+            Droplets
+          }
         />
 
         <Stat
           title="Weight selling"
-          value={weightCount}
+          value={
+            weightCount
+          }
           icon={Scale}
         />
       </div>
 
-      {/* LIST */}
+      {/* TABLE */}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-slate-900">
-              Registered Paints
+              Registered
+              Paints
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Prices shown are reference prices.
-              Customers can request any supported
+              Prices shown are
+              reference prices.
+              Customers can request
+              any supported
               quantity.
             </p>
           </div>
@@ -523,11 +836,16 @@ export default function AdminServicesPage() {
 
             <input
               value={query}
-              onChange={(event) =>
-                setQuery(event.target.value)
+              onChange={(
+                event,
+              ) =>
+                setQuery(
+                  event.target
+                    .value,
+                )
               }
               placeholder="Search paint..."
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white"
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
           </div>
         </div>
@@ -536,28 +854,35 @@ export default function AdminServicesPage() {
           <div className="flex min-h-[300px] items-center justify-center">
             <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
           </div>
-        ) : filteredPaints.length === 0 ? (
+        ) : filteredPaints.length ===
+          0 ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50">
               <Droplets className="h-9 w-9 text-blue-600" />
             </div>
 
             <h3 className="mt-5 text-lg font-bold text-slate-900">
-              No paints registered
+              No paints
+              registered
             </h3>
 
             <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-              Register the first paint and define
-              its reference price, stock and
-              supported measurements.
+              Register the first
+              paint and define its
+              reference price,
+              stock and supported
+              measurements.
             </p>
 
             <button
               type="button"
-              onClick={openAddPaint}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
+              onClick={
+                openAddPaint
+              }
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <Plus className="h-4 w-4" />
+
               Add Paint
             </button>
           </div>
@@ -566,20 +891,41 @@ export default function AdminServicesPage() {
             <table className="min-w-full">
               <thead className="bg-slate-50">
                 <tr>
-                  <Th>Paint</Th>
-                  <Th>Type / Color</Th>
-                  <Th>Reference Price</Th>
-                  <Th>Stock</Th>
-                  <Th>Sell By</Th>
-                  <Th>Status</Th>
+                  <Th>
+                    Paint
+                  </Th>
+
+                  <Th>
+                    Type / Color
+                  </Th>
+
+                  <Th>
+                    Reference Price
+                  </Th>
+
+                  <Th>
+                    Stock
+                  </Th>
+
+                  <Th>
+                    Sell By
+                  </Th>
+
+                  <Th>
+                    Status
+                  </Th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
                 {filteredPaints.map(
-                  (paint) => (
+                  (
+                    paint,
+                  ) => (
                     <tr
-                      key={paint.public_id}
+                      key={
+                        paint.public_id
+                      }
                       className="hover:bg-slate-50/70"
                     >
                       <Td>
@@ -587,8 +933,12 @@ export default function AdminServicesPage() {
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
                             {paint.image_url ? (
                               <img
-                                src={paint.image_url}
-                                alt={paint.name}
+                                src={
+                                  paint.image_url
+                                }
+                                alt={
+                                  paint.name
+                                }
                                 className="h-full w-full object-contain"
                               />
                             ) : (
@@ -598,7 +948,9 @@ export default function AdminServicesPage() {
 
                           <div>
                             <div className="font-semibold text-slate-900">
-                              {paint.name}
+                              {
+                                paint.name
+                              }
                             </div>
 
                             <div className="mt-1 text-xs text-slate-400">
@@ -611,12 +963,15 @@ export default function AdminServicesPage() {
 
                       <Td>
                         <div className="font-medium text-slate-700">
-                          {paint.paint_type || "Paint"}
+                          {paint.paint_type ||
+                            "Paint"}
                         </div>
 
                         {paint.color_name ? (
                           <div className="mt-1 text-xs text-slate-400">
-                            {paint.color_name}
+                            {
+                              paint.color_name
+                            }
                           </div>
                         ) : null}
                       </Td>
@@ -631,37 +986,45 @@ export default function AdminServicesPage() {
 
                         <div className="mt-1 text-xs text-slate-400">
                           per{" "}
-                          {paint.reference_quantity}{" "}
-                          {paint.reference_unit.toUpperCase()}
+                          {
+                            paint.reference_quantity
+                          }{" "}
+                          {String(
+                            paint.reference_unit,
+                          ).toUpperCase()}
                         </div>
                       </Td>
 
                       <Td>
                         <div className="font-semibold text-slate-900">
-                          {paint.stock_quantity}{" "}
-                          {paint.stock_unit.toUpperCase()}
+                          {
+                            paint.stock_quantity
+                          }{" "}
+                          {String(
+                            paint.stock_unit,
+                          ).toUpperCase()}
                         </div>
                       </Td>
 
                       <Td>
                         <div className="flex flex-wrap gap-1">
-                          {paint.allow_volume_sale && (
+                          {paint.allow_volume_sale ? (
                             <Badge>
                               Volume
                             </Badge>
-                          )}
+                          ) : null}
 
-                          {paint.allow_weight_sale && (
+                          {paint.allow_weight_sale ? (
                             <Badge>
                               Weight
                             </Badge>
-                          )}
+                          ) : null}
 
-                          {paint.allow_amount_sale && (
+                          {paint.allow_amount_sale ? (
                             <Badge>
                               RWF
                             </Badge>
-                          )}
+                          ) : null}
                         </div>
                       </Td>
 
@@ -699,14 +1062,18 @@ export default function AdminServicesPage() {
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Define the reference pricing and
-                  measurements customers may use.
+                  Define the
+                  reference pricing
+                  and measurements
+                  customers may use.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={closeModal}
+                onClick={
+                  closeModal
+                }
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
               >
                 <X className="h-5 w-5" />
@@ -714,7 +1081,9 @@ export default function AdminServicesPage() {
             </div>
 
             <form
-              onSubmit={createPaint}
+              onSubmit={
+                createPaint
+              }
               className="space-y-7 p-6"
             >
               {error ? (
@@ -730,7 +1099,9 @@ export default function AdminServicesPage() {
                   <label className="flex h-32 w-40 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50">
                     {imagePreview ? (
                       <img
-                        src={imagePreview}
+                        src={
+                          imagePreview
+                        }
                         alt="Preview"
                         className="h-full w-full object-contain p-2"
                       />
@@ -747,87 +1118,129 @@ export default function AdminServicesPage() {
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
-                      onChange={handleImage}
+                      onChange={
+                        handleImage
+                      }
                       className="hidden"
                     />
                   </label>
 
                   <p className="max-w-md text-xs leading-5 text-slate-500">
-                    Upload the actual paint image.
-                    JPG, PNG and WebP are supported.
+                    Upload the actual
+                    paint image. JPG,
+                    PNG and WebP are
+                    supported.
                   </p>
                 </div>
               </Section>
 
-              {/* BASIC INFORMATION */}
+              {/* INFORMATION */}
 
               <Section title="Paint Information">
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Paint name">
                     <input
                       required
-                      value={form.name}
-                      onChange={(event) =>
+                      value={
+                        form.name
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "name",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="Oil Based Paint Fast Dry"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
                   <Field label="Paint type">
                     <input
-                      value={form.paint_type}
-                      onChange={(event) =>
+                      value={
+                        form.paint_type
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "paint_type",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="Oil Based Paint"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
                   <Field label="Brand">
                     <input
-                      value={form.brand_name}
-                      onChange={(event) =>
+                      value={
+                        form.brand_name
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "brand_name",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="NTEZINET"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
                   <Field label="Color">
                     <input
-                      value={form.color_name}
-                      onChange={(event) =>
+                      value={
+                        form.color_name
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "color_name",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="Red"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
                 </div>
 
                 <Field label="Description">
                   <textarea
-                    value={form.description}
-                    onChange={(event) =>
+                    value={
+                      form.description
+                    }
+                    onChange={(
+                      event,
+                    ) =>
                       updateForm(
                         "description",
-                        event.target.value,
+                        event
+                          .target
+                          .value,
                       )
                     }
                     rows={3}
@@ -837,17 +1250,19 @@ export default function AdminServicesPage() {
                 </Field>
               </Section>
 
-              {/* REFERENCE PRICE */}
+              {/* REFERENCE */}
 
               <Section title="Reference Pricing">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-700">
-                  This is only the pricing reference.
-                  For example:{" "}
+                  This is only the
+                  pricing reference.
+                  Example:{" "}
                   <strong>
                     1 L = 7,000 RWF
                   </strong>
-                  . Customers can still request any
-                  supported capacity or weight.
+                  . Customers can
+                  still request any
+                  supported quantity.
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
@@ -860,13 +1275,19 @@ export default function AdminServicesPage() {
                       value={
                         form.reference_quantity
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "reference_quantity",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
@@ -875,7 +1296,9 @@ export default function AdminServicesPage() {
                       value={
                         form.reference_unit
                       }
-                      onChange={(value) =>
+                      onChange={(
+                        value,
+                      ) =>
                         updateForm(
                           "reference_unit",
                           value,
@@ -889,18 +1312,24 @@ export default function AdminServicesPage() {
                       required
                       type="number"
                       step="any"
-                      min="0"
+                      min="0.01"
                       value={
                         form.reference_price_rwf
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "reference_price_rwf",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="7000"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
                 </div>
@@ -919,21 +1348,31 @@ export default function AdminServicesPage() {
                       value={
                         form.stock_quantity
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "stock_quantity",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="50"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
                   <Field label="Stock unit">
                     <UnitSelect
-                      value={form.stock_unit}
-                      onChange={(value) =>
+                      value={
+                        form.stock_unit
+                      }
+                      onChange={(
+                        value,
+                      ) =>
                         updateForm(
                           "stock_unit",
                           value,
@@ -944,7 +1383,7 @@ export default function AdminServicesPage() {
                 </div>
               </Section>
 
-              {/* SELLING OPTIONS */}
+              {/* SELL OPTIONS */}
 
               <Section title="Selling Options">
                 <div className="grid gap-3 md:grid-cols-3">
@@ -954,8 +1393,12 @@ export default function AdminServicesPage() {
                     }
                     title="Volume"
                     description="mL and Litres"
-                    icon={<Droplets />}
-                    onChange={(checked) =>
+                    icon={
+                      <Droplets className="h-5 w-5" />
+                    }
+                    onChange={(
+                      checked,
+                    ) =>
                       updateForm(
                         "allow_volume_sale",
                         checked,
@@ -969,8 +1412,12 @@ export default function AdminServicesPage() {
                     }
                     title="Weight"
                     description="Grams and KG"
-                    icon={<Scale />}
-                    onChange={(checked) =>
+                    icon={
+                      <Scale className="h-5 w-5" />
+                    }
+                    onChange={(
+                      checked,
+                    ) =>
                       updateForm(
                         "allow_weight_sale",
                         checked,
@@ -984,8 +1431,12 @@ export default function AdminServicesPage() {
                     }
                     title="Money"
                     description="Customer enters RWF"
-                    icon={<WalletCards />}
-                    onChange={(checked) =>
+                    icon={
+                      <WalletCards className="h-5 w-5" />
+                    }
+                    onChange={(
+                      checked,
+                    ) =>
                       updateForm(
                         "allow_amount_sale",
                         checked,
@@ -1005,36 +1456,47 @@ export default function AdminServicesPage() {
                       value={
                         form.density_kg_per_l
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         updateForm(
                           "density_kg_per_l",
-                          event.target.value,
+                          event
+                            .target
+                            .value,
                         )
                       }
                       placeholder="Example: 1.25"
-                      className={inputClass}
+                      className={
+                        inputClass
+                      }
                     />
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Density allows RushPi to
-                      convert KG ↔ Litres for this
-                      specific paint.
+                      Density allows
+                      RushPi to
+                      convert KG ↔
+                      Litres for this
+                      paint.
                     </p>
                   </Field>
                 ) : null}
               </Section>
 
-              {/* EXAMPLE */}
+              {/* PREVIEW */}
 
               {form.reference_price_rwf &&
               form.reference_quantity ? (
                 <div className="rounded-2xl bg-slate-950 p-5 text-white">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Reference preview
+                    Reference
+                    preview
                   </p>
 
                   <p className="mt-2 text-xl font-bold">
-                    {form.reference_quantity}{" "}
+                    {
+                      form.reference_quantity
+                    }{" "}
                     {form.reference_unit.toUpperCase()}
                     {" = "}
                     {money(
@@ -1044,28 +1506,39 @@ export default function AdminServicesPage() {
                   </p>
 
                   <p className="mt-2 text-xs leading-5 text-slate-400">
-                    This does not restrict the
-                    customer's quantity. RushPi
-                    calculates any requested
-                    supported measurement from this
-                    reference.
+                    This does not
+                    restrict the
+                    customer's
+                    quantity. RushPi
+                    calculates any
+                    supported
+                    measurement from
+                    this reference.
                   </p>
                 </div>
               ) : null}
 
+              {/* BUTTONS */}
+
               <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
                 <button
                   type="button"
-                  onClick={closeModal}
-                  disabled={saving}
-                  className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600"
+                  onClick={
+                    closeModal
+                  }
+                  disabled={
+                    saving
+                  }
+                  className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                   className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   {saving ? (
@@ -1087,15 +1560,13 @@ export default function AdminServicesPage() {
   );
 }
 
-const inputClass =
-  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
-
 function Section({
   title,
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
@@ -1113,7 +1584,8 @@ function Field({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <label className="block">
@@ -1131,22 +1603,40 @@ function UnitSelect({
   onChange,
 }: {
   value: Unit;
-  onChange: (value: Unit) => void;
+  onChange: (
+    value: Unit,
+  ) => void;
 }) {
   return (
     <select
       value={value}
-      onChange={(event) =>
+      onChange={(
+        event,
+      ) =>
         onChange(
-          event.target.value as Unit,
+          event.target
+            .value as Unit,
         )
       }
-      className={inputClass}
+      className={
+        inputClass
+      }
     >
-      <option value="ml">mL</option>
-      <option value="l">Litre</option>
-      <option value="g">Gram</option>
-      <option value="kg">Kilogram</option>
+      <option value="ml">
+        mL
+      </option>
+
+      <option value="l">
+        Litre
+      </option>
+
+      <option value="g">
+        Gram
+      </option>
+
+      <option value="kg">
+        Kilogram
+      </option>
     </select>
   );
 }
@@ -1161,8 +1651,11 @@ function Option({
   checked: boolean;
   title: string;
   description: string;
-  icon: React.ReactNode;
-  onChange: (checked: boolean) => void;
+  icon:
+    React.ReactNode;
+  onChange: (
+    checked: boolean,
+  ) => void;
 }) {
   return (
     <button
@@ -1197,7 +1690,7 @@ function Option({
       </div>
 
       <div
-        className={`h-5 w-5 rounded-full border-2 ${
+        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
           checked
             ? "border-blue-600 bg-blue-600"
             : "border-slate-300"
@@ -1214,7 +1707,8 @@ function Option({
 function Badge({
   children,
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
@@ -1256,7 +1750,8 @@ function Stat({
 function Th({
   children,
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <th className="whitespace-nowrap px-5 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1268,7 +1763,8 @@ function Th({
 function Td({
   children,
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">
