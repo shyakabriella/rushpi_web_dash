@@ -6,9 +6,11 @@ import {
   Droplets,
   ImagePlus,
   Loader2,
+  Pencil,
   Plus,
   Search,
   Scale,
+  Trash2,
   WalletCards,
   X,
 } from "lucide-react";
@@ -77,6 +79,8 @@ type FormState = {
   allow_volume_sale: boolean;
   allow_weight_sale: boolean;
   allow_amount_sale: boolean;
+
+  is_active: boolean;
 };
 
 const initialForm: FormState = {
@@ -98,6 +102,8 @@ const initialForm: FormState = {
   allow_volume_sale: true,
   allow_weight_sale: false,
   allow_amount_sale: true,
+
+  is_active: true,
 };
 
 const inputClass =
@@ -187,6 +193,23 @@ export default function AdminServicesPage() {
 
   const [saving, setSaving] =
     useState(false);
+
+  const [deleting, setDeleting] =
+    useState(false);
+
+  const [
+    editingPaint,
+    setEditingPaint,
+  ] = useState<Paint | null>(
+    null,
+  );
+
+  const [
+    deleteTarget,
+    setDeleteTarget,
+  ] = useState<Paint | null>(
+    null,
+  );
 
   const [
     modalOpen,
@@ -410,9 +433,98 @@ export default function AdminServicesPage() {
   }
 
   function openAddPaint() {
+    setEditingPaint(null);
     setForm(initialForm);
     setImage(null);
     setImagePreview("");
+    setError("");
+    setSuccess("");
+    setModalOpen(true);
+  }
+
+  function openEditPaint(
+    paint: Paint,
+  ) {
+    setEditingPaint(paint);
+
+    setForm({
+      name:
+        paint.name ?? "",
+
+      paint_type:
+        paint.paint_type ?? "",
+
+      brand_name:
+        paint.brand_name ??
+        "NTEZINET",
+
+      color_name:
+        paint.color_name ?? "",
+
+      description:
+        paint.description ?? "",
+
+      reference_quantity:
+        String(
+          paint.reference_quantity ??
+            "1",
+        ),
+
+      reference_unit:
+        paint.reference_unit,
+
+      reference_price_rwf:
+        String(
+          paint.reference_price_rwf ??
+            "",
+        ),
+
+      density_kg_per_l:
+        paint.density_kg_per_l ===
+          null ||
+        paint.density_kg_per_l ===
+          undefined
+          ? ""
+          : String(
+              paint.density_kg_per_l,
+            ),
+
+      stock_quantity:
+        String(
+          paint.stock_quantity ??
+            "0",
+        ),
+
+      stock_unit:
+        paint.stock_unit,
+
+      allow_volume_sale:
+        Boolean(
+          paint.allow_volume_sale,
+        ),
+
+      allow_weight_sale:
+        Boolean(
+          paint.allow_weight_sale,
+        ),
+
+      allow_amount_sale:
+        Boolean(
+          paint.allow_amount_sale,
+        ),
+
+      is_active:
+        Boolean(
+          paint.is_active,
+        ),
+    });
+
+    setImage(null);
+
+    setImagePreview(
+      paint.image_url ?? "",
+    );
+
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -424,6 +536,7 @@ export default function AdminServicesPage() {
     }
 
     setModalOpen(false);
+    setEditingPaint(null);
     setImage(null);
     setImagePreview("");
     setError("");
@@ -453,11 +566,11 @@ export default function AdminServicesPage() {
 
   /*
   |--------------------------------------------------------------------------
-  | Create paint
+  | Create / update paint
   |--------------------------------------------------------------------------
   */
 
-  async function createPaint(
+  async function savePaint(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -629,8 +742,24 @@ export default function AdminServicesPage() {
 
       body.append(
         "is_active",
-        "1",
+        form.is_active
+          ? "1"
+          : "0",
       );
+
+      /*
+       * Use POST + method spoofing for edit.
+       *
+       * This keeps multipart/form-data
+       * (especially image uploads)
+       * reliable with Laravel/PHP.
+       */
+      if (editingPaint) {
+        body.append(
+          "_method",
+          "PATCH",
+        );
+      }
 
       if (image) {
         body.append(
@@ -639,9 +768,16 @@ export default function AdminServicesPage() {
         );
       }
 
+      const endpoint =
+        editingPaint
+          ? `${API}/admin/services/${encodeURIComponent(
+              editingPaint.public_id,
+            )}`
+          : `${API}/admin/services`;
+
       const response =
         await fetch(
-          `${API}/admin/services`,
+          endpoint,
           {
             method: "POST",
 
@@ -691,10 +827,14 @@ export default function AdminServicesPage() {
       }
 
       setSuccess(
-        "Paint registered successfully.",
+        editingPaint
+          ? "Paint updated successfully."
+          : "Paint registered successfully.",
       );
 
       setModalOpen(false);
+
+      setEditingPaint(null);
 
       setForm(
         initialForm,
@@ -712,10 +852,125 @@ export default function AdminServicesPage() {
         requestError instanceof
           Error
           ? requestError.message
-          : "Unable to create paint.",
+          : editingPaint
+            ? "Unable to update paint."
+            : "Unable to create paint.",
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deletePaint() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    const token =
+      getToken();
+
+    if (!token) {
+      setError(
+        "Your login session was not found. Please sign in again.",
+      );
+
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+      setSuccess("");
+
+      const response =
+        await fetch(
+          `${API}/admin/services/${encodeURIComponent(
+            deleteTarget.public_id,
+          )}`,
+          {
+            method:
+              "DELETE",
+
+            headers: {
+              Accept:
+                "application/json",
+
+              Authorization:
+                `Bearer ${token}`,
+            },
+          },
+        );
+
+      let payload: any = null;
+
+      const responseText =
+        await response.text();
+
+      if (
+        responseText.trim()
+      ) {
+        try {
+          payload =
+            JSON.parse(
+              responseText,
+            );
+        } catch {
+          payload = {
+            message:
+              responseText,
+          };
+        }
+      }
+
+      if (!response.ok) {
+        if (
+          response.status ===
+          401
+        ) {
+          throw new Error(
+            "Unauthenticated. Your login session may have expired.",
+          );
+        }
+
+        if (
+          response.status ===
+          403
+        ) {
+          throw new Error(
+            "Administrator permission is required.",
+          );
+        }
+
+        throw new Error(
+          extractError(
+            payload,
+          ),
+        );
+      }
+
+      const deletedName =
+        deleteTarget.name;
+
+      setDeleteTarget(
+        null,
+      );
+
+      setSuccess(
+        `${deletedName} deleted successfully.`,
+      );
+
+      await loadPaints();
+    } catch (
+      requestError
+    ) {
+      setError(
+        requestError instanceof
+          Error
+          ? requestError.message
+          : "Unable to delete paint.",
+      );
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -914,6 +1169,10 @@ export default function AdminServicesPage() {
                   <Th>
                     Status
                   </Th>
+
+                  <Th>
+                    Actions
+                  </Th>
                 </tr>
               </thead>
 
@@ -1041,6 +1300,46 @@ export default function AdminServicesPage() {
                             : "Inactive"}
                         </span>
                       </Td>
+
+                      <Td>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditPaint(
+                                paint,
+                              )
+                            }
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteTarget(
+                                paint,
+                              );
+
+                              setError(
+                                "",
+                              );
+
+                              setSuccess(
+                                "",
+                              );
+                            }}
+                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+
+                            Delete
+                          </button>
+                        </div>
+                      </Td>
                     </tr>
                   ),
                 )}
@@ -1058,14 +1357,15 @@ export default function AdminServicesPage() {
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
               <div>
                 <h2 className="text-xl font-bold text-slate-950">
-                  Register Paint
+                  {editingPaint
+                    ? "Edit Paint"
+                    : "Register Paint"}
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Define the
-                  reference pricing
-                  and measurements
-                  customers may use.
+                  {editingPaint
+                    ? "Update paint information, price, stock and selling options."
+                    : "Define the reference pricing and measurements customers may use."}
                 </p>
               </div>
 
@@ -1082,7 +1382,7 @@ export default function AdminServicesPage() {
 
             <form
               onSubmit={
-                createPaint
+                savePaint
               }
               className="space-y-7 p-6"
             >
@@ -1386,7 +1686,7 @@ export default function AdminServicesPage() {
               {/* SELL OPTIONS */}
 
               <Section title="Selling Options">
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <Option
                     checked={
                       form.allow_volume_sale
@@ -1443,6 +1743,25 @@ export default function AdminServicesPage() {
                       )
                     }
                   />
+
+                  <Option
+                    checked={
+                      form.is_active
+                    }
+                    title="Active"
+                    description="Visible to customers"
+                    icon={
+                      <CheckCircle2 className="h-5 w-5" />
+                    }
+                    onChange={(
+                      checked,
+                    ) =>
+                      updateForm(
+                        "is_active",
+                        checked,
+                      )
+                    }
+                  />
                 </div>
 
                 {form.allow_volume_sale &&
@@ -1474,7 +1793,7 @@ export default function AdminServicesPage() {
 
                     <p className="mt-2 text-xs text-slate-500">
                       Density allows
-                      RushPi to
+                      NTEZINET to
                       convert KG ↔
                       Litres for this
                       paint.
@@ -1509,7 +1828,7 @@ export default function AdminServicesPage() {
                     This does not
                     restrict the
                     customer's
-                    quantity. RushPi
+                    quantity. NTEZINET
                     calculates any
                     supported
                     measurement from
@@ -1543,16 +1862,84 @@ export default function AdminServicesPage() {
                 >
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : editingPaint ? (
+                    <Pencil className="h-4 w-4" />
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
 
                   {saving
-                    ? "Saving..."
-                    : "Register Paint"}
+                    ? editingPaint
+                      ? "Updating..."
+                      : "Saving..."
+                    : editingPaint
+                      ? "Update Paint"
+                      : "Register Paint"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* DELETE PAINT MODAL */}
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+              <Trash2 className="h-6 w-6" />
+            </div>
+
+            <h2 className="mt-5 text-xl font-bold text-slate-950">
+              Delete Paint?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              You are about to delete{" "}
+              <strong className="text-slate-800">
+                {deleteTarget.name}
+              </strong>
+              . This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setDeleteTarget(
+                    null,
+                  )
+                }
+                disabled={
+                  deleting
+                }
+                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void deletePaint()
+                }
+                disabled={
+                  deleting
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+
+                {deleting
+                  ? "Deleting..."
+                  : "Delete Paint"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
