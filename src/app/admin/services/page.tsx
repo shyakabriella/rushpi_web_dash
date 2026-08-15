@@ -4,6 +4,7 @@ import {
   Boxes,
   CheckCircle2,
   Droplets,
+  Eye,
   ImagePlus,
   Loader2,
   Palette,
@@ -234,6 +235,13 @@ export default function AdminServicesPage() {
   const [
     deleteTarget,
     setDeleteTarget,
+  ] = useState<Paint | null>(
+    null,
+  );
+
+  const [
+    selectedPaint,
+    setSelectedPaint,
   ] = useState<Paint | null>(
     null,
   );
@@ -759,6 +767,23 @@ export default function AdminServicesPage() {
     }
   }
 
+  function openPaintDetails(
+    paint: Paint,
+  ) {
+    setSelectedPaint(
+      paint,
+    );
+
+    setError("");
+    setSuccess("");
+  }
+
+  function closePaintDetails() {
+    setSelectedPaint(
+      null,
+    );
+  }
+
   function openAddPaint() {
     setEditingPaint(null);
     setForm(initialForm);
@@ -773,6 +798,7 @@ export default function AdminServicesPage() {
   function openEditPaint(
     paint: Paint,
   ) {
+    setSelectedPaint(null);
     setEditingPaint(paint);
 
     setForm({
@@ -1443,22 +1469,17 @@ export default function AdminServicesPage() {
         />
       </div>
 
-      {/* TABLE */}
+      {/* PAINT CARDS */}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-slate-900">
-              Registered
-              Paints
+              Registered Paints
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Prices shown are
-              reference prices.
-              Customers can request
-              any supported
-              quantity.
+              Click any paint card to see all details, colors and available actions.
             </p>
           </div>
 
@@ -1493,16 +1514,11 @@ export default function AdminServicesPage() {
             </div>
 
             <h3 className="mt-5 text-lg font-bold text-slate-900">
-              No paints
-              registered
+              No paints registered
             </h3>
 
             <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-              Register the first
-              paint and define its
-              reference price,
-              stock and supported
-              measurements.
+              Register the first paint and define its price, stock, colors and selling measurements.
             </p>
 
             <button
@@ -1518,100 +1534,148 @@ export default function AdminServicesPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-slate-50">
-                <tr>
-                  <Th>
-                    Paint
-                  </Th>
-
-                  <Th>
-                    Type / Color
-                  </Th>
-
-                  <Th>
-                    Reference Price
-                  </Th>
-
-                  <Th>
-                    Stock
-                  </Th>
-
-                  <Th>
-                    Sell By
-                  </Th>
-
-                  <Th>
-                    Status
-                  </Th>
-
-                  <Th>
-                    Actions
-                  </Th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {filteredPaints.map(
-                  (
+          <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredPaints.map(
+              (
+                paint,
+              ) => {
+                const colors =
+                  normalizePaintColors(
                     paint,
-                  ) => (
-                    <tr
-                      key={
-                        paint.public_id
-                      }
-                      className="hover:bg-slate-50/70"
-                    >
-                      <Td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
-                            {paint.image_url ? (
-                              <img
-                                src={
-                                  paint.image_url
-                                }
-                                alt={
-                                  paint.name
-                                }
-                                className="h-full w-full object-contain"
-                              />
-                            ) : (
-                              <Droplets className="h-5 w-5 text-slate-400" />
-                            )}
-                          </div>
+                  );
 
-                          <div>
-                            <div className="font-semibold text-slate-900">
-                              {
-                                paint.name
-                              }
-                            </div>
+                return (
+                  <article
+                    key={
+                      paint.public_id
+                    }
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      openPaintDetails(
+                        paint,
+                      )
+                    }
+                    onKeyDown={(
+                      event,
+                    ) => {
+                      if (
+                        event.key ===
+                          "Enter" ||
+                        event.key ===
+                          " "
+                      ) {
+                        event.preventDefault();
 
-                            <div className="mt-1 text-xs text-slate-400">
-                              {paint.brand_name ||
-                                "No brand"}
-                            </div>
-                          </div>
-                        </div>
-                      </Td>
-
-                      <Td>
-                        <div className="font-medium text-slate-700">
-                          {paint.paint_type ||
-                            "Paint"}
-                        </div>
-
-                        {normalizePaintColors(
+                        openPaintDetails(
                           paint,
-                        ).length > 0 ? (
-                          <div className="mt-2 flex max-w-[300px] flex-wrap gap-1.5">
-                            {normalizePaintColors(
-                              paint,
-                            )
+                        );
+                      }
+                    }}
+                    className="group cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    {/* IMAGE */}
+
+                    <div className="relative flex h-44 items-center justify-center overflow-hidden bg-slate-50">
+                      {paint.image_url ? (
+                        <img
+                          src={
+                            paint.image_url
+                          }
+                          alt={
+                            paint.name
+                          }
+                          className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50">
+                          <Droplets className="h-9 w-9 text-blue-500" />
+                        </div>
+                      )}
+
+                      <span
+                        className={`absolute right-3 top-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                          paint.is_active
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {paint.is_active
+                          ? "Active"
+                          : "Inactive"}
+                      </span>
+
+                      <div className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-blue-600 shadow-sm">
+                        <Eye className="h-4 w-4" />
+                      </div>
+                    </div>
+
+                    {/* PAINT */}
+
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                            {paint.brand_name ||
+                              "NTEZINET"}
+                          </p>
+
+                          <h3 className="mt-1 line-clamp-2 text-base font-bold text-slate-950">
+                            {
+                              paint.name
+                            }
+                          </h3>
+
+                          <p className="mt-1 truncate text-xs font-medium text-slate-500">
+                            {paint.paint_type ||
+                              "Paint"}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-slate-950">
+                            {money(
+                              paint.reference_price_rwf,
+                            )}{" "}
+                            RWF
+                          </p>
+
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            per{" "}
+                            {
+                              paint.reference_quantity
+                            }{" "}
+                            {String(
+                              paint.reference_unit,
+                            ).toUpperCase()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* COLORS */}
+
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            Colors
+                          </p>
+
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {colors.length}{" "}
+                            {colors.length ===
+                            1
+                              ? "color"
+                              : "colors"}
+                          </span>
+                        </div>
+
+                        {colors.length >
+                        0 ? (
+                          <div className="flex min-h-8 flex-wrap gap-1.5">
+                            {colors
                               .slice(
                                 0,
-                                6,
+                                5,
                               )
                               .map(
                                 (
@@ -1624,7 +1688,7 @@ export default function AdminServicesPage() {
                                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700"
                                   >
                                     <span
-                                      className="h-2.5 w-2.5 rounded-full border border-black/10 bg-slate-200"
+                                      className="h-2.5 w-2.5 rounded-full border border-black/10 bg-white"
                                       style={
                                         color.hex
                                           ? {
@@ -1642,139 +1706,428 @@ export default function AdminServicesPage() {
                                 ),
                               )}
 
-                            {normalizePaintColors(
-                              paint,
-                            ).length >
-                            6 ? (
+                            {colors.length >
+                            5 ? (
                               <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
                                 +
-                                {normalizePaintColors(
-                                  paint,
-                                ).length -
-                                  6}
+                                {colors.length -
+                                  5}
                               </span>
                             ) : null}
                           </div>
                         ) : (
-                          <div className="mt-1 text-xs text-slate-400">
-                            No colors
-                          </div>
+                          <p className="text-xs text-slate-400">
+                            No colors added
+                          </p>
                         )}
-                      </Td>
+                      </div>
 
-                      <Td>
-                        <div className="font-semibold text-slate-900">
-                          {money(
-                            paint.reference_price_rwf,
-                          )}{" "}
-                          RWF
+                      {/* SUMMARY */}
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            Stock
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-slate-900">
+                            {
+                              paint.stock_quantity
+                            }{" "}
+                            {String(
+                              paint.stock_unit,
+                            ).toUpperCase()}
+                          </p>
                         </div>
 
-                        <div className="mt-1 text-xs text-slate-400">
-                          per{" "}
-                          {
-                            paint.reference_quantity
-                          }{" "}
-                          {String(
-                            paint.reference_unit,
-                          ).toUpperCase()}
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            Sell by
+                          </p>
+
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {paint.allow_volume_sale ? (
+                              <Badge>
+                                Volume
+                              </Badge>
+                            ) : null}
+
+                            {paint.allow_weight_sale ? (
+                              <Badge>
+                                KG
+                              </Badge>
+                            ) : null}
+
+                            {paint.allow_amount_sale ? (
+                              <Badge>
+                                RWF
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
-                      </Td>
+                      </div>
 
-                      <Td>
-                        <div className="font-semibold text-slate-900">
-                          {
-                            paint.stock_quantity
-                          }{" "}
-                          {String(
-                            paint.stock_unit,
-                          ).toUpperCase()}
-                        </div>
-                      </Td>
+                      {/* ACTIONS */}
 
-                      <Td>
-                        <div className="flex flex-wrap gap-1">
-                          {paint.allow_volume_sale ? (
-                            <Badge>
-                              Volume
-                            </Badge>
-                          ) : null}
+                      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={(
+                            event,
+                          ) => {
+                            event.stopPropagation();
 
-                          {paint.allow_weight_sale ? (
-                            <Badge>
-                              Weight
-                            </Badge>
-                          ) : null}
-
-                          {paint.allow_amount_sale ? (
-                            <Badge>
-                              RWF
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </Td>
-
-                      <Td>
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            paint.is_active
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
+                            openEditPaint(
+                              paint,
+                            );
+                          }}
+                          className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700"
                         >
-                          {paint.is_active
-                            ? "Active"
-                            : "Inactive"}
-                        </span>
-                      </Td>
+                          <Pencil className="h-3.5 w-3.5" />
 
-                      <Td>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openEditPaint(
-                                paint,
-                              )
-                            }
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
 
-                            Edit
-                          </button>
+                        <button
+                          type="button"
+                          onClick={(
+                            event,
+                          ) => {
+                            event.stopPropagation();
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteTarget(
-                                paint,
-                              );
+                            setDeleteTarget(
+                              paint,
+                            );
 
-                              setError(
-                                "",
-                              );
+                            setError(
+                              "",
+                            );
 
-                              setSuccess(
-                                "",
-                              );
-                            }}
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            setSuccess(
+                              "",
+                            );
+                          }}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 transition hover:bg-red-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
 
-                            Delete
-                          </button>
-                        </div>
-                      </Td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
+                          Delete
+                        </button>
+                      </div>
+
+                      <p className="mt-3 text-center text-[10px] font-medium text-slate-400">
+                        Click the card to view full paint details
+                      </p>
+                    </div>
+                  </article>
+                );
+              },
+            )}
           </div>
         )}
-      </div>
+      </section>
+
+      {/* PAINT DETAILS MODAL */}
+
+      {selectedPaint ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          onMouseDown={(
+            event,
+          ) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closePaintDetails();
+            }
+          }}
+        >
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
+                  Paint Details
+                </p>
+
+                <h2 className="mt-1 truncate text-xl font-bold text-slate-950">
+                  {
+                    selectedPaint.name
+                  }
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  closePaintDetails
+                }
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close paint details"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 p-5 sm:p-6">
+              {/* HERO */}
+
+              <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+                <div className="flex min-h-52 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  {selectedPaint.image_url ? (
+                    <img
+                      src={
+                        selectedPaint.image_url
+                      }
+                      alt={
+                        selectedPaint.name
+                      }
+                      className="h-full max-h-60 w-full object-contain p-4"
+                    />
+                  ) : (
+                    <Droplets className="h-14 w-14 text-slate-300" />
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        selectedPaint.is_active
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {selectedPaint.is_active
+                        ? "Active"
+                        : "Inactive"}
+                    </span>
+
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      {selectedPaint.brand_name ||
+                        "NTEZINET"}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-bold text-slate-950">
+                    {selectedPaint.paint_type ||
+                      "Paint"}
+                  </h3>
+
+                  {selectedPaint.description ? (
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {
+                        selectedPaint.description
+                      }
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-400">
+                      No description provided.
+                    </p>
+                  )}
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Reference Price
+                      </p>
+
+                      <p className="mt-1 text-base font-bold text-slate-950">
+                        {money(
+                          selectedPaint.reference_price_rwf,
+                        )}{" "}
+                        RWF
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-400">
+                        per{" "}
+                        {
+                          selectedPaint.reference_quantity
+                        }{" "}
+                        {String(
+                          selectedPaint.reference_unit,
+                        ).toUpperCase()}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Available Stock
+                      </p>
+
+                      <p className="mt-1 text-base font-bold text-slate-950">
+                        {
+                          selectedPaint.stock_quantity
+                        }{" "}
+                        {String(
+                          selectedPaint.stock_unit,
+                        ).toUpperCase()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ALL COLORS */}
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Available Colors
+                  </h3>
+
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+                    {normalizePaintColors(
+                      selectedPaint,
+                    ).length}{" "}
+                    colors
+                  </span>
+                </div>
+
+                {normalizePaintColors(
+                  selectedPaint,
+                ).length >
+                0 ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                    {normalizePaintColors(
+                      selectedPaint,
+                    ).map(
+                      (
+                        color,
+                      ) => (
+                        <div
+                          key={
+                            color.name
+                          }
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                        >
+                          <span
+                            className="h-9 w-9 shrink-0 rounded-full border border-black/10 bg-white shadow-sm"
+                            style={
+                              color.hex
+                                ? {
+                                    backgroundColor:
+                                      color.hex,
+                                  }
+                                : undefined
+                            }
+                          />
+
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-slate-900">
+                              {
+                                color.name
+                              }
+                            </p>
+
+                            <p className="mt-0.5 text-[10px] text-slate-400">
+                              {color.hex ||
+                                "No HEX code"}
+                            </p>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-400">
+                    No colors registered for this paint.
+                  </p>
+                )}
+              </div>
+
+              {/* SELLING DETAILS */}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Selling Options
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedPaint.allow_volume_sale ? (
+                      <Badge>
+                        Volume / L
+                      </Badge>
+                    ) : null}
+
+                    {selectedPaint.allow_weight_sale ? (
+                      <Badge>
+                        Weight / KG
+                      </Badge>
+                    ) : null}
+
+                    {selectedPaint.allow_amount_sale ? (
+                      <Badge>
+                        Money / RWF
+                      </Badge>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Density
+                  </p>
+
+                  <p className="mt-3 text-lg font-bold text-slate-950">
+                    {selectedPaint.density_kg_per_l
+                      ? `${selectedPaint.density_kg_per_l} KG/L`
+                      : "Not configured"}
+                  </p>
+                </div>
+              </div>
+
+              {/* DETAIL ACTIONS */}
+
+              <div className="flex flex-col gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={
+                    closePaintDetails
+                  }
+                  className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const paint =
+                      selectedPaint;
+
+                    closePaintDetails();
+
+                    setDeleteTarget(
+                      paint,
+                    );
+                  }}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                >
+                  <Trash2 className="h-4 w-4" />
+
+                  Delete
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    openEditPaint(
+                      selectedPaint,
+                    )
+                  }
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  <Pencil className="h-4 w-4" />
+
+                  Edit Paint
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* ADD PAINT MODAL */}
 
