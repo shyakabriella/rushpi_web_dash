@@ -5,7 +5,9 @@ import {
   CheckCircle2,
   Droplets,
   ImagePlus,
+  Layers3,
   Loader2,
+  Palette,
   Pencil,
   Plus,
   Search,
@@ -29,6 +31,8 @@ const API =
   "https://rushpi.asyncafrica.com/api";
 
 type Unit = "ml" | "l" | "g" | "kg";
+
+type VariantMode = "color" | "type";
 
 type Paint = {
   id: number;
@@ -201,6 +205,20 @@ export default function AdminServicesPage() {
     editingPaint,
     setEditingPaint,
   ] = useState<Paint | null>(
+    null,
+  );
+
+  const [
+    variantSource,
+    setVariantSource,
+  ] = useState<Paint | null>(
+    null,
+  );
+
+  const [
+    variantMode,
+    setVariantMode,
+  ] = useState<VariantMode | null>(
     null,
   );
 
@@ -434,6 +452,8 @@ export default function AdminServicesPage() {
 
   function openAddPaint() {
     setEditingPaint(null);
+    setVariantSource(null);
+    setVariantMode(null);
     setForm(initialForm);
     setImage(null);
     setImagePreview("");
@@ -446,6 +466,8 @@ export default function AdminServicesPage() {
     paint: Paint,
   ) {
     setEditingPaint(paint);
+    setVariantSource(null);
+    setVariantMode(null);
 
     setForm({
       name:
@@ -530,6 +552,116 @@ export default function AdminServicesPage() {
     setModalOpen(true);
   }
 
+  function openAddVariant(
+    paint: Paint,
+    mode: VariantMode,
+  ) {
+    /*
+     * A paint variant remains a normal
+     * Service row in the backend.
+     *
+     * Same name + same paint type +
+     * different color = another color
+     * under the same customer paint card.
+     *
+     * Same name + different paint type =
+     * another type under the same paint name.
+     */
+    setEditingPaint(null);
+    setVariantSource(paint);
+    setVariantMode(mode);
+
+    setForm({
+      name:
+        paint.name ?? "",
+
+      paint_type:
+        mode === "color"
+          ? paint.paint_type ?? ""
+          : "",
+
+      brand_name:
+        paint.brand_name ??
+        "NTEZINET",
+
+      /*
+       * New variants start with an
+       * empty color so the administrator
+       * intentionally chooses it.
+       */
+      color_name: "",
+
+      description:
+        paint.description ?? "",
+
+      reference_quantity:
+        String(
+          paint.reference_quantity ??
+            "1",
+        ),
+
+      reference_unit:
+        paint.reference_unit,
+
+      reference_price_rwf:
+        String(
+          paint.reference_price_rwf ??
+            "",
+        ),
+
+      density_kg_per_l:
+        paint.density_kg_per_l ===
+          null ||
+        paint.density_kg_per_l ===
+          undefined
+          ? ""
+          : String(
+              paint.density_kg_per_l,
+            ),
+
+      /*
+       * Stock belongs to each variant,
+       * so do not silently copy the old
+       * variant's available quantity.
+       */
+      stock_quantity: "0",
+
+      stock_unit:
+        paint.stock_unit,
+
+      allow_volume_sale:
+        Boolean(
+          paint.allow_volume_sale,
+        ),
+
+      allow_weight_sale:
+        Boolean(
+          paint.allow_weight_sale,
+        ),
+
+      allow_amount_sale:
+        Boolean(
+          paint.allow_amount_sale,
+        ),
+
+      is_active: true,
+    });
+
+    setImage(null);
+
+    /*
+     * We do not copy the existing server
+     * image file into the new Service row.
+     * The administrator can upload another
+     * image when the variant needs one.
+     */
+    setImagePreview("");
+
+    setError("");
+    setSuccess("");
+    setModalOpen(true);
+  }
+
   function closeModal() {
     if (saving) {
       return;
@@ -537,6 +669,8 @@ export default function AdminServicesPage() {
 
     setModalOpen(false);
     setEditingPaint(null);
+    setVariantSource(null);
+    setVariantMode(null);
     setImage(null);
     setImagePreview("");
     setError("");
@@ -584,6 +718,71 @@ export default function AdminServicesPage() {
       );
 
       return;
+    }
+
+    if (
+      variantMode === "color" &&
+      !form.color_name.trim()
+    ) {
+      setError(
+        "Enter the new paint color.",
+      );
+
+      return;
+    }
+
+    if (
+      variantMode === "type" &&
+      !form.paint_type.trim()
+    ) {
+      setError(
+        "Enter the new paint type.",
+      );
+
+      return;
+    }
+
+    /*
+     * Prevent accidentally creating the
+     * exact same paint/type/color twice.
+     */
+    if (!editingPaint) {
+      const duplicate =
+        paints.some(
+          (paint) =>
+            paint.name
+              .trim()
+              .toLowerCase() ===
+              form.name
+                .trim()
+                .toLowerCase() &&
+            String(
+              paint.paint_type ??
+                "",
+            )
+              .trim()
+              .toLowerCase() ===
+              form.paint_type
+                .trim()
+                .toLowerCase() &&
+            String(
+              paint.color_name ??
+                "",
+            )
+              .trim()
+              .toLowerCase() ===
+              form.color_name
+                .trim()
+                .toLowerCase(),
+        );
+
+      if (duplicate) {
+        setError(
+          "This paint type and color already exists. Edit the existing variant instead.",
+        );
+
+        return;
+      }
     }
 
     if (
@@ -829,12 +1028,18 @@ export default function AdminServicesPage() {
       setSuccess(
         editingPaint
           ? "Paint updated successfully."
-          : "Paint registered successfully.",
+          : variantMode === "color"
+            ? "New paint color added successfully."
+            : variantMode === "type"
+              ? "New paint type added successfully."
+              : "Paint registered successfully.",
       );
 
       setModalOpen(false);
 
       setEditingPaint(null);
+      setVariantSource(null);
+      setVariantMode(null);
 
       setForm(
         initialForm,
@@ -854,7 +1059,9 @@ export default function AdminServicesPage() {
           ? requestError.message
           : editingPaint
             ? "Unable to update paint."
-            : "Unable to create paint.",
+            : variantMode
+              ? "Unable to add paint variant."
+              : "Unable to create paint.",
       );
     } finally {
       setSaving(false);
@@ -1302,7 +1509,39 @@ export default function AdminServicesPage() {
                       </Td>
 
                       <Td>
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-max items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAddVariant(
+                                paint,
+                                "color",
+                              )
+                            }
+                            title="Add another color to this paint type"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-semibold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100"
+                          >
+                            <Palette className="h-3.5 w-3.5" />
+
+                            + Color
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAddVariant(
+                                paint,
+                                "type",
+                              )
+                            }
+                            title="Add another paint type under the same paint name"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100"
+                          >
+                            <Layers3 className="h-3.5 w-3.5" />
+
+                            + Type
+                          </button>
+
                           <button
                             type="button"
                             onClick={() =>
@@ -1358,14 +1597,22 @@ export default function AdminServicesPage() {
               <div>
                 <h2 className="text-xl font-bold text-slate-950">
                   {editingPaint
-                    ? "Edit Paint"
-                    : "Register Paint"}
+                    ? "Edit Paint Variant"
+                    : variantMode === "color"
+                      ? "Add Paint Color"
+                      : variantMode === "type"
+                        ? "Add Paint Type"
+                        : "Register Paint"}
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
                   {editingPaint
-                    ? "Update paint information, price, stock and selling options."
-                    : "Define the reference pricing and measurements customers may use."}
+                    ? "Update this paint variant, price, stock and selling options."
+                    : variantMode === "color"
+                      ? "Add another color under the same paint name and type."
+                      : variantMode === "type"
+                        ? "Add another type under the same paint name. You can also define its first color."
+                        : "Define the reference pricing and measurements customers may use."}
                 </p>
               </div>
 
@@ -1389,6 +1636,32 @@ export default function AdminServicesPage() {
               {error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
+                </div>
+              ) : null}
+
+              {variantSource ? (
+                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-orange-600">
+                      {variantMode === "color" ? (
+                        <Palette className="h-5 w-5" />
+                      ) : (
+                        <Layers3 className="h-5 w-5" />
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        Adding to {variantSource.name}
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        {variantMode === "color"
+                          ? `Current type: ${variantSource.paint_type || "Paint"}. Enter a new color, stock and adjust the price if needed.`
+                          : "Enter the new paint type and its first color. Shared values were copied from the selected paint and remain editable."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
@@ -1426,10 +1699,9 @@ export default function AdminServicesPage() {
                   </label>
 
                   <p className="max-w-md text-xs leading-5 text-slate-500">
-                    Upload the actual
-                    paint image. JPG,
-                    PNG and WebP are
-                    supported.
+                    {variantSource
+                      ? "Image is optional for the new variant. Upload one when this type or color needs its own image."
+                      : "Upload the actual paint image. JPG, PNG and WebP are supported."}
                   </p>
                 </div>
               </Section>
@@ -1441,6 +1713,11 @@ export default function AdminServicesPage() {
                   <Field label="Paint name">
                     <input
                       required
+                      readOnly={
+                        Boolean(
+                          variantSource,
+                        )
+                      }
                       value={
                         form.name
                       }
@@ -1455,14 +1732,28 @@ export default function AdminServicesPage() {
                         )
                       }
                       placeholder="Oil Based Paint Fast Dry"
-                      className={
-                        inputClass
-                      }
+                      className={`${inputClass} ${
+                        variantSource
+                          ? "cursor-not-allowed bg-slate-50 text-slate-500"
+                          : ""
+                      }`}
                     />
                   </Field>
 
-                  <Field label="Paint type">
+                  <Field
+                    label={
+                      variantMode === "type"
+                        ? "New paint type"
+                        : "Paint type"
+                    }
+                  >
                     <input
+                      required={
+                        variantMode === "type"
+                      }
+                      readOnly={
+                        variantMode === "color"
+                      }
                       value={
                         form.paint_type
                       }
@@ -1476,10 +1767,16 @@ export default function AdminServicesPage() {
                             .value,
                         )
                       }
-                      placeholder="Oil Based Paint"
-                      className={
-                        inputClass
+                      placeholder={
+                        variantMode === "type"
+                          ? "Example: Water Based Paint"
+                          : "Oil Based Paint"
                       }
+                      className={`${inputClass} ${
+                        variantMode === "color"
+                          ? "cursor-not-allowed bg-slate-50 text-slate-500"
+                          : ""
+                      }`}
                     />
                   </Field>
 
@@ -1505,8 +1802,19 @@ export default function AdminServicesPage() {
                     />
                   </Field>
 
-                  <Field label="Color">
+                  <Field
+                    label={
+                      variantMode === "color"
+                        ? "New color"
+                        : variantMode === "type"
+                          ? "First color"
+                          : "Color"
+                    }
+                  >
                     <input
+                      required={
+                        variantMode === "color"
+                      }
                       value={
                         form.color_name
                       }
@@ -1520,13 +1828,24 @@ export default function AdminServicesPage() {
                             .value,
                         )
                       }
-                      placeholder="Red"
+                      placeholder={
+                        variantMode === "color"
+                          ? "Example: Blue"
+                          : "Red"
+                      }
                       className={
                         inputClass
                       }
                     />
                   </Field>
                 </div>
+
+                {variantSource ? (
+                  <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
+                    Each type/color keeps its own price, stock, density and selling options.
+                    This lets NTEZINET show several colors without mixing their stock quantities.
+                  </p>
+                ) : null}
 
                 <Field label="Description">
                   <textarea
@@ -1864,6 +2183,10 @@ export default function AdminServicesPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : editingPaint ? (
                     <Pencil className="h-4 w-4" />
+                  ) : variantMode === "color" ? (
+                    <Palette className="h-4 w-4" />
+                  ) : variantMode === "type" ? (
+                    <Layers3 className="h-4 w-4" />
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
@@ -1871,10 +2194,16 @@ export default function AdminServicesPage() {
                   {saving
                     ? editingPaint
                       ? "Updating..."
-                      : "Saving..."
+                      : variantMode
+                        ? "Adding..."
+                        : "Saving..."
                     : editingPaint
                       ? "Update Paint"
-                      : "Register Paint"}
+                      : variantMode === "color"
+                        ? "Add Color"
+                        : variantMode === "type"
+                          ? "Add Type"
+                          : "Register Paint"}
                 </button>
               </div>
             </form>
@@ -1899,6 +2228,12 @@ export default function AdminServicesPage() {
               You are about to delete{" "}
               <strong className="text-slate-800">
                 {deleteTarget.name}
+                {deleteTarget.paint_type
+                  ? ` • ${deleteTarget.paint_type}`
+                  : ""}
+                {deleteTarget.color_name
+                  ? ` • ${deleteTarget.color_name}`
+                  : ""}
               </strong>
               . This action cannot be undone.
             </p>
