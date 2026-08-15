@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Droplets,
   ImagePlus,
-  Layers3,
   Loader2,
   Palette,
   Pencil,
@@ -32,7 +31,10 @@ const API =
 
 type Unit = "ml" | "l" | "g" | "kg";
 
-type VariantMode = "color" | "type";
+type PaintColor = {
+  name: string;
+  hex?: string | null;
+};
 
 type Paint = {
   id: number;
@@ -42,7 +44,28 @@ type Paint = {
   name: string;
   paint_type?: string | null;
   brand_name?: string | null;
+
+  /*
+   * One NTEZINET paint can contain
+   * several selectable colors.
+   *
+   * Example:
+   * [
+   *   { name: "Red", hex: "#D62828" },
+   *   { name: "Blue", hex: "#2563EB" }
+   * ]
+   */
+  colors?: Array<
+    PaintColor | string
+  > | null;
+
+  /*
+   * Legacy first-color field.
+   * Keep it while old mobile/API
+   * clients are being migrated.
+   */
   color_name?: string | null;
+
   description?: string | null;
 
   reference_quantity: string | number;
@@ -68,7 +91,7 @@ type FormState = {
   name: string;
   paint_type: string;
   brand_name: string;
-  color_name: string;
+  colors: PaintColor[];
   description: string;
 
   reference_quantity: string;
@@ -91,7 +114,7 @@ const initialForm: FormState = {
   name: "",
   paint_type: "",
   brand_name: "NTEZINET",
-  color_name: "",
+  colors: [],
   description: "",
 
   reference_quantity: "1",
@@ -209,20 +232,6 @@ export default function AdminServicesPage() {
   );
 
   const [
-    variantSource,
-    setVariantSource,
-  ] = useState<Paint | null>(
-    null,
-  );
-
-  const [
-    variantMode,
-    setVariantMode,
-  ] = useState<VariantMode | null>(
-    null,
-  );
-
-  const [
     deleteTarget,
     setDeleteTarget,
   ] = useState<Paint | null>(
@@ -238,6 +247,23 @@ export default function AdminServicesPage() {
     useState<FormState>(
       initialForm,
     );
+
+  const [
+    colorNameInput,
+    setColorNameInput,
+  ] = useState("");
+
+  const [
+    colorHexInput,
+    setColorHexInput,
+  ] = useState("#");
+
+  const [
+    editingColorIndex,
+    setEditingColorIndex,
+  ] = useState<number | null>(
+    null,
+  );
 
   const [image, setImage] =
     useState<File | null>(null);
@@ -399,7 +425,12 @@ export default function AdminServicesPage() {
             paint.name,
             paint.paint_type,
             paint.brand_name,
-            paint.color_name,
+            ...normalizePaintColors(
+              paint,
+            ).map(
+              (color) =>
+                color.name,
+            ),
           ]
             .filter(Boolean)
             .some((value) =>
@@ -450,11 +481,288 @@ export default function AdminServicesPage() {
     setError("");
   }
 
+  function normalizeHex(
+    value: string,
+  ): string | null {
+    const trimmed =
+      value.trim();
+
+    if (
+      !trimmed ||
+      trimmed === "#"
+    ) {
+      return null;
+    }
+
+    const withHash =
+      trimmed.startsWith(
+        "#",
+      )
+        ? trimmed
+        : `#${trimmed}`;
+
+    if (
+      /^#[0-9A-Fa-f]{6}$/.test(
+        withHash,
+      )
+    ) {
+      return withHash.toUpperCase();
+    }
+
+    return null;
+  }
+
+  function normalizePaintColors(
+    paint: Paint,
+  ): PaintColor[] {
+    const source =
+      Array.isArray(
+        paint.colors,
+      )
+        ? paint.colors
+        : paint.color_name
+          ? [
+              paint.color_name,
+            ]
+          : [];
+
+    const normalized =
+      source
+        .map(
+          (
+            color,
+          ): PaintColor | null => {
+            if (
+              typeof color ===
+              "string"
+            ) {
+              const name =
+                color.trim();
+
+              return name
+                ? {
+                    name,
+                    hex: null,
+                  }
+                : null;
+            }
+
+            if (
+              color &&
+              typeof color ===
+                "object"
+            ) {
+              const name =
+                String(
+                  color.name ??
+                    "",
+                ).trim();
+
+              if (!name) {
+                return null;
+              }
+
+              return {
+                name,
+
+                hex:
+                  typeof color.hex ===
+                    "string"
+                    ? normalizeHex(
+                        color.hex,
+                      )
+                    : null,
+              };
+            }
+
+            return null;
+          },
+        )
+        .filter(
+          (
+            color,
+          ): color is PaintColor =>
+            color !== null,
+        );
+
+    const seen =
+      new Set<string>();
+
+    return normalized.filter(
+      (color) => {
+        const key =
+          color.name.toLowerCase();
+
+        if (
+          seen.has(key)
+        ) {
+          return false;
+        }
+
+        seen.add(key);
+
+        return true;
+      },
+    );
+  }
+
+  function resetColorEditor() {
+    setColorNameInput("");
+    setColorHexInput("#");
+    setEditingColorIndex(null);
+  }
+
+  function saveColor() {
+    const name =
+      colorNameInput.trim();
+
+    if (!name) {
+      setError(
+        "Enter a color name.",
+      );
+
+      return;
+    }
+
+    const duplicate =
+      form.colors.some(
+        (
+          color,
+          index,
+        ) =>
+          index !==
+            editingColorIndex &&
+          color.name
+            .toLowerCase() ===
+            name.toLowerCase(),
+      );
+
+    if (duplicate) {
+      setError(
+        "This color is already added.",
+      );
+
+      return;
+    }
+
+    const rawHex =
+      colorHexInput.trim();
+
+    const hex =
+      normalizeHex(
+        rawHex,
+      );
+
+    if (
+      rawHex &&
+      rawHex !== "#" &&
+      !hex
+    ) {
+      setError(
+        "Color code must be a valid HEX value such as #FF0000.",
+      );
+
+      return;
+    }
+
+    const nextColor: PaintColor = {
+      name,
+      hex,
+    };
+
+    if (
+      editingColorIndex !==
+      null
+    ) {
+      updateForm(
+        "colors",
+        form.colors.map(
+          (
+            color,
+            index,
+          ) =>
+            index ===
+            editingColorIndex
+              ? nextColor
+              : color,
+        ),
+      );
+    } else {
+      updateForm(
+        "colors",
+        [
+          ...form.colors,
+          nextColor,
+        ],
+      );
+    }
+
+    resetColorEditor();
+  }
+
+  function editColor(
+    index: number,
+  ) {
+    const color =
+      form.colors[index];
+
+    if (!color) {
+      return;
+    }
+
+    setColorNameInput(
+      color.name,
+    );
+
+    setColorHexInput(
+      color.hex ??
+        "#",
+    );
+
+    setEditingColorIndex(
+      index,
+    );
+
+    setError("");
+  }
+
+  function removeColor(
+    index: number,
+  ) {
+    updateForm(
+      "colors",
+      form.colors.filter(
+        (
+          _,
+          colorIndex,
+        ) =>
+          colorIndex !==
+          index,
+      ),
+    );
+
+    if (
+      editingColorIndex ===
+      index
+    ) {
+      resetColorEditor();
+    } else if (
+      editingColorIndex !==
+        null &&
+      index <
+        editingColorIndex
+    ) {
+      setEditingColorIndex(
+        editingColorIndex -
+          1,
+      );
+    }
+  }
+
   function openAddPaint() {
     setEditingPaint(null);
-    setVariantSource(null);
-    setVariantMode(null);
     setForm(initialForm);
+    resetColorEditor();
     setImage(null);
     setImagePreview("");
     setError("");
@@ -466,8 +774,6 @@ export default function AdminServicesPage() {
     paint: Paint,
   ) {
     setEditingPaint(paint);
-    setVariantSource(null);
-    setVariantMode(null);
 
     setForm({
       name:
@@ -480,8 +786,10 @@ export default function AdminServicesPage() {
         paint.brand_name ??
         "NTEZINET",
 
-      color_name:
-        paint.color_name ?? "",
+      colors:
+        normalizePaintColors(
+          paint,
+        ),
 
       description:
         paint.description ?? "",
@@ -541,121 +849,12 @@ export default function AdminServicesPage() {
         ),
     });
 
+    resetColorEditor();
     setImage(null);
 
     setImagePreview(
       paint.image_url ?? "",
     );
-
-    setError("");
-    setSuccess("");
-    setModalOpen(true);
-  }
-
-  function openAddVariant(
-    paint: Paint,
-    mode: VariantMode,
-  ) {
-    /*
-     * A paint variant remains a normal
-     * Service row in the backend.
-     *
-     * Same name + same paint type +
-     * different color = another color
-     * under the same customer paint card.
-     *
-     * Same name + different paint type =
-     * another type under the same paint name.
-     */
-    setEditingPaint(null);
-    setVariantSource(paint);
-    setVariantMode(mode);
-
-    setForm({
-      name:
-        paint.name ?? "",
-
-      paint_type:
-        mode === "color"
-          ? paint.paint_type ?? ""
-          : "",
-
-      brand_name:
-        paint.brand_name ??
-        "NTEZINET",
-
-      /*
-       * New variants start with an
-       * empty color so the administrator
-       * intentionally chooses it.
-       */
-      color_name: "",
-
-      description:
-        paint.description ?? "",
-
-      reference_quantity:
-        String(
-          paint.reference_quantity ??
-            "1",
-        ),
-
-      reference_unit:
-        paint.reference_unit,
-
-      reference_price_rwf:
-        String(
-          paint.reference_price_rwf ??
-            "",
-        ),
-
-      density_kg_per_l:
-        paint.density_kg_per_l ===
-          null ||
-        paint.density_kg_per_l ===
-          undefined
-          ? ""
-          : String(
-              paint.density_kg_per_l,
-            ),
-
-      /*
-       * Stock belongs to each variant,
-       * so do not silently copy the old
-       * variant's available quantity.
-       */
-      stock_quantity: "0",
-
-      stock_unit:
-        paint.stock_unit,
-
-      allow_volume_sale:
-        Boolean(
-          paint.allow_volume_sale,
-        ),
-
-      allow_weight_sale:
-        Boolean(
-          paint.allow_weight_sale,
-        ),
-
-      allow_amount_sale:
-        Boolean(
-          paint.allow_amount_sale,
-        ),
-
-      is_active: true,
-    });
-
-    setImage(null);
-
-    /*
-     * We do not copy the existing server
-     * image file into the new Service row.
-     * The administrator can upload another
-     * image when the variant needs one.
-     */
-    setImagePreview("");
 
     setError("");
     setSuccess("");
@@ -669,8 +868,7 @@ export default function AdminServicesPage() {
 
     setModalOpen(false);
     setEditingPaint(null);
-    setVariantSource(null);
-    setVariantMode(null);
+    resetColorEditor();
     setImage(null);
     setImagePreview("");
     setError("");
@@ -721,68 +919,13 @@ export default function AdminServicesPage() {
     }
 
     if (
-      variantMode === "color" &&
-      !form.color_name.trim()
+      form.colors.length === 0
     ) {
       setError(
-        "Enter the new paint color.",
+        "Add at least one paint color.",
       );
 
       return;
-    }
-
-    if (
-      variantMode === "type" &&
-      !form.paint_type.trim()
-    ) {
-      setError(
-        "Enter the new paint type.",
-      );
-
-      return;
-    }
-
-    /*
-     * Prevent accidentally creating the
-     * exact same paint/type/color twice.
-     */
-    if (!editingPaint) {
-      const duplicate =
-        paints.some(
-          (paint) =>
-            paint.name
-              .trim()
-              .toLowerCase() ===
-              form.name
-                .trim()
-                .toLowerCase() &&
-            String(
-              paint.paint_type ??
-                "",
-            )
-              .trim()
-              .toLowerCase() ===
-              form.paint_type
-                .trim()
-                .toLowerCase() &&
-            String(
-              paint.color_name ??
-                "",
-            )
-              .trim()
-              .toLowerCase() ===
-              form.color_name
-                .trim()
-                .toLowerCase(),
-        );
-
-      if (duplicate) {
-        setError(
-          "This paint type and color already exists. Edit the existing variant instead.",
-        );
-
-        return;
-      }
     }
 
     if (
@@ -873,9 +1016,42 @@ export default function AdminServicesPage() {
         form.brand_name.trim(),
       );
 
+      /*
+       * IMPORTANT:
+       * All colors belong to this one
+       * Service / paint record.
+       */
+      form.colors.forEach(
+        (
+          color,
+          index,
+        ) => {
+          body.append(
+            `colors[${index}][name]`,
+            color.name,
+          );
+
+          if (
+            color.hex
+          ) {
+            body.append(
+              `colors[${index}][hex]`,
+              color.hex,
+            );
+          }
+        },
+      );
+
+      /*
+       * Temporary compatibility:
+       * older consumers can still use
+       * color_name as the first color.
+       */
       body.append(
         "color_name",
-        form.color_name.trim(),
+        form.colors[0]
+          ?.name ??
+          "",
       );
 
       body.append(
@@ -1028,23 +1204,18 @@ export default function AdminServicesPage() {
       setSuccess(
         editingPaint
           ? "Paint updated successfully."
-          : variantMode === "color"
-            ? "New paint color added successfully."
-            : variantMode === "type"
-              ? "New paint type added successfully."
-              : "Paint registered successfully.",
+          : "Paint registered successfully.",
       );
 
       setModalOpen(false);
 
       setEditingPaint(null);
-      setVariantSource(null);
-      setVariantMode(null);
 
       setForm(
         initialForm,
       );
 
+      resetColorEditor();
       setImage(null);
 
       setImagePreview("");
@@ -1059,9 +1230,7 @@ export default function AdminServicesPage() {
           ? requestError.message
           : editingPaint
             ? "Unable to update paint."
-            : variantMode
-              ? "Unable to add paint variant."
-              : "Unable to create paint.",
+            : "Unable to create paint.",
       );
     } finally {
       setSaving(false);
@@ -1433,13 +1602,64 @@ export default function AdminServicesPage() {
                             "Paint"}
                         </div>
 
-                        {paint.color_name ? (
-                          <div className="mt-1 text-xs text-slate-400">
-                            {
-                              paint.color_name
-                            }
+                        {normalizePaintColors(
+                          paint,
+                        ).length > 0 ? (
+                          <div className="mt-2 flex max-w-[300px] flex-wrap gap-1.5">
+                            {normalizePaintColors(
+                              paint,
+                            )
+                              .slice(
+                                0,
+                                6,
+                              )
+                              .map(
+                                (
+                                  color,
+                                ) => (
+                                  <span
+                                    key={
+                                      color.name
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700"
+                                  >
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full border border-black/10 bg-slate-200"
+                                      style={
+                                        color.hex
+                                          ? {
+                                              backgroundColor:
+                                                color.hex,
+                                            }
+                                          : undefined
+                                      }
+                                    />
+
+                                    {
+                                      color.name
+                                    }
+                                  </span>
+                                ),
+                              )}
+
+                            {normalizePaintColors(
+                              paint,
+                            ).length >
+                            6 ? (
+                              <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
+                                +
+                                {normalizePaintColors(
+                                  paint,
+                                ).length -
+                                  6}
+                              </span>
+                            ) : null}
                           </div>
-                        ) : null}
+                        ) : (
+                          <div className="mt-1 text-xs text-slate-400">
+                            No colors
+                          </div>
+                        )}
                       </Td>
 
                       <Td>
@@ -1509,39 +1729,7 @@ export default function AdminServicesPage() {
                       </Td>
 
                       <Td>
-                        <div className="flex min-w-max items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openAddVariant(
-                                paint,
-                                "color",
-                              )
-                            }
-                            title="Add another color to this paint type"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 text-xs font-semibold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100"
-                          >
-                            <Palette className="h-3.5 w-3.5" />
-
-                            + Color
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openAddVariant(
-                                paint,
-                                "type",
-                              )
-                            }
-                            title="Add another paint type under the same paint name"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100"
-                          >
-                            <Layers3 className="h-3.5 w-3.5" />
-
-                            + Type
-                          </button>
-
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() =>
@@ -1597,22 +1785,14 @@ export default function AdminServicesPage() {
               <div>
                 <h2 className="text-xl font-bold text-slate-950">
                   {editingPaint
-                    ? "Edit Paint Variant"
-                    : variantMode === "color"
-                      ? "Add Paint Color"
-                      : variantMode === "type"
-                        ? "Add Paint Type"
-                        : "Register Paint"}
+                    ? "Edit Paint"
+                    : "Register Paint"}
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
                   {editingPaint
-                    ? "Update this paint variant, price, stock and selling options."
-                    : variantMode === "color"
-                      ? "Add another color under the same paint name and type."
-                      : variantMode === "type"
-                        ? "Add another type under the same paint name. You can also define its first color."
-                        : "Define the reference pricing and measurements customers may use."}
+                    ? "Update paint information, price, stock and selling options."
+                    : "Define the reference pricing and measurements customers may use."}
                 </p>
               </div>
 
@@ -1636,32 +1816,6 @@ export default function AdminServicesPage() {
               {error ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
-                </div>
-              ) : null}
-
-              {variantSource ? (
-                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-orange-600">
-                      {variantMode === "color" ? (
-                        <Palette className="h-5 w-5" />
-                      ) : (
-                        <Layers3 className="h-5 w-5" />
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">
-                        Adding to {variantSource.name}
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-slate-600">
-                        {variantMode === "color"
-                          ? `Current type: ${variantSource.paint_type || "Paint"}. Enter a new color, stock and adjust the price if needed.`
-                          : "Enter the new paint type and its first color. Shared values were copied from the selected paint and remain editable."}
-                      </p>
-                    </div>
-                  </div>
                 </div>
               ) : null}
 
@@ -1699,9 +1853,10 @@ export default function AdminServicesPage() {
                   </label>
 
                   <p className="max-w-md text-xs leading-5 text-slate-500">
-                    {variantSource
-                      ? "Image is optional for the new variant. Upload one when this type or color needs its own image."
-                      : "Upload the actual paint image. JPG, PNG and WebP are supported."}
+                    Upload the actual
+                    paint image. JPG,
+                    PNG and WebP are
+                    supported.
                   </p>
                 </div>
               </Section>
@@ -1713,11 +1868,6 @@ export default function AdminServicesPage() {
                   <Field label="Paint name">
                     <input
                       required
-                      readOnly={
-                        Boolean(
-                          variantSource,
-                        )
-                      }
                       value={
                         form.name
                       }
@@ -1732,28 +1882,14 @@ export default function AdminServicesPage() {
                         )
                       }
                       placeholder="Oil Based Paint Fast Dry"
-                      className={`${inputClass} ${
-                        variantSource
-                          ? "cursor-not-allowed bg-slate-50 text-slate-500"
-                          : ""
-                      }`}
+                      className={
+                        inputClass
+                      }
                     />
                   </Field>
 
-                  <Field
-                    label={
-                      variantMode === "type"
-                        ? "New paint type"
-                        : "Paint type"
-                    }
-                  >
+                  <Field label="Paint type">
                     <input
-                      required={
-                        variantMode === "type"
-                      }
-                      readOnly={
-                        variantMode === "color"
-                      }
                       value={
                         form.paint_type
                       }
@@ -1767,16 +1903,10 @@ export default function AdminServicesPage() {
                             .value,
                         )
                       }
-                      placeholder={
-                        variantMode === "type"
-                          ? "Example: Water Based Paint"
-                          : "Oil Based Paint"
+                      placeholder="Oil Based Paint"
+                      className={
+                        inputClass
                       }
-                      className={`${inputClass} ${
-                        variantMode === "color"
-                          ? "cursor-not-allowed bg-slate-50 text-slate-500"
-                          : ""
-                      }`}
                     />
                   </Field>
 
@@ -1802,50 +1932,251 @@ export default function AdminServicesPage() {
                     />
                   </Field>
 
-                  <Field
-                    label={
-                      variantMode === "color"
-                        ? "New color"
-                        : variantMode === "type"
-                          ? "First color"
-                          : "Color"
-                    }
-                  >
-                    <input
-                      required={
-                        variantMode === "color"
-                      }
-                      value={
-                        form.color_name
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        updateForm(
-                          "color_name",
-                          event
-                            .target
-                            .value,
-                        )
-                      }
-                      placeholder={
-                        variantMode === "color"
-                          ? "Example: Blue"
-                          : "Red"
-                      }
-                      className={
-                        inputClass
-                      }
-                    />
+                  <Field label="Colors">
+                    <div className="space-y-4">
+                      {/* STEP 1: COLOR EDITOR */}
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                            <Palette className="h-4 w-4" />
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">
+                              Add colors one by one
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              Enter a color name, choose or type its HEX code,
+                              then add it to this paint. Repeat until all
+                              available colors are listed.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
+                        <div className="relative">
+                          <Palette className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                          <input
+                            value={
+                              colorNameInput
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setColorNameInput(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            onKeyDown={(
+                              event,
+                            ) => {
+                              if (
+                                event.key ===
+                                "Enter"
+                              ) {
+                                event.preventDefault();
+
+                                saveColor();
+                              }
+                            }}
+                            placeholder="Color name e.g. Red"
+                            className={`${inputClass} pl-10`}
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={
+                              normalizeHex(
+                                colorHexInput,
+                              ) ??
+                              "#FFFFFF"
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setColorHexInput(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            className="h-11 w-12 shrink-0 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
+                            title="Choose color"
+                          />
+
+                          <input
+                            value={
+                              colorHexInput
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setColorHexInput(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            placeholder="#FF0000"
+                            maxLength={7}
+                            className={`${inputClass} min-w-0`}
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={
+                              saveColor
+                            }
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-semibold text-white transition hover:bg-slate-800"
+                          >
+                            {editingColorIndex ===
+                            null ? (
+                              <Plus className="h-4 w-4" />
+                            ) : (
+                              <Pencil className="h-4 w-4" />
+                            )}
+
+                            {editingColorIndex ===
+                            null
+                              ? "Add Color"
+                              : "Update Color"}
+                          </button>
+
+                          {editingColorIndex !==
+                          null ? (
+                            <button
+                              type="button"
+                              onClick={
+                                resetColorEditor
+                              }
+                              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* STEP 2: ADDED COLORS */}
+
+                      {form.colors.length >
+                      0 ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-slate-700">
+                              Added colors
+                            </p>
+
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+                              {form.colors.length}{" "}
+                              {form.colors.length ===
+                              1
+                                ? "color"
+                                : "colors"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {form.colors.map(
+                              (
+                                color,
+                                index,
+                              ) => (
+                                <div
+                                  key={`${color.name}-${index}`}
+                                  className={`flex items-center gap-3 rounded-xl border p-3 ${
+                                    editingColorIndex ===
+                                    index
+                                      ? "border-blue-400 bg-blue-50"
+                                      : "border-slate-200 bg-white"
+                                  }`}
+                                >
+                                  <span
+                                    className="h-8 w-8 shrink-0 rounded-full border border-black/10 bg-white shadow-sm"
+                                    style={
+                                      color.hex
+                                        ? {
+                                            backgroundColor:
+                                              color.hex,
+                                          }
+                                        : undefined
+                                    }
+                                  />
+
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-slate-900">
+                                      {
+                                        color.name
+                                      }
+                                    </p>
+
+                                    <p className="mt-0.5 text-[10px] text-slate-400">
+                                      {color.hex ||
+                                        "No HEX code"}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      editColor(
+                                        index,
+                                      )
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100"
+                                    title={`Edit ${color.name}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeColor(
+                                        index,
+                                      )
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100"
+                                    title={`Remove ${color.name}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ),
+                            )}
+                          </div>
+
+                          <p className="text-[11px] leading-5 text-slate-400">
+                            Use the pencil to change a color, or the delete
+                            button to remove it before saving the paint.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center">
+                          <Palette className="mx-auto h-6 w-6 text-slate-300" />
+
+                          <p className="mt-2 text-xs font-semibold text-slate-500">
+                            No colors added yet
+                          </p>
+
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            Add at least one color before saving this paint.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </Field>
                 </div>
-
-                {variantSource ? (
-                  <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">
-                    Each type/color keeps its own price, stock, density and selling options.
-                    This lets NTEZINET show several colors without mixing their stock quantities.
-                  </p>
-                ) : null}
 
                 <Field label="Description">
                   <textarea
@@ -2183,10 +2514,6 @@ export default function AdminServicesPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : editingPaint ? (
                     <Pencil className="h-4 w-4" />
-                  ) : variantMode === "color" ? (
-                    <Palette className="h-4 w-4" />
-                  ) : variantMode === "type" ? (
-                    <Layers3 className="h-4 w-4" />
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
@@ -2194,16 +2521,10 @@ export default function AdminServicesPage() {
                   {saving
                     ? editingPaint
                       ? "Updating..."
-                      : variantMode
-                        ? "Adding..."
-                        : "Saving..."
+                      : "Saving..."
                     : editingPaint
                       ? "Update Paint"
-                      : variantMode === "color"
-                        ? "Add Color"
-                        : variantMode === "type"
-                          ? "Add Type"
-                          : "Register Paint"}
+                      : "Register Paint"}
                 </button>
               </div>
             </form>
@@ -2228,12 +2549,6 @@ export default function AdminServicesPage() {
               You are about to delete{" "}
               <strong className="text-slate-800">
                 {deleteTarget.name}
-                {deleteTarget.paint_type
-                  ? ` • ${deleteTarget.paint_type}`
-                  : ""}
-                {deleteTarget.color_name
-                  ? ` • ${deleteTarget.color_name}`
-                  : ""}
               </strong>
               . This action cannot be undone.
             </p>
