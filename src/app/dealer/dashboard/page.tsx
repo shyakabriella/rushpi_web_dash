@@ -1,776 +1,729 @@
+"use client";
+
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BadgeCheck,
-  Banknote,
-  BarChart3,
-  Box,
-  CircleDollarSign,
+  CheckCircle2,
   Clock3,
-  Handshake,
-  PackageCheck,
+  Droplets,
+  Eye,
+  LoaderCircle,
+  PaintBucket,
+  RefreshCw,
   ShoppingBag,
   TriangleAlert,
-  Users,
   WalletCards,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-export const metadata: Metadata = {
-  title: "Dealer Dashboard",
-  description:
-    "Manage dealer orders, customers, commissions and payouts on RushPi.",
+const API =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ??
+  "https://rushpi.asyncafrica.com/api";
+
+type PaintColor = {
+  name: string;
+  hex?: string | null;
 };
 
-type StatCardProps = {
-  title: string;
-  value: string;
-  change: string;
-  trend: "up" | "down";
-  icon: LucideIcon;
-  iconClassName: string;
+type Paint = {
+  public_id: string;
+  name: string;
+  paint_type?: string | null;
+  brand_name?: string | null;
+  color_name?: string | null;
+  colors?: PaintColor[] | null;
+  stock_quantity?: string | number | null;
+  stock_unit?: string | null;
+  reference_price_rwf?: string | number | null;
+  is_active?: boolean;
+  image_url?: string | null;
 };
 
-const recentOrders = [
-  {
-    id: "DLR-2048",
-    customer: "Aline Uwase",
-    product: "Wireless Headphones",
-    quantity: 2,
-    total: "RWF 179,980",
-    commission: "RWF 17,998",
-    status: "Processing",
-  },
-  {
-    id: "DLR-2047",
-    customer: "Eric Mugabo",
-    product: "Wi-Fi 6 Router",
-    quantity: 1,
-    total: "RWF 68,990",
-    commission: "RWF 6,899",
-    status: "Completed",
-  },
-  {
-    id: "DLR-2046",
-    customer: "Grace Uwera",
-    product: "Business Laptop",
-    quantity: 1,
-    total: "RWF 599,000",
-    commission: "RWF 59,900",
-    status: "Pending",
-  },
-  {
-    id: "DLR-2045",
-    customer: "Kevin Habimana",
-    product: "Gaming Monitor",
-    quantity: 2,
-    total: "RWF 285,980",
-    commission: "RWF 28,598",
-    status: "Completed",
-  },
-];
+type OrderItem = {
+  service_name?: string | null;
+  name?: string | null;
+  color_name?: string | null;
+};
 
-const topProducts = [
-  {
-    name: "Wireless Headphones",
-    category: "Audio",
-    orders: 128,
-    revenue: "RWF 11.5M",
-    progress: 88,
-  },
-  {
-    name: "Wi-Fi 6 Router",
-    category: "Networking",
-    orders: 96,
-    revenue: "RWF 6.6M",
-    progress: 72,
-  },
-  {
-    name: "Business Laptop",
-    category: "Computers",
-    orders: 54,
-    revenue: "RWF 32.3M",
-    progress: 62,
-  },
-  {
-    name: "Gaming Monitor",
-    category: "Displays",
-    orders: 47,
-    revenue: "RWF 6.7M",
-    progress: 48,
-  },
-];
+type Order = {
+  public_id: string;
+  order_number: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  service_name?: string | null;
+  total_amount_rwf?: string | number | null;
+  total_price_rwf?: string | number | null;
+  payment_status?: string | null;
+  status: string;
+  created_at?: string | null;
+  items?: OrderItem[] | null;
+};
 
-const activities = [
-  {
-    title: "Commission credited",
-    description:
-      "RWF 59,900 was added from order DLR-2046.",
-    time: "7 minutes ago",
-    icon: CircleDollarSign,
-    iconClassName:
-      "bg-emerald-100 text-emerald-700",
-  },
-  {
-    title: "New order received",
-    description:
-      "Order DLR-2048 requires confirmation.",
-    time: "24 minutes ago",
-    icon: ShoppingBag,
-    iconClassName:
-      "bg-blue-100 text-blue-700",
-  },
-  {
-    title: "Payout requested",
-    description:
-      "Your payout request is being reviewed.",
-    time: "1 hour ago",
-    icon: WalletCards,
-    iconClassName:
-      "bg-violet-100 text-violet-700",
-  },
-  {
-    title: "Product unavailable",
-    description:
-      "Gaming monitor inventory is currently low.",
-    time: "3 hours ago",
-    icon: TriangleAlert,
-    iconClassName:
-      "bg-amber-100 text-amber-700",
-  },
-];
+type Summary = {
+  total_orders?: number;
+  pending_orders?: number;
+  confirmed_orders?: number;
+  processing_orders?: number;
+  ready_orders?: number;
+  completed_orders?: number;
+  cancelled_orders?: number;
+  completed_sales_rwf?: string | number;
+};
+
+type StoredUser = {
+  name?: string;
+};
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+
+  return (
+    localStorage.getItem("rushpi_token") ??
+    sessionStorage.getItem("rushpi_token") ??
+    localStorage.getItem("access_token") ??
+    sessionStorage.getItem("access_token") ??
+    localStorage.getItem("token") ??
+    sessionStorage.getItem("token")
+  );
+}
+
+function getUser(): StoredUser | null {
+  if (typeof window === "undefined") return null;
+
+  const raw =
+    localStorage.getItem("rushpi_user") ??
+    sessionStorage.getItem("rushpi_user");
+
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as StoredUser;
+  } catch {
+    return null;
+  }
+}
+
+function money(value: string | number | null | undefined): string {
+  return new Intl.NumberFormat("en-RW").format(Number(value ?? 0));
+}
+
+function label(value: string | null | undefined): string {
+  if (!value) return "Unknown";
+
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function statusClass(status?: string | null): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-100 text-emerald-700";
+    case "ready":
+      return "bg-blue-100 text-blue-700";
+    case "processing":
+      return "bg-violet-100 text-violet-700";
+    case "confirmed":
+      return "bg-cyan-100 text-cyan-700";
+    case "cancelled":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-amber-100 text-amber-700";
+  }
+}
+
+function paymentClass(status?: string | null): string {
+  if (status === "paid") return "bg-emerald-100 text-emerald-700";
+  if (status === "failed") return "bg-red-100 text-red-700";
+  if (status === "refunded") return "bg-violet-100 text-violet-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function colorsFor(paint: Paint): PaintColor[] {
+  if (Array.isArray(paint.colors) && paint.colors.length > 0) {
+    return paint.colors;
+  }
+
+  return paint.color_name
+    ? [{ name: paint.color_name, hex: null }]
+    : [];
+}
+
+function rows(payload: any): any[] {
+  const value = payload?.data?.data ?? payload?.data ?? [];
+  return Array.isArray(value) ? value : [];
+}
+
+export default function DealerDashboardPage() {
+  const [paints, setPaints] = useState<Paint[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [summary, setSummary] = useState<Summary>({});
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadDashboard = useCallback(async (silent = false) => {
+    const token = getToken();
+
+    if (!token) {
+      setError("Dealer session not found. Please sign in again.");
+      setLoading(false);
+      return;
+    }
+
+    silent ? setRefreshing(true) : setLoading(true);
+    setError("");
+
+    try {
+      const headers = {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const [paintResponse, orderResponse] = await Promise.all([
+        fetch(`${API}/dealer/services?per_page=100`, {
+          headers,
+          cache: "no-store",
+        }),
+        fetch(`${API}/dealer/service-orders?per_page=100`, {
+          headers,
+          cache: "no-store",
+        }),
+      ]);
+
+      const paintPayload = await paintResponse.json().catch(() => null);
+      const orderPayload = await orderResponse.json().catch(() => null);
+
+      if (!paintResponse.ok) {
+        throw new Error(
+          paintPayload?.message ?? "Unable to load paint services.",
+        );
+      }
+
+      if (!orderResponse.ok) {
+        throw new Error(
+          orderPayload?.message ?? "Unable to load paint orders.",
+        );
+      }
+
+      setPaints(rows(paintPayload) as Paint[]);
+      setOrders(rows(orderPayload) as Order[]);
+      setSummary(orderPayload?.summary ?? {});
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to load dealer dashboard.",
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setUser(getUser());
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const stats = useMemo(() => {
+    const activePaints = paints.filter(
+      (paint) => paint.is_active !== false,
+    ).length;
+
+    const pending =
+      Number(summary.pending_orders ?? 0) +
+      Number(summary.confirmed_orders ?? 0) +
+      Number(summary.processing_orders ?? 0) +
+      Number(summary.ready_orders ?? 0);
+
+    return {
+      activePaints,
+      pending,
+      totalOrders: Number(summary.total_orders ?? orders.length),
+      completed: Number(summary.completed_orders ?? 0),
+      completedSales: Number(summary.completed_sales_rwf ?? 0),
+    };
+  }, [paints, orders, summary]);
+
+  const recentOrders = orders.slice(0, 6);
+  const paintPreview = paints.slice(0, 6);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center">
+        <div className="text-center">
+          <LoaderCircle className="mx-auto size-8 animate-spin text-blue-700" />
+          <p className="mt-3 text-sm font-semibold text-slate-500">
+            Loading NTEZINET dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-10">
+      <section className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-center">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-blue-600">
+            NTEZINET Paint
+          </p>
+
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            Welcome back, {user?.name || "NTEZINET Paint"} 👋
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+            Manage paints, monitor stock and process customer paint orders.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void loadDashboard(true)}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm hover:border-blue-500 hover:text-blue-700 disabled:opacity-60"
+          >
+            <RefreshCw
+              className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
+
+          <Link
+            href="/dealer/services"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-700/20 hover:bg-blue-800"
+          >
+            <PaintBucket className="size-4" />
+            Manage paints
+          </Link>
+        </div>
+      </section>
+
+      {error ? (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          title="Registered paints"
+          value={String(paints.length)}
+          helper={`${stats.activePaints} active`}
+          icon={Droplets}
+          className="bg-blue-100 text-blue-700"
+        />
+
+        <StatCard
+          title="Total orders"
+          value={String(stats.totalOrders)}
+          helper="All customer orders"
+          icon={ShoppingBag}
+          className="bg-violet-100 text-violet-700"
+        />
+
+        <StatCard
+          title="Orders in progress"
+          value={String(stats.pending)}
+          helper="Pending to ready"
+          icon={Clock3}
+          className="bg-amber-100 text-amber-700"
+        />
+
+        <StatCard
+          title="Completed"
+          value={String(stats.completed)}
+          helper="Fulfilled orders"
+          icon={CheckCircle2}
+          className="bg-emerald-100 text-emerald-700"
+        />
+
+        <StatCard
+          title="Completed sales"
+          value={`${money(stats.completedSales)} RWF`}
+          helper="Completed order revenue"
+          icon={WalletCards}
+          className="bg-cyan-100 text-cyan-700"
+        />
+      </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
+        <article className="rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
+          <h2 className="text-xl font-black text-slate-950">
+            Order status overview
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Current customer order workload.
+          </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Metric
+              label="Pending"
+              value={Number(summary.pending_orders ?? 0)}
+              className="bg-amber-50 text-amber-800"
+            />
+            <Metric
+              label="Confirmed"
+              value={Number(summary.confirmed_orders ?? 0)}
+              className="bg-cyan-50 text-cyan-800"
+            />
+            <Metric
+              label="Processing"
+              value={Number(summary.processing_orders ?? 0)}
+              className="bg-violet-50 text-violet-800"
+            />
+            <Metric
+              label="Ready"
+              value={Number(summary.ready_orders ?? 0)}
+              className="bg-blue-50 text-blue-800"
+            />
+            <Metric
+              label="Completed"
+              value={Number(summary.completed_orders ?? 0)}
+              className="bg-emerald-50 text-emerald-800"
+            />
+            <Metric
+              label="Cancelled"
+              value={Number(summary.cancelled_orders ?? 0)}
+              className="bg-red-50 text-red-800"
+            />
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
+          <h2 className="text-xl font-black text-slate-950">
+            Quick actions
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            NTEZINET dealer tasks
+          </p>
+
+          <div className="mt-6 grid gap-3">
+            <Link
+              href="/dealer/services"
+              className="flex items-center justify-between rounded-2xl bg-blue-50 px-4 py-4 text-sm font-black text-blue-800 hover:bg-blue-100"
+            >
+              Manage paint services
+              <PaintBucket className="size-5" />
+            </Link>
+
+            <Link
+              href="/dealer/orders"
+              className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-4 text-sm font-black text-emerald-800 hover:bg-emerald-100"
+            >
+              Process customer orders
+              <ShoppingBag className="size-5" />
+            </Link>
+          </div>
+        </article>
+      </section>
+
+      <section className="mt-5 overflow-hidden rounded-3xl border border-white bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+        <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">
+              Recent customer orders
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Latest NTEZINET paint purchases.
+            </p>
+          </div>
+
+          <Link
+            href="/dealer/orders"
+            className="text-sm font-black text-blue-700 hover:underline"
+          >
+            View all
+          </Link>
+        </div>
+
+        {recentOrders.length === 0 ? (
+          <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+            <ShoppingBag className="size-9 text-slate-300" />
+            <p className="mt-3 font-bold text-slate-700">
+              No orders yet
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 font-black">Order</th>
+                  <th className="px-6 py-4 font-black">Customer</th>
+                  <th className="px-6 py-4 font-black">Paint</th>
+                  <th className="px-6 py-4 font-black">Total</th>
+                  <th className="px-6 py-4 font-black">Payment</th>
+                  <th className="px-6 py-4 font-black">Status</th>
+                  <th className="px-6 py-4 font-black">Action</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {recentOrders.map((order) => {
+                  const firstItem =
+                    Array.isArray(order.items) ? order.items[0] : null;
+
+                  return (
+                    <tr
+                      key={order.public_id}
+                      className="transition hover:bg-blue-50/50"
+                    >
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-black text-blue-700">
+                          {order.order_number}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          {formatDate(order.created_at)}
+                        </p>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-slate-800">
+                          {order.customer_name ?? "Customer"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {order.customer_phone ?? "—"}
+                        </p>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <p className="max-w-[220px] truncate text-sm font-semibold text-slate-700">
+                          {firstItem?.service_name ??
+                            firstItem?.name ??
+                            order.service_name ??
+                            "Paint"}
+                        </p>
+                        {firstItem?.color_name ? (
+                          <p className="mt-1 text-xs font-bold text-blue-600">
+                            {firstItem.color_name}
+                          </p>
+                        ) : null}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-black text-slate-950">
+                        {money(
+                          order.total_amount_rwf ??
+                            order.total_price_rwf,
+                        )}{" "}
+                        RWF
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ${paymentClass(
+                            order.payment_status,
+                          )}`}
+                        >
+                          {label(order.payment_status)}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ${statusClass(
+                            order.status,
+                          )}`}
+                        >
+                          {label(order.status)}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <Link
+                          href="/dealer/orders"
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:border-blue-300 hover:text-blue-700"
+                        >
+                          <Eye className="size-4" />
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">
+              Paint inventory
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Quick view of NTEZINET paint services.
+            </p>
+          </div>
+
+          <Link
+            href="/dealer/services"
+            className="text-sm font-black text-blue-700 hover:underline"
+          >
+            Manage all
+          </Link>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paintPreview.map((paint) => {
+            const paintColors = colorsFor(paint);
+
+            return (
+              <Link
+                key={paint.public_id}
+                href="/dealer/services"
+                className="overflow-hidden rounded-3xl border border-white bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5"
+              >
+                <div className="flex h-40 items-center justify-center bg-slate-50">
+                  {paint.image_url ? (
+                    <img
+                      src={paint.image_url}
+                      alt={paint.name}
+                      className="h-full w-full object-contain p-4"
+                    />
+                  ) : (
+                    <PaintBucket className="size-12 text-slate-300" />
+                  )}
+                </div>
+
+                <div className="p-4">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-blue-600">
+                    {paint.brand_name ?? "NTEZINET"}
+                  </p>
+
+                  <h3 className="mt-1 font-black text-slate-950">
+                    {paint.name}
+                  </h3>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    {paint.paint_type ?? "Paint"}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {paintColors.slice(0, 5).map((color) => (
+                      <span
+                        key={`${paint.public_id}-${color.name}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700"
+                      >
+                        <span
+                          className="size-2.5 rounded-full border border-black/10 bg-white"
+                          style={
+                            color.hex
+                              ? { backgroundColor: color.hex }
+                              : undefined
+                          }
+                        />
+                        {color.name}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400">
+                        Stock
+                      </p>
+                      <p className="mt-1 text-sm font-black text-slate-900">
+                        {money(paint.stock_quantity)}{" "}
+                        {String(paint.stock_unit ?? "").toUpperCase()}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400">
+                        Price
+                      </p>
+                      <p className="mt-1 text-sm font-black text-slate-900">
+                        {money(paint.reference_price_rwf)} RWF
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function StatCard({
   title,
   value,
-  change,
-  trend,
+  helper,
   icon: Icon,
-  iconClassName,
-}: StatCardProps) {
-  const TrendIcon =
-    trend === "up"
-      ? ArrowUpRight
-      : ArrowDownRight;
-
+  className,
+}: {
+  title: string;
+  value: string;
+  helper: string;
+  icon: typeof ShoppingBag;
+  className: string;
+}) {
   return (
-    <article className="dashboard-card dashboard-stat-card rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-      <div className="flex items-start justify-between gap-4">
-        <span
-          className={`grid size-12 place-items-center rounded-2xl ${iconClassName}`}
-        >
-          <Icon className="size-6" />
-        </span>
-
-        <span
-          className={[
-            "inline-flex items-center gap-1 rounded-full px-2.5 py-1",
-            "text-xs font-black",
-            trend === "up"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-red-50 text-red-700",
-          ].join(" ")}
-        >
-          <TrendIcon className="size-3.5" />
-          {change}
-        </span>
-      </div>
+    <article className="rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+      <span
+        className={`grid size-12 place-items-center rounded-2xl ${className}`}
+      >
+        <Icon className="size-6" />
+      </span>
 
       <p className="mt-5 text-sm font-semibold text-slate-500">
         {title}
       </p>
 
-      <p className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+      <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
         {value}
+      </p>
+
+      <p className="mt-2 text-xs font-semibold text-slate-400">
+        {helper}
       </p>
     </article>
   );
 }
 
-function statusClassName(status: string): string {
-  if (status === "Completed") {
-    return "bg-emerald-100 text-emerald-700";
-  }
-
-  if (status === "Processing") {
-    return "bg-blue-100 text-blue-700";
-  }
-
-  return "bg-amber-100 text-amber-700";
-}
-
-export default function DealerDashboardPage() {
+function Metric({
+  label: metricLabel,
+  value,
+  className,
+}: {
+  label: string;
+  value: number;
+  className: string;
+}) {
   return (
-    <div>
-      {/* Page heading */}
-      <section className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-center">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-blue-600">
-            Dealer overview
-          </p>
-
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Welcome back, RushPi Dealer 👋
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
-            Track your orders, customers, commissions and payouts.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dealer/catalog"
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:border-blue-500 hover:text-blue-700"
-          >
-            <Box className="size-4" />
-            Browse catalog
-          </Link>
-
-          <Link
-            href="/dealer/orders"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800"
-          >
-            <ShoppingBag className="size-4" />
-            View orders
-          </Link>
-        </div>
-      </section>
-
-      {/* Statistics */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Total dealer sales"
-          value="RWF 42.8M"
-          change="+14.7%"
-          trend="up"
-          icon={CircleDollarSign}
-          iconClassName="bg-blue-100 text-blue-700"
-        />
-
-        <StatCard
-          title="Commission earned"
-          value="RWF 4.28M"
-          change="+11.2%"
-          trend="up"
-          icon={Banknote}
-          iconClassName="bg-emerald-100 text-emerald-700"
-        />
-
-        <StatCard
-          title="Pending orders"
-          value="24"
-          change="-3.4%"
-          trend="down"
-          icon={ShoppingBag}
-          iconClassName="bg-amber-100 text-amber-700"
-        />
-
-        <StatCard
-          title="Active customers"
-          value="1,482"
-          change="+18.5%"
-          trend="up"
-          icon={Users}
-          iconClassName="bg-violet-100 text-violet-700"
-        />
-      </section>
-
-      {/* Chart and commission panel */}
-      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-        <article className="dashboard-card rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Dealer sales performance
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Sales and commission performance over seven months
-              </p>
-            </div>
-
-            <select
-              defaultValue="7-months"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 outline-none"
-            >
-              <option value="7-months">
-                Last 7 months
-              </option>
-
-              <option value="12-months">
-                Last 12 months
-              </option>
-            </select>
-          </div>
-
-          <div className="mt-7 overflow-hidden">
-            <svg
-              viewBox="0 0 760 285"
-              role="img"
-              aria-label="Dealer sales chart"
-              className="h-[270px] w-full"
-            >
-              <defs>
-                <linearGradient
-                  id="dealerSalesArea"
-                  x1="0"
-                  x2="0"
-                  y1="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="0%"
-                    stopColor="#2563eb"
-                    stopOpacity="0.28"
-                  />
-
-                  <stop
-                    offset="100%"
-                    stopColor="#2563eb"
-                    stopOpacity="0"
-                  />
-                </linearGradient>
-
-                <linearGradient
-                  id="commissionArea"
-                  x1="0"
-                  x2="0"
-                  y1="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="0%"
-                    stopColor="#10b981"
-                    stopOpacity="0.18"
-                  />
-
-                  <stop
-                    offset="100%"
-                    stopColor="#10b981"
-                    stopOpacity="0"
-                  />
-                </linearGradient>
-              </defs>
-
-              {[40, 90, 140, 190, 240].map(
-                (position) => (
-                  <line
-                    key={position}
-                    x1="30"
-                    x2="735"
-                    y1={position}
-                    y2={position}
-                    stroke="#e2e8f0"
-                    strokeDasharray="5 7"
-                  />
-                ),
-              )}
-
-              <path
-                d="M35 225 C95 215, 110 180, 165 192 C220 205, 245 135, 300 150 C350 164, 380 98, 435 115 C490 130, 520 75, 575 90 C630 104, 670 48, 730 62 L730 260 L35 260 Z"
-                fill="url(#dealerSalesArea)"
-              />
-
-              <path
-                d="M35 225 C95 215, 110 180, 165 192 C220 205, 245 135, 300 150 C350 164, 380 98, 435 115 C490 130, 520 75, 575 90 C630 104, 670 48, 730 62"
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="5"
-                strokeLinecap="round"
-              />
-
-              <path
-                d="M35 245 C100 238, 125 220, 165 225 C220 230, 250 190, 300 198 C360 208, 390 165, 435 175 C490 182, 530 145, 575 154 C635 163, 680 120, 730 128 L730 260 L35 260 Z"
-                fill="url(#commissionArea)"
-              />
-
-              <path
-                d="M35 245 C100 238, 125 220, 165 225 C220 230, 250 190, 300 198 C360 208, 390 165, 435 175 C490 182, 530 145, 575 154 C635 163, 680 120, 730 128"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-400">
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Apr</span>
-              <span>May</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Aug</span>
-            </div>
-
-            <div className="mt-5 flex flex-wrap justify-center gap-5 text-xs font-bold text-slate-600">
-              <span className="inline-flex items-center gap-2">
-                <span className="size-3 rounded-full bg-blue-600" />
-                Total sales
-              </span>
-
-              <span className="inline-flex items-center gap-2">
-                <span className="size-3 rounded-full bg-emerald-500" />
-                Commission
-              </span>
-            </div>
-          </div>
-        </article>
-
-        <article className="dashboard-card rounded-3xl border border-white bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
-              <Handshake className="size-5" />
-            </span>
-
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Commission summary
-              </h2>
-
-              <p className="text-sm text-slate-500">
-                Current earning period
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-7 rounded-3xl bg-gradient-to-br from-blue-700 to-indigo-700 p-5 text-white">
-            <p className="text-sm font-semibold text-blue-100">
-              Available commission
-            </p>
-
-            <p className="mt-2 text-3xl font-black">
-              RWF 1,248,700
-            </p>
-
-            <p className="mt-3 text-xs leading-5 text-blue-100">
-              Available commission can be requested for payout.
-            </p>
-
-            <Link
-              href="/dealer/payouts"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-black text-blue-700 transition hover:bg-blue-50"
-            >
-              Request payout
-            </Link>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-bold text-slate-600">
-                  Monthly target
-                </span>
-
-                <span className="font-black text-slate-900">
-                  78%
-                </span>
-              </div>
-
-              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full w-[78%] rounded-full bg-blue-600" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-emerald-50 p-4">
-                <p className="text-xs font-bold text-emerald-700">
-                  Paid commission
-                </p>
-
-                <p className="mt-2 text-lg font-black text-emerald-900">
-                  RWF 3.03M
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-amber-50 p-4">
-                <p className="text-xs font-bold text-amber-700">
-                  Pending
-                </p>
-
-                <p className="mt-2 text-lg font-black text-amber-900">
-                  RWF 684K
-                </p>
-              </div>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      {/* Recent orders */}
-      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
-        <article className="dashboard-card overflow-hidden rounded-3xl border border-white bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Recent dealer orders
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Latest customer purchases
-              </p>
-            </div>
-
-            <Link
-              href="/dealer/orders"
-              className="text-sm font-black text-blue-700 hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[940px]">
-              <thead>
-                <tr className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
-                  <th className="px-6 py-4 font-black">
-                    Order
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Customer
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Product
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Qty
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Total
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Commission
-                  </th>
-
-                  <th className="px-6 py-4 font-black">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {recentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="transition hover:bg-blue-50/50"
-                  >
-                    <td className="px-6 py-4 text-sm font-black text-blue-700">
-                      {order.id}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">
-                      {order.customer}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {order.product}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-black text-slate-900">
-                      {order.quantity}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-black text-slate-900">
-                      {order.total}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm font-black text-emerald-700">
-                      {order.commission}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${statusClassName(order.status)}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <article className="dashboard-card rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-blue-100 text-blue-700">
-              <Clock3 className="size-5" />
-            </span>
-
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Recent activity
-              </h2>
-
-              <p className="text-sm text-slate-500">
-                Dealer account updates
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-5">
-            {activities.map((activity) => {
-              const Icon = activity.icon;
-
-              return (
-                <div
-                  key={`${activity.title}-${activity.time}`}
-                  className="flex items-start gap-3"
-                >
-                  <span
-                    className={`grid size-10 shrink-0 place-items-center rounded-xl ${activity.iconClassName}`}
-                  >
-                    <Icon className="size-5" />
-                  </span>
-
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-900">
-                      {activity.title}
-                    </p>
-
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      {activity.description}
-                    </p>
-
-                    <p className="mt-1.5 text-[11px] font-semibold text-slate-400">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </article>
-      </section>
-
-      {/* Top products */}
-      <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
-        <article className="dashboard-card rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Top-selling products
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Products generating the most dealer sales
-              </p>
-            </div>
-
-            <BarChart3 className="size-6 text-blue-700" />
-          </div>
-
-          <div className="mt-6 space-y-5">
-            {topProducts.map((product) => (
-              <div
-                key={product.name}
-                className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_90px_110px]"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-black text-slate-900">
-                        {product.name}
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {product.category}
-                      </p>
-                    </div>
-
-                    <p className="text-xs font-black text-slate-600 sm:hidden">
-                      {product.orders} orders
-                    </p>
-                  </div>
-
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600"
-                      style={{
-                        width: `${product.progress}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <p className="hidden self-center text-right text-sm font-bold text-slate-600 sm:block">
-                  {product.orders} orders
-                </p>
-
-                <p className="self-center text-right text-sm font-black text-slate-950">
-                  {product.revenue}
-                </p>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="dashboard-card rounded-3xl border border-white bg-white p-5 shadow-[0_14px_35px_rgba(15,23,42,0.06)] sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-violet-100 text-violet-700">
-              <PackageCheck className="size-5" />
-            </span>
-
-            <div>
-              <h2 className="text-xl font-black text-slate-950">
-                Quick actions
-              </h2>
-
-              <p className="text-sm text-slate-500">
-                Common dealer tasks
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-3">
-            <Link
-              href="/dealer/catalog"
-              className="flex items-center justify-between rounded-2xl bg-blue-50 px-4 py-4 text-sm font-black text-blue-800 transition hover:-translate-y-0.5 hover:bg-blue-100"
-            >
-              Browse dealer catalog
-              <ArrowUpRight className="size-5" />
-            </Link>
-
-            <Link
-              href="/dealer/orders"
-              className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-4 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100"
-            >
-              Process pending orders
-              <ArrowUpRight className="size-5" />
-            </Link>
-
-            <Link
-              href="/dealer/customers"
-              className="flex items-center justify-between rounded-2xl bg-violet-50 px-4 py-4 text-sm font-black text-violet-800 transition hover:-translate-y-0.5 hover:bg-violet-100"
-            >
-              View customers
-              <ArrowUpRight className="size-5" />
-            </Link>
-
-            <Link
-              href="/dealer/payouts"
-              className="flex items-center justify-between rounded-2xl bg-amber-50 px-4 py-4 text-sm font-black text-amber-800 transition hover:-translate-y-0.5 hover:bg-amber-100"
-            >
-              Manage payouts
-              <ArrowUpRight className="size-5" />
-            </Link>
-          </div>
-
-          <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-5 text-emerald-800">
-            <BadgeCheck className="size-5 shrink-0" />
-            Your RushPi dealer account is verified and active.
-          </div>
-        </article>
-      </section>
+    <div className={`rounded-2xl p-4 ${className}`}>
+      <p className="text-xs font-black uppercase tracking-wide opacity-70">
+        {metricLabel}
+      </p>
+      <p className="mt-2 text-3xl font-black">
+        {value}
+      </p>
     </div>
   );
 }
