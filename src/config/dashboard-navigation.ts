@@ -137,11 +137,6 @@ export const dashboardNavigation: Record<
           href: "/admin/services",
           icon: Wrench,
         },
-        {
-          label: "Orders",
-          href: "/admin/orders",
-          icon: ShoppingBag,
-        },
       ],
     },
 
@@ -257,80 +252,22 @@ export const dashboardNavigation: Record<
 
   dealer: [
     {
-      title: "Overview",
+      title: "NTEZINET Paint",
       items: [
         {
           label: "Dashboard",
           href: "/dealer/dashboard",
           icon: LayoutDashboard,
         },
-      ],
-    },
-
-    {
-      title: "Commerce",
-      items: [
         {
-          label: "Dealer catalog",
-          href: "/dealer/catalog",
-          icon: PackageSearch,
+          label: "Service management",
+          href: "/dealer/services",
+          icon: Wrench,
         },
         {
           label: "Orders",
           href: "/dealer/orders",
           icon: ShoppingBag,
-        },
-        {
-          label: "Customers",
-          href: "/dealer/customers",
-          icon: Users,
-        },
-        {
-          label: "Transactions",
-          href: "/dealer/transactions",
-          icon: ReceiptText,
-        },
-      ],
-    },
-
-    {
-      title: "Earnings",
-      items: [
-        {
-          label: "Commissions",
-          href: "/dealer/commissions",
-          icon: CircleDollarSign,
-        },
-        {
-          label: "Payouts",
-          href: "/dealer/payouts",
-          icon: Banknote,
-        },
-        {
-          label: "Reports",
-          href: "/dealer/reports",
-          icon: BarChart3,
-        },
-      ],
-    },
-
-    {
-      title: "Account",
-      items: [
-        {
-          label: "Dealer profile",
-          href: "/dealer/profile",
-          icon: Building2,
-        },
-        {
-          label: "Verification",
-          href: "/dealer/verification",
-          icon: ShieldCheck,
-        },
-        {
-          label: "Settings",
-          href: "/dealer/settings",
-          icon: Settings,
         },
       ],
     },
