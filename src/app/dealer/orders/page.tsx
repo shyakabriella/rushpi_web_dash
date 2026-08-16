@@ -16,7 +16,6 @@ import {
   ShoppingBag,
   Truck,
   User,
-  WalletCards,
   X,
 } from "lucide-react";
 
@@ -471,7 +470,7 @@ function extractError(
   return fallback;
 }
 
-export default function AdminOrdersPage() {
+export default function DealerOrdersPage() {
   const [
     orders,
     setOrders,
@@ -545,7 +544,7 @@ export default function AdminOrdersPage() {
 
         if (!token) {
           setError(
-            "Your administrator session was not found. Please sign in again.",
+            "Your dealer session was not found. Please sign in again.",
           );
 
           setLoading(
@@ -708,7 +707,7 @@ export default function AdminOrdersPage() {
 
     if (!token) {
       setError(
-        "Administrator session not found.",
+        "Dealer session not found.",
       );
 
       return;
@@ -813,21 +812,17 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
-      {/* HEADER */}
+    <div className="pb-8">
+      {/* PAGE HEADER */}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mb-5 flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">
-            NTEZINET Marketplace
-          </p>
-
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+          <h1 className="text-2xl font-bold text-slate-900">
             Paint Orders
           </h1>
 
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Review customer paint orders, delivery details, quantities, payment and fulfilment status.
+          <p className="mt-1 text-sm text-slate-500">
+            Review and manage customer paint orders.
           </p>
         </div>
 
@@ -841,7 +836,7 @@ export default function AdminOrdersPage() {
           disabled={
             refreshing
           }
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-normal text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw
             className={`h-4 w-4 ${
@@ -856,20 +851,20 @@ export default function AdminOrdersPage() {
       </div>
 
       {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
           {success}
         </div>
       ) : null}
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </div>
       ) : null}
 
       {/* SUMMARY */}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard
           title="Total Orders"
           value={
@@ -923,8 +918,8 @@ export default function AdminOrdersPage() {
 
       {/* FILTERS */}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 lg:grid-cols-[1fr_200px_200px]">
+      <section className="mb-5 border-y border-slate-200 bg-white py-4">
+        <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -939,7 +934,7 @@ export default function AdminOrdersPage() {
                 )
               }
               placeholder="Search order, customer, phone, paint..."
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -953,7 +948,7 @@ export default function AdminOrdersPage() {
                   .value,
               )
             }
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500"
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           >
             <option value="">
               All statuses
@@ -996,7 +991,7 @@ export default function AdminOrdersPage() {
                   .value,
               )
             }
-            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500"
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           >
             <option value="">
               All payments
@@ -1023,14 +1018,14 @@ export default function AdminOrdersPage() {
 
       {/* ORDERS */}
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="font-bold text-slate-950">
+      <section className="overflow-hidden border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
+          <h2 className="text-sm font-semibold text-slate-900">
             Customer Orders
           </h2>
 
           <p className="mt-1 text-xs text-slate-500">
-            Click an order to view full details.
+            Select an order to view details and update its status.
           </p>
         </div>
 
@@ -1053,8 +1048,8 @@ export default function AdminOrdersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1100px] w-full">
-              <thead className="bg-slate-50">
+            <table className="min-w-[1050px] w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
                   <Th>
                     Order
@@ -1090,7 +1085,7 @@ export default function AdminOrdersPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {visibleOrders.map(
                   (
                     order,
@@ -1115,10 +1110,10 @@ export default function AdminOrdersPage() {
                             order,
                           )
                         }
-                        className="cursor-pointer transition hover:bg-blue-50/40"
+                        className="cursor-pointer transition hover:bg-slate-50"
                       >
                         <Td>
-                          <p className="font-bold text-slate-950">
+                          <p className="font-semibold text-slate-900">
                             {
                               order.order_number
                             }
@@ -1132,7 +1127,7 @@ export default function AdminOrdersPage() {
                         </Td>
 
                         <Td>
-                          <p className="font-semibold text-slate-800">
+                          <p className="font-medium text-slate-800">
                             {order.customer_name ||
                               "Customer"}
                           </p>
@@ -1144,7 +1139,7 @@ export default function AdminOrdersPage() {
                         </Td>
 
                         <Td>
-                          <p className="max-w-[220px] truncate font-semibold text-slate-800">
+                          <p className="max-w-[220px] truncate font-medium text-slate-800">
                             {items[0]
                               ?.service_name ??
                               items[0]
@@ -1162,7 +1157,7 @@ export default function AdminOrdersPage() {
                         </Td>
 
                         <Td>
-                          <p className="font-medium text-slate-700">
+                          <p className="font-normal text-slate-700">
                             {deliveryLabel(
                               order.delivery_method,
                             )}
@@ -1176,7 +1171,7 @@ export default function AdminOrdersPage() {
                         </Td>
 
                         <Td>
-                          <p className="font-black text-slate-950">
+                          <p className="font-semibold text-slate-900">
                             {money(
                               orderTotal(
                                 order,
@@ -1223,7 +1218,7 @@ export default function AdminOrdersPage() {
                                   order,
                                 );
                               }}
-                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                             >
                               <Eye className="h-3.5 w-3.5" />
 
@@ -1247,7 +1242,7 @@ export default function AdminOrdersPage() {
                                   processingId ===
                                   order.public_id
                                 }
-                                className="inline-flex h-9 items-center gap-1 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                                className="inline-flex h-8 items-center gap-1 rounded-md bg-blue-600 px-2.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
                               >
                                 {processingId ===
                                 order.public_id ? (
@@ -1464,7 +1459,7 @@ function OrderDetailsModal({
                           <div className="mt-2 grid gap-x-6 gap-y-2 text-xs text-slate-600 sm:grid-cols-2">
                             {item.paint_type ? (
                               <p>
-                                <span className="font-medium text-slate-700">
+                                <span className="font-normal text-slate-700">
                                   Type:
                                 </span>{" "}
                                 {
@@ -1475,7 +1470,7 @@ function OrderDetailsModal({
 
                             {item.color_name ? (
                               <p>
-                                <span className="font-medium text-slate-700">
+                                <span className="font-normal text-slate-700">
                                   Color:
                                 </span>{" "}
                                 {
@@ -1485,7 +1480,7 @@ function OrderDetailsModal({
                             ) : null}
 
                             <p>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-normal text-slate-700">
                                 Requested:
                               </span>{" "}
                               {item.requested_amount_rwf
@@ -1499,7 +1494,7 @@ function OrderDetailsModal({
                             </p>
 
                             <p>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-normal text-slate-700">
                                 Mode:
                               </span>{" "}
                               {label(
@@ -1509,7 +1504,7 @@ function OrderDetailsModal({
                             </p>
 
                             <p>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-normal text-slate-700">
                                 Litres:
                               </span>{" "}
                               {item.equivalent_l
@@ -1522,7 +1517,7 @@ function OrderDetailsModal({
                             </p>
 
                             <p>
-                              <span className="font-medium text-slate-700">
+                              <span className="font-normal text-slate-700">
                                 Kilograms:
                               </span>{" "}
                               {item.equivalent_kg
@@ -1623,7 +1618,7 @@ function OrderDetailsModal({
                         Total
                       </span>
 
-                      <span className="text-lg font-bold text-slate-950">
+                      <span className="text-lg font-semibold text-slate-900">
                         {money(
                           orderTotal(
                             order,
@@ -1747,21 +1742,19 @@ function StatCard({
     typeof ShoppingBag;
 }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-          <Icon className="h-5 w-5" />
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+    <article className="border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-slate-500">
             {title}
           </p>
 
-          <p className="mt-1 truncate text-xl font-black text-slate-950">
+          <p className="mt-1 text-xl font-semibold text-slate-900">
             {value}
           </p>
         </div>
+
+        <Icon className="h-5 w-5 text-slate-400" />
       </div>
     </article>
   );
@@ -1774,7 +1767,7 @@ function Th({
     React.ReactNode;
 }) {
   return (
-    <th className="whitespace-nowrap px-5 py-3 text-left text-[10px] font-black uppercase tracking-wide text-slate-500">
+    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-slate-600">
       {children}
     </th>
   );
@@ -1787,116 +1780,8 @@ function Td({
     React.ReactNode;
 }) {
   return (
-    <td className="px-5 py-4 text-sm text-slate-600">
+    <td className="px-4 py-3 align-top text-sm text-slate-600">
       {children}
     </td>
-  );
-}
-
-function SectionTitle({
-  children,
-}: {
-  children:
-    React.ReactNode;
-}) {
-  return (
-    <h3 className="text-sm font-black text-slate-950">
-      {children}
-    </h3>
-  );
-}
-
-function MiniBadge({
-  children,
-}: {
-  children:
-    React.ReactNode;
-}) {
-  return (
-    <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
-      {children}
-    </span>
-  );
-}
-
-function MiniMetric({
-  label: metricLabel,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl bg-slate-50 p-3">
-      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-        {metricLabel}
-      </p>
-
-      <p className="mt-1 text-sm font-black text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function Info({
-  icon: Icon,
-  label: infoLabel,
-  value,
-}: {
-  icon: typeof User;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-        <Icon className="h-4 w-4" />
-      </div>
-
-      <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-          {infoLabel}
-        </p>
-
-        <p className="mt-1 break-words text-sm font-bold text-slate-800">
-          {value}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function TotalRow({
-  label: rowLabel,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span
-        className={
-          strong
-            ? "font-bold"
-            : "text-sm text-slate-400"
-        }
-      >
-        {rowLabel}
-      </span>
-
-      <span
-        className={
-          strong
-            ? "text-xl font-black"
-            : "text-sm font-bold"
-        }
-      >
-        {value}
-      </span>
-    </div>
   );
 }
