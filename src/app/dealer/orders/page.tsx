@@ -1328,7 +1328,7 @@ function OrderDetailsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(
         event,
       ) => {
@@ -1340,464 +1340,353 @@ function OrderDetailsModal({
         }
       }}
     >
-      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        {/* HEADER */}
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+          <div>
+            <p className="text-xs font-semibold text-slate-500">
+              Order Details
+            </p>
 
-        <div className="relative shrink-0 overflow-hidden bg-slate-950 px-5 py-5 text-white sm:px-7">
-          <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-blue-600/20" />
-          <div className="absolute -bottom-24 right-20 h-44 w-44 rounded-full bg-orange-500/10" />
+            <h2 className="mt-1 text-xl font-bold text-slate-900">
+              {
+                order.order_number
+              }
+            </h2>
 
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                  NTEZINET
-                </span>
+            <p className="mt-1 text-xs text-slate-500">
+              {formatDate(
+                order.created_at,
+              )}
+            </p>
+          </div>
 
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(
-                    order.status,
-                  )}`}
-                >
-                  {label(
-                    order.status,
-                  )}
-                </span>
+          <button
+            type="button"
+            onClick={
+              onClose
+            }
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+            aria-label="Close order details"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-                <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-black ${paymentClass(
-                    order.payment_status,
-                  )}`}
-                >
-                  {label(
-                    order.payment_status,
-                  )}
+        <div className="max-h-[calc(90vh-73px)] overflow-y-auto">
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(
+                  order.status,
+                )}`}
+              >
+                {label(
+                  order.status,
+                )}
+              </span>
+
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${paymentClass(
+                  order.payment_status,
+                )}`}
+              >
+                Payment:{" "}
+                {label(
+                  order.payment_status,
+                )}
+              </span>
+            </div>
+
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Customer Information
+              </h3>
+
+              <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <SimpleDetailRow
+                  label="Customer"
+                  value={
+                    order.customer_name ??
+                    "Customer"
+                  }
+                />
+
+                <SimpleDetailRow
+                  label="Phone"
+                  value={
+                    order.customer_phone ??
+                    "—"
+                  }
+                />
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Paints Ordered
+                </h3>
+
+                <span className="text-xs text-slate-500">
+                  {items.length}{" "}
+                  {items.length ===
+                  1
+                    ? "item"
+                    : "items"}
                 </span>
               </div>
 
-              <h2 className="mt-3 truncate text-xl font-black tracking-tight sm:text-2xl">
-                {
-                  order.order_number
-                }
-              </h2>
+              <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                {items.map(
+                  (
+                    item,
+                    index,
+                  ) => (
+                    <div
+                      key={
+                        item.public_id ??
+                        `${item.service_name}-${index}`
+                      }
+                      className={`p-4 ${
+                        index > 0
+                          ? "border-t border-slate-200"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {item.service_name ??
+                              item.name ??
+                              `Paint ${index + 1}`}
+                          </p>
 
-              <p className="mt-1 text-xs text-slate-400">
-                Ordered on{" "}
-                {formatDate(
-                  order.created_at,
-                )}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                onClose
-              }
-              aria-label="Close order details"
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:bg-white/20"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* CONTENT */}
-
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
-          <div className="grid lg:grid-cols-[minmax(0,1.6fr)_320px]">
-            {/* MAIN DETAILS */}
-
-            <div className="space-y-6 p-5 sm:p-7">
-              {/* PAINTS */}
-
-              <section>
-                <div className="mb-3 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-600">
-                      Order contents
-                    </p>
-
-                    <h3 className="mt-1 text-lg font-black text-slate-950">
-                      Paints Ordered
-                    </h3>
-                  </div>
-
-                  <span className="text-xs font-bold text-slate-500">
-                    {items.length}{" "}
-                    {items.length ===
-                    1
-                      ? "item"
-                      : "items"}
-                  </span>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                  {items.map(
-                    (
-                      item,
-                      index,
-                    ) => (
-                      <div
-                        key={
-                          item.public_id ??
-                          `${item.service_name}-${index}`
-                        }
-                        className={`p-4 sm:p-5 ${
-                          index > 0
-                            ? "border-t border-slate-100"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                                <PaintBucket className="h-5 w-5" />
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="truncate font-black text-slate-950">
-                                  {item.service_name ??
-                                    item.name ??
-                                    `Paint ${index + 1}`}
-                                </p>
-
-                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
-                                  {item.paint_type ? (
-                                    <span>
-                                      <span className="font-bold text-slate-700">
-                                        Type:
-                                      </span>{" "}
-                                      {
-                                        item.paint_type
-                                      }
-                                    </span>
-                                  ) : null}
-
-                                  {item.color_name ? (
-                                    <span>
-                                      <span className="font-bold text-slate-700">
-                                        Color:
-                                      </span>{" "}
-                                      {
-                                        item.color_name
-                                      }
-                                    </span>
-                                  ) : null}
-
-                                  <span>
-                                    <span className="font-bold text-slate-700">
-                                      Mode:
-                                    </span>{" "}
-                                    {label(
-                                      item.order_mode ??
-                                        item.mode,
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-100 pt-4 sm:grid-cols-4">
-                              <CompactOrderMetric
-                                title="Requested"
-                                value={
-                                  item.requested_amount_rwf
-                                    ? `${money(
-                                        item.requested_amount_rwf,
-                                      )} RWF`
-                                    : `${item.requested_quantity ?? "—"} ${String(
-                                        item.requested_unit ??
-                                          "",
-                                      ).toUpperCase()}`
+                          <div className="mt-2 grid gap-x-6 gap-y-2 text-xs text-slate-600 sm:grid-cols-2">
+                            {item.paint_type ? (
+                              <p>
+                                <span className="font-medium text-slate-700">
+                                  Type:
+                                </span>{" "}
+                                {
+                                  item.paint_type
                                 }
-                              />
+                              </p>
+                            ) : null}
 
-                              <CompactOrderMetric
-                                title="Litres"
-                                value={
-                                  item.equivalent_l
-                                    ? `${Number(
-                                        item.equivalent_l,
-                                      ).toFixed(
-                                        3,
-                                      )} L`
-                                    : "—"
+                            {item.color_name ? (
+                              <p>
+                                <span className="font-medium text-slate-700">
+                                  Color:
+                                </span>{" "}
+                                {
+                                  item.color_name
                                 }
-                              />
+                              </p>
+                            ) : null}
 
-                              <CompactOrderMetric
-                                title="Kilograms"
-                                value={
-                                  item.equivalent_kg
-                                    ? `${Number(
-                                        item.equivalent_kg,
-                                      ).toFixed(
-                                        3,
-                                      )} KG`
-                                    : "—"
-                                }
-                              />
-
-                              <CompactOrderMetric
-                                title="Mode"
-                                value={label(
-                                  item.order_mode ??
-                                    item.mode,
-                                )}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 sm:text-right">
-                            <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                              Line total
+                            <p>
+                              <span className="font-medium text-slate-700">
+                                Requested:
+                              </span>{" "}
+                              {item.requested_amount_rwf
+                                ? `${money(
+                                    item.requested_amount_rwf,
+                                  )} RWF`
+                                : `${item.requested_quantity ?? "—"} ${String(
+                                    item.requested_unit ??
+                                      "",
+                                  ).toUpperCase()}`}
                             </p>
 
-                            <p className="mt-1 text-base font-black text-slate-950">
-                              {money(
-                                item.line_total_rwf ??
-                                  item.total_price_rwf,
-                              )}{" "}
-                              RWF
+                            <p>
+                              <span className="font-medium text-slate-700">
+                                Mode:
+                              </span>{" "}
+                              {label(
+                                item.order_mode ??
+                                  item.mode,
+                              )}
+                            </p>
+
+                            <p>
+                              <span className="font-medium text-slate-700">
+                                Litres:
+                              </span>{" "}
+                              {item.equivalent_l
+                                ? `${Number(
+                                    item.equivalent_l,
+                                  ).toFixed(
+                                    3,
+                                  )} L`
+                                : "—"}
+                            </p>
+
+                            <p>
+                              <span className="font-medium text-slate-700">
+                                Kilograms:
+                              </span>{" "}
+                              {item.equivalent_kg
+                                ? `${Number(
+                                    item.equivalent_kg,
+                                  ).toFixed(
+                                    3,
+                                  )} KG`
+                                : "—"}
                             </p>
                           </div>
                         </div>
+
+                        <p className="shrink-0 font-bold text-slate-900">
+                          {money(
+                            item.line_total_rwf ??
+                              item.total_price_rwf,
+                          )}{" "}
+                          RWF
+                        </p>
                       </div>
-                    ),
-                  )}
-                </div>
-              </section>
-
-              {/* CUSTOMER AND DELIVERY */}
-
-              <section>
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-600">
-                  Customer & delivery
-                </p>
-
-                <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                  <OrderDetailLine
-                    icon={User}
-                    title="Customer"
-                    value={
-                      order.customer_name ??
-                      "Customer"
-                    }
-                  />
-
-                  <OrderDetailLine
-                    icon={Phone}
-                    title="Phone"
-                    value={
-                      order.customer_phone ??
-                      "—"
-                    }
-                  />
-
-                  <OrderDetailLine
-                    icon={Truck}
-                    title="Delivery Method"
-                    value={deliveryLabel(
-                      order.delivery_method,
-                    )}
-                  />
-
-                  <OrderDetailLine
-                    icon={MapPin}
-                    title="Delivery Address"
-                    value={
-                      order.delivery_address ??
-                      (
-                        [
-                          order.delivery_city,
-                          order.delivery_district,
-                          order.delivery_country,
-                        ]
-                          .filter(
-                            Boolean,
-                          )
-                          .join(
-                            ", ",
-                          ) ||
-                        "No delivery address"
-                      )
-                    }
-                    last={
-                      !order.location_note
-                    }
-                  />
-
-                  {order.location_note ? (
-                    <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
-                      <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                        Location Note
-                      </p>
-
-                      <p className="mt-1 text-sm leading-6 text-slate-700">
-                        {
-                          order.location_note
-                        }
-                      </p>
                     </div>
-                  ) : null}
-                </div>
-              </section>
+                  ),
+                )}
+              </div>
+            </section>
 
-              {order.customer_note ? (
-                <section>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-600">
-                    Customer Note
-                  </p>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Delivery Information
+              </h3>
 
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                    <p className="text-sm leading-6 text-slate-700">
-                      {
-                        order.customer_note
-                      }
-                    </p>
-                  </div>
-                </section>
-              ) : null}
-            </div>
+              <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <SimpleDetailRow
+                  label="Delivery Method"
+                  value={deliveryLabel(
+                    order.delivery_method,
+                  )}
+                />
 
-            {/* SUMMARY SIDEBAR */}
+                <SimpleDetailRow
+                  label="Address"
+                  value={
+                    order.delivery_address ??
+                    (
+                      [
+                        order.delivery_city,
+                        order.delivery_district,
+                        order.delivery_country,
+                      ]
+                        .filter(
+                          Boolean,
+                        )
+                        .join(
+                          ", ",
+                        ) ||
+                      "No delivery address"
+                    )
+                  }
+                />
 
-            <aside className="border-t border-slate-200 bg-white p-5 lg:border-l lg:border-t-0 lg:p-6">
-              <div className="lg:sticky lg:top-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                    <WalletCards className="h-5 w-5" />
-                  </div>
+                {order.location_note ? (
+                  <SimpleDetailRow
+                    label="Location Note"
+                    value={
+                      order.location_note
+                    }
+                  />
+                ) : null}
+              </div>
+            </section>
 
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                      Order Summary
-                    </p>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Payment Summary
+              </h3>
 
-                    <p className="font-black text-slate-950">
-                      Payment & Total
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  <OrderSummaryLine
-                    title="Subtotal"
+              <div className="mt-3 rounded-lg border border-slate-200 p-4">
+                <div className="space-y-3">
+                  <SimpleAmountRow
+                    label="Subtotal"
                     value={`${money(
                       order.subtotal_amount_rwf ??
                         order.total_price_rwf,
                     )} RWF`}
                   />
 
-                  <OrderSummaryLine
-                    title="Delivery Fee"
+                  <SimpleAmountRow
+                    label="Delivery Fee"
                     value={`${money(
                       order.delivery_fee_rwf,
                     )} RWF`}
                   />
 
-                  <OrderSummaryLine
-                    title="Payment"
-                    value={label(
-                      order.payment_status,
-                    )}
-                  />
+                  <div className="border-t border-slate-200 pt-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-semibold text-slate-900">
+                        Total
+                      </span>
 
-                  <OrderSummaryLine
-                    title="Delivery"
-                    value={deliveryLabel(
-                      order.delivery_method,
-                    )}
-                  />
-                </div>
-
-                <div className="my-5 h-px bg-slate-200" />
-
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Grand Total
-                  </p>
-
-                  <div className="mt-1 flex items-end justify-between gap-3">
-                    <p className="text-2xl font-black tracking-tight text-slate-950">
-                      {money(
-                        orderTotal(
-                          order,
-                        ),
-                      )}{" "}
-                      <span className="text-sm text-slate-500">
+                      <span className="text-lg font-bold text-slate-950">
+                        {money(
+                          orderTotal(
+                            order,
+                          ),
+                        )}{" "}
                         RWF
                       </span>
-                    </p>
-
-                    <Banknote className="mb-1 h-6 w-6 shrink-0 text-emerald-500" />
+                    </div>
                   </div>
-                </div>
-
-                <div className="mt-6 rounded-2xl bg-slate-950 p-4 text-white">
-                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
-                    Current Status
-                  </p>
-
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <span className="font-black">
-                      {label(
-                        order.status,
-                      )}
-                    </span>
-
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(
-                        order.status,
-                      )}`}
-                    >
-                      {label(
-                        order.status,
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-2">
-                  {next ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onStatus(
-                          next.value,
-                        )
-                      }
-                      disabled={
-                        processing
-                      }
-                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {processing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <PackageCheck className="h-4 w-4" />
-                      )}
-
-                      {
-                        next.label
-                      }
-                    </button>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={
-                      onClose
-                    }
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
-            </aside>
+            </section>
+
+            {order.customer_note ? (
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Customer Note
+                </h3>
+
+                <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                  {
+                    order.customer_note
+                  }
+                </p>
+              </section>
+            ) : null}
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={
+                  onClose
+                }
+                className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+
+              {next ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onStatus(
+                      next.value,
+                    )
+                  }
+                  disabled={
+                    processing
+                  }
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <PackageCheck className="h-4 w-4" />
+                  )}
+
+                  {
+                    next.label
+                  }
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -1805,76 +1694,40 @@ function OrderDetailsModal({
   );
 }
 
-function CompactOrderMetric({
-  title,
+function SimpleDetailRow({
+  label: rowLabel,
   value,
 }: {
-  title: string;
+  label: string;
   value: string;
 }) {
   return (
-    <div>
-      <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-        {title}
-      </p>
-
-      <p className="mt-1 text-xs font-bold text-slate-800">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function OrderDetailLine({
-  icon: Icon,
-  title,
-  value,
-  last = false,
-}: {
-  icon: typeof User;
-  title: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-start gap-3 px-4 py-4 sm:px-5 ${
-        last
-          ? ""
-          : "border-b border-slate-100"
-      }`}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
-        <Icon className="h-4 w-4" />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-          {title}
-        </p>
-
-        <p className="mt-1 break-words text-sm font-bold text-slate-800">
-          {value}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function OrderSummaryLine({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="text-sm text-slate-500">
-        {title}
+    <div className="grid gap-1 px-4 py-3 sm:grid-cols-[180px_1fr] sm:gap-4">
+      <span className="text-xs font-medium text-slate-500">
+        {rowLabel}
       </span>
 
-      <span className="text-right text-sm font-bold text-slate-900">
+      <span className="text-sm font-medium text-slate-800">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SimpleAmountRow({
+  label: rowLabel,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm text-slate-500">
+        {rowLabel}
+      </span>
+
+      <span className="text-sm font-semibold text-slate-900">
         {value}
       </span>
     </div>
@@ -1937,5 +1790,113 @@ function Td({
     <td className="px-5 py-4 text-sm text-slate-600">
       {children}
     </td>
+  );
+}
+
+function SectionTitle({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <h3 className="text-sm font-black text-slate-950">
+      {children}
+    </h3>
+  );
+}
+
+function MiniBadge({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
+      {children}
+    </span>
+  );
+}
+
+function MiniMetric({
+  label: metricLabel,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+        {metricLabel}
+      </p>
+
+      <p className="mt-1 text-sm font-black text-slate-900">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Info({
+  icon: Icon,
+  label: infoLabel,
+  value,
+}: {
+  icon: typeof User;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+        <Icon className="h-4 w-4" />
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+          {infoLabel}
+        </p>
+
+        <p className="mt-1 break-words text-sm font-bold text-slate-800">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TotalRow({
+  label: rowLabel,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span
+        className={
+          strong
+            ? "font-bold"
+            : "text-sm text-slate-400"
+        }
+      >
+        {rowLabel}
+      </span>
+
+      <span
+        className={
+          strong
+            ? "text-xl font-black"
+            : "text-sm font-bold"
+        }
+      >
+        {value}
+      </span>
+    </div>
   );
 }
