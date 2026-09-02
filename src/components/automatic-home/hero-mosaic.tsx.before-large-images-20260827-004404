@@ -1,0 +1,324 @@
+import {
+  ArrowRight,
+  PackageSearch,
+} from "lucide-react";
+
+import Link from "next/link";
+
+import type {
+  HomeProduct,
+} from "@/lib/public-home-catalog";
+
+import {
+  formatHomePrice,
+  homeProductImageUrl,
+  homeSellerName,
+} from "@/lib/public-home-catalog";
+
+export default function HeroMosaic({
+  products = [],
+}: {
+  products?: HomeProduct[];
+}) {
+  if (products.length === 0) {
+    return null;
+  }
+
+  const main =
+    products[0] ?? null;
+
+  const side =
+    products.slice(1, 5);
+
+  return (
+    <section
+      className="
+        mx-auto
+        max-w-[1600px]
+        px-4
+        pt-5
+        sm:px-6
+        lg:px-8
+      "
+    >
+      <div
+        className="
+          grid
+          gap-4
+          lg:grid-cols-[1.35fr_1fr]
+        "
+      >
+        {main ? (
+          <HeroMainCard
+            product={main}
+          />
+        ) : null}
+
+        {side.length > 0 ? (
+          <div
+            className="
+              grid
+              gap-4
+              sm:grid-cols-2
+            "
+          >
+            {side.map(
+              (
+                product,
+                index,
+              ) => (
+                <HeroSmallCard
+                  key={
+                    product.public_id
+                  }
+                  product={product}
+                  dark={
+                    index === 2
+                  }
+                />
+              ),
+            )}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function HeroMainCard({
+  product,
+}: {
+  product: HomeProduct;
+}) {
+  const image =
+    homeProductImageUrl(product);
+
+  const seller =
+    homeSellerName(product);
+
+  return (
+    <Link
+      href={`/products/${product.public_id}`}
+      className="
+        group
+        relative
+        min-h-[440px]
+        overflow-hidden
+        rounded-[24px]
+        bg-gradient-to-br
+        from-[#bce8fb]
+        via-[#a9def5]
+        to-[#8bcff0]
+        p-7
+        transition
+        duration-500
+        hover:-translate-y-1
+        hover:shadow-xl
+      "
+    >
+      <div
+        className="
+          relative
+          z-20
+          max-w-[55%]
+        "
+      >
+        <p
+          className="
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.14em]
+            text-[#074b9f]
+          "
+        >
+          Marketplace spotlight
+        </p>
+
+        <p
+          className="
+            mt-3
+            text-xs
+            font-bold
+            text-blue-700
+          "
+        >
+          {seller}
+        </p>
+
+        <h1
+          className="
+            mt-3
+            line-clamp-3
+            text-3xl
+            font-black
+            leading-[1.05]
+            tracking-tight
+            text-[#062f74]
+            sm:text-4xl
+          "
+        >
+          {product.name}
+        </h1>
+
+        <p
+          className="
+            mt-4
+            text-xl
+            font-black
+            text-[#062f74]
+          "
+        >
+          {formatHomePrice(product)}
+        </p>
+
+        <span
+          className="
+            mt-5
+            inline-flex
+            items-center
+            gap-2
+            rounded-full
+            bg-[#0754d8]
+            px-5 py-2.5
+            text-sm
+            font-black
+            text-white
+          "
+        >
+          Shop now
+
+          <ArrowRight className="size-4" />
+        </span>
+      </div>
+
+      <div
+        className="
+          absolute
+          bottom-5
+          right-4
+          top-12
+          flex
+          w-[48%]
+          items-center
+          justify-center
+        "
+      >
+        {image ? (
+          <img
+            src={image}
+            alt={product.name}
+            className="
+              h-full w-full
+              object-contain
+              object-center
+              drop-shadow-[0_24px_30px_rgba(4,55,125,0.22)]
+              transition-transform
+              duration-700
+              group-hover:scale-[1.05]
+            "
+          />
+        ) : (
+          <PackageSearch
+            className="
+              size-24
+              text-blue-700/30
+            "
+          />
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function HeroSmallCard({
+  product,
+  dark = false,
+}: {
+  product: HomeProduct;
+  dark?: boolean;
+}) {
+  const image =
+    homeProductImageUrl(product);
+
+  return (
+    <Link
+      href={`/products/${product.public_id}`}
+      className={[
+        "group relative min-h-[212px] overflow-hidden rounded-[22px] p-5",
+        "transition duration-500 hover:-translate-y-1 hover:shadow-lg",
+        dark
+          ? "bg-[#063a91] text-white"
+          : "bg-[#d5effb] text-[#062f74]",
+      ].join(" ")}
+    >
+      <div
+        className="
+          relative
+          z-20
+          max-w-[58%]
+        "
+      >
+        <p
+          className={[
+            "text-[10px] font-black uppercase tracking-[0.12em]",
+            dark
+              ? "text-blue-100"
+              : "text-blue-700",
+          ].join(" ")}
+        >
+          Featured pick
+        </p>
+
+        <h2
+          className="
+            mt-2
+            line-clamp-3
+            text-lg
+            font-black
+            leading-[1.08]
+          "
+        >
+          {product.name}
+        </h2>
+
+        <p
+          className="
+            mt-3
+            text-sm
+            font-black
+          "
+        >
+          {formatHomePrice(product)}
+        </p>
+      </div>
+
+      <div
+        className="
+          absolute
+          bottom-3
+          right-3
+          top-10
+          flex
+          w-[44%]
+          items-center
+          justify-center
+        "
+      >
+        {image ? (
+          <img
+            src={image}
+            alt={product.name}
+            className="
+              h-full w-full
+              object-contain
+              transition-transform
+              duration-500
+              group-hover:scale-105
+            "
+          />
+        ) : null}
+      </div>
+    </Link>
+  );
+}

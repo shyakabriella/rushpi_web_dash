@@ -1333,3 +1333,97 @@ body {
     transform: none;
   }
 }
+
+
+/* ==========================================================
+   RUSHPI HEADER CLICK DROPDOWN ANIMATIONS
+   Dropdowns appear only after the user clicks.
+========================================================== */
+
+@keyframes rushpiDropdownOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rushpiMegaMenuOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rushpi-dropdown-panel {
+  transform-origin: top center;
+  animation:
+    rushpiDropdownOpen
+    180ms
+    cubic-bezier(0.2, 0.8, 0.2, 1)
+    both;
+}
+
+.rushpi-mega-menu-enter {
+  transform-origin: top center;
+  animation:
+    rushpiMegaMenuOpen
+    220ms
+    cubic-bezier(0.2, 0.8, 0.2, 1)
+    both;
+}
+
+/*
+ * Native <details> dropdowns only become visible
+ * when the user clicks their <summary>.
+ */
+details:not([open]) > .rushpi-dropdown-panel {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rushpi-dropdown-panel,
+  .rushpi-mega-menu-enter {
+    animation: none;
+  }
+}
+
+
+/* ==========================================================
+   RUSHPI HOMEPAGE PRODUCT IMAGE MOTION
+========================================================== */
+
+@keyframes rushpiProductFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+.rushpi-product-float {
+  animation:
+    rushpiProductFloat
+    4.2s
+    ease-in-out
+    infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rushpi-product-float {
+    animation: none;
+  }
+}

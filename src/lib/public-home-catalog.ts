@@ -63,10 +63,20 @@ export type HomeProduct = {
   } | null;
 };
 
+type HomeProductsPagination = {
+  data?: HomeProduct[];
+  current_page?: number;
+  last_page?: number;
+  per_page?: number;
+  total?: number;
+};
+
 type HomeProductsResponse = {
   success?: boolean;
   message?: string;
-  data?: HomeProduct[];
+  data?:
+    | HomeProduct[]
+    | HomeProductsPagination;
 };
 
 export function homeProductImageUrl(
@@ -159,9 +169,29 @@ export async function getHomeProducts(): Promise<HomeProduct[]> {
     const payload =
       (await response.json()) as HomeProductsResponse;
 
-    return Array.isArray(payload.data)
-      ? payload.data
-      : [];
+    /*
+     * Support both API response formats:
+     *
+     * data: [...]
+     *
+     * and Laravel pagination:
+     *
+     * data: {
+     *   data: [...]
+     * }
+     */
+    if (Array.isArray(payload.data)) {
+      return payload.data;
+    }
+
+    if (
+      payload.data &&
+      Array.isArray(payload.data.data)
+    ) {
+      return payload.data.data;
+    }
+
+    return [];
   } catch {
     return [];
   }

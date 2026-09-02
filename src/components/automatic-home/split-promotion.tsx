@@ -1,0 +1,169 @@
+import {
+  ArrowRight,
+} from "lucide-react";
+
+import Link from "next/link";
+
+import type {
+  HomeProduct,
+} from "@/lib/public-home-catalog";
+
+import {
+  formatHomePrice,
+  homeProductImageUrl,
+} from "@/lib/public-home-catalog";
+
+export default function SplitPromotion({
+  products = [],
+}: {
+  products?: HomeProduct[];
+}) {
+  if (
+    products.length === 0
+  ) {
+    return null;
+  }
+
+  return (
+    <section
+      className="
+        mx-auto
+        mt-12
+        max-w-[1600px]
+        px-4
+        sm:px-6
+        lg:px-8
+      "
+    >
+      <div
+        className="
+          grid
+          gap-4
+          md:grid-cols-2
+        "
+      >
+        {products.map(
+          (
+            product,
+            index,
+          ) => {
+            const image =
+              homeProductImageUrl(
+                product,
+              );
+
+            return (
+              <Link
+                key={
+                  product.public_id
+                }
+                href={`/products/${product.public_id}`}
+                className={[
+                  "group relative min-h-[300px] overflow-hidden rounded-[24px] p-7",
+                  "transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                  index % 2 === 0
+                    ? "bg-[#d9f0fb] text-[#062f74]"
+                    : "bg-[#063d96] text-white",
+                ].join(" ")}
+              >
+                <div
+                  className="
+                    relative
+                    z-20
+                    max-w-[52%]
+                  "
+                >
+                  <p
+                    className="
+                      text-xs
+                      font-black
+                      uppercase
+                      tracking-[0.14em]
+                    "
+                  >
+                    RushPi pick
+                  </p>
+
+                  <h3
+                    className="
+                      mt-3
+                      line-clamp-3
+                      text-2xl
+                      font-black
+                      leading-[1.05]
+                    "
+                  >
+                    {product.name}
+                  </h3>
+
+                  <p
+                    className="
+                      mt-4
+                      font-black
+                    "
+                  >
+                    {formatHomePrice(
+                      product,
+                    )}
+                  </p>
+
+                  <span
+                    className="
+                      mt-5
+                      inline-flex
+                      items-center
+                      gap-2
+                      text-sm
+                      font-black
+                      underline
+                      underline-offset-4
+                    "
+                  >
+                    Explore
+
+                    <ArrowRight className="size-4" />
+                  </span>
+                </div>
+
+                {image ? (
+                  <div
+                    className="
+                      absolute
+                      bottom-1
+                      right-1
+                      top-1
+                      flex
+                      w-[52%]
+                      items-center
+                      justify-center
+                      overflow-visible
+                    "
+                  >
+                    <img
+                      src={image}
+                      alt={
+                        product.name
+                      }
+                      className="
+                        rushpi-product-float
+                        h-full w-full
+                        object-contain
+                        object-center
+                        scale-[1.10]
+                        drop-shadow-[0_20px_28px_rgba(4,55,125,0.18)]
+                        transition-transform
+                        duration-700
+                        ease-out
+                        group-hover:scale-[1.17]
+                      "
+                    />
+                  </div>
+                ) : null}
+              </Link>
+            );
+          },
+        )}
+      </div>
+    </section>
+  );
+}
