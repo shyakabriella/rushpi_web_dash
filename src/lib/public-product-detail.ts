@@ -30,7 +30,46 @@ export type ProductDetail = HomeProduct & {
   sku?: string | null;
   model?: string | null;
   warranty?: string | null;
-  return_policy?: string | null;
+  model_number?: string | null;
+  variants?: Array<{
+    public_id: string;
+    name: string;
+    sku?: string | null;
+    is_default?: boolean;
+    price?: {
+      selling_price?: string | number | null;
+      compare_at_price?: string | number | null;
+      currency?: string | null;
+      has_discount?: boolean;
+    } | null;
+    inventory?: {
+      available_quantity?: number;
+      allow_backorder?: boolean;
+      is_available?: boolean;
+      stock_status?: string | null;
+    } | null;
+  }> | null;
+  return_policy?: {
+    public_id?: string;
+    is_active?: boolean;
+    is_returnable?: boolean;
+    return_window_days?: number;
+    resolutions?: {
+      refund?: boolean;
+      exchange?: boolean;
+    } | null;
+    requirements?: {
+      original_packaging?: boolean;
+      proof_of_purchase?: boolean;
+    } | null;
+    restocking_fee_percent?: number;
+    return_shipping?: {
+      payer?: string | null;
+      label?: string | null;
+    } | null;
+    instructions?: string | null;
+    non_returnable_reason?: string | null;
+  } | null;
   features?: string[] | null;
   key_features?: string[] | null;
   specifications?:
@@ -276,7 +315,7 @@ export async function getPublicProduct(
 
 export async function getRelatedProducts(
   product: ProductDetail,
-  limit = 8,
+  limit = 24,
 ): Promise<HomeProduct[]> {
   const products = await getHomeProducts();
 

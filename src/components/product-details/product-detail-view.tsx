@@ -23,6 +23,7 @@ import {
   useState,
 } from "react";
 
+import ProductPageSections from "@/components/product-details/product-page-sections";
 import ProductCard from "@/components/rushpi-home/product-card";
 import {
   formatHomePrice,
@@ -647,28 +648,10 @@ export default function ProductDetailView({
           </div>
         </section>
 
-        {relatedProducts.length > 0 && (
-          <section className="mt-14 border-t border-slate-200 pt-9">
-            <div className="mb-6">
-              <h2 className="text-2xl font-black tracking-[-0.03em] sm:text-3xl">
-                Similar products you may like
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                More products available on RushPi
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-              {relatedProducts.map((relatedProduct) => (
-                <ProductCard
-                  key={relatedProduct.public_id}
-                  product={relatedProduct}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        <ProductPageSections
+          product={product}
+          relatedProducts={relatedProducts}
+        />
       </div>
     </main>
   );
