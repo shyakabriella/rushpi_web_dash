@@ -16,12 +16,83 @@ type RollbacksGridProps = {
   products?: HomeProduct[];
 };
 
-const moduleTitles = [
-  "Must-haves for less",
-  "Home improvement savings",
-  "Patio & garden savings",
-  "Home Rollbacks & more",
-];
+function getModuleTitle(
+  products: HomeProduct[],
+): string {
+  const searchableText = products
+    .map((product) =>
+      [
+        product.name,
+        product.category?.name,
+        product.brand?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+    )
+    .join(" ");
+
+  const phoneCount = products.filter((product) =>
+    /iphone|phone|smartphone|galaxy|xperia|pixel|mobile/.test(
+      [
+        product.name,
+        product.category?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+    ),
+  ).length;
+
+  const computerCount = products.filter((product) =>
+    /laptop|computer|desktop|macbook|thinkpad|notebook|pc/.test(
+      [
+        product.name,
+        product.category?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+    ),
+  ).length;
+
+  const accessoryCount = products.filter((product) =>
+    /charger|cable|case|headphone|earphone|accessor|adapter/.test(
+      [
+        product.name,
+        product.category?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+    ),
+  ).length;
+
+  if (phoneCount >= 3) {
+    return "Smartphone savings";
+  }
+
+  if (computerCount >= 2) {
+    return "Computers & laptop deals";
+  }
+
+  if (accessoryCount >= 2) {
+    return "Tech accessories for less";
+  }
+
+  if (
+    phoneCount > 0 &&
+    computerCount > 0
+  ) {
+    return "Phones & computer deals";
+  }
+
+  if (/television|tv|audio|speaker/.test(searchableText)) {
+    return "Entertainment technology deals";
+  }
+
+  return "Featured technology deals";
+}
 
 function chunkProducts<T>(
   items: T[],
@@ -71,7 +142,7 @@ export default function RollbacksGrid({
           >
             <div className="flex min-h-[48px] items-start justify-between gap-3">
               <h3 className="max-w-[270px] text-[18px] font-black leading-[1.15] tracking-[-0.02em] text-slate-950 sm:text-[20px]">
-                {moduleTitles[groupIndex % moduleTitles.length]}
+                {getModuleTitle(group)}
               </h3>
 
               <Link
