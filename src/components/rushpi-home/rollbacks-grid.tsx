@@ -46,7 +46,7 @@ export default function RollbacksGrid({
   }
 
   return (
-    <section className="mx-auto mt-12 w-full max-w-[1800px] px-3 sm:px-5 lg:px-7 xl:px-8">
+    <section className="mx-auto mt-12 w-full max-w-[1800px] px-4 sm:px-6 lg:px-8">
       <div className="mb-5 flex items-end justify-between gap-3">
         <h2 className="text-[26px] font-black tracking-[-0.03em] text-slate-950 sm:text-[32px]">
           Rollbacks & more
@@ -60,51 +60,52 @@ export default function RollbacksGrid({
         </Link>
       </div>
 
-      <div className="rollback-scroll grid snap-x snap-mandatory auto-cols-[calc(100vw-24px)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-5 sm:auto-cols-[440px] lg:auto-cols-[470px] xl:grid-flow-row xl:grid-cols-4 xl:overflow-visible">
+      <div className="rollback-scroll grid snap-x snap-mandatory auto-cols-[calc(100vw-32px)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-5 sm:auto-cols-[390px] lg:auto-cols-[410px] xl:auto-cols-[420px] 2xl:auto-cols-[430px]">
         {groups.map((group, groupIndex) => (
           <section
             key={groupIndex}
             style={{
-              animationDelay: `${groupIndex * 100}ms`,
+              animationDelay: `${groupIndex * 70}ms`,
             }}
-            className="rollback-module min-w-0 snap-start rounded-[24px] border border-slate-200/80 bg-[#f5f5f5] p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:p-5"
+            className="rollback-module min-w-0 snap-start rounded-[22px] border border-slate-200 bg-[#f5f5f5] p-4 shadow-sm sm:p-5"
           >
-            <div className="flex min-h-12 items-start justify-between gap-3">
-              <h3 className="max-w-[75%] text-[18px] font-black leading-tight tracking-[-0.02em] text-slate-950 sm:text-[20px]">
+            <div className="flex min-h-[48px] items-start justify-between gap-3">
+              <h3 className="max-w-[270px] text-[18px] font-black leading-[1.15] tracking-[-0.02em] text-slate-950 sm:text-[20px]">
                 {moduleTitles[groupIndex % moduleTitles.length]}
               </h3>
 
               <Link
                 href="/products"
-                className="shrink-0 pt-1 text-xs font-bold text-slate-700 underline underline-offset-3 transition-colors hover:text-[#0754d8] sm:text-sm"
+                className="shrink-0 pt-0.5 text-xs font-bold text-slate-800 underline underline-offset-3 transition-colors hover:text-[#0754d8] sm:text-sm"
               >
                 View all
               </Link>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
-              {group.map((product, itemIndex) => {
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {group.map((product) => {
                 const image = homeProductImageUrl(product);
-                const clearance =
-                  (groupIndex + itemIndex) % 3 === 0;
+                const character =
+                  product.public_id
+                    .split("")
+                    .reduce(
+                      (total, value) =>
+                        total + value.charCodeAt(0),
+                      0,
+                    );
+
+                const clearance = character % 3 === 0;
 
                 return (
                   <Link
                     key={product.public_id}
                     href={`/products/${product.public_id}`}
-                    style={{
-                      animationDelay: `${
-                        groupIndex * 100 +
-                        itemIndex * 60 +
-                        120
-                      }ms`,
-                    }}
-                    className="rollback-product group/card flex min-w-0 flex-col overflow-hidden rounded-[18px] border border-transparent bg-white p-3 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-200 hover:shadow-lg sm:p-4"
+                    className="group/card min-w-0 overflow-hidden rounded-[17px] border border-slate-200 bg-white p-3 shadow-sm transition duration-300 ease-out hover:-translate-y-1 hover:shadow-md"
                   >
-                    <div className="flex min-h-8 items-start justify-between gap-1.5">
+                    <div className="flex h-8 items-start justify-between gap-1">
                       <span
                         className={[
-                          "inline-flex max-w-[calc(100%-38px)] rounded-md px-2 py-1 text-[10px] font-black leading-tight sm:px-2.5 sm:text-[11px]",
+                          "inline-flex rounded-md px-2 py-1 text-[10px] font-black leading-none sm:text-[11px]",
                           clearance
                             ? "bg-yellow-300 text-slate-950"
                             : "bg-red-600 text-white",
@@ -115,32 +116,32 @@ export default function RollbacksGrid({
                           : "Rollback"}
                       </span>
 
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white transition duration-300 group-hover/card:scale-110 group-hover/card:border-red-200 group-hover/card:text-red-500">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-400 transition duration-300 group-hover/card:border-red-200 group-hover/card:text-red-500">
                         <Heart className="size-4" />
                       </span>
                     </div>
 
-                    <div className="mt-3 flex h-[145px] items-center justify-center overflow-hidden rounded-xl bg-[#fafafa] sm:h-[175px] xl:h-[160px] 2xl:h-[185px]">
+                    <div className="mt-2 flex h-[130px] items-center justify-center overflow-hidden rounded-xl bg-[#fafafa] sm:h-[145px]">
                       {image ? (
                         <img
                           src={image}
                           alt={product.name}
                           loading="lazy"
-                          className="h-[94%] w-[94%] object-contain object-center transition-transform duration-500 ease-out group-hover/card:scale-[1.08]"
+                          className="h-[90%] w-[90%] object-contain object-center transition-transform duration-500 ease-out group-hover/card:scale-[1.07]"
                         />
                       ) : (
-                        <div className="text-xs font-bold text-slate-400">
+                        <span className="text-xs font-bold text-slate-400">
                           No image
-                        </div>
+                        </span>
                       )}
                     </div>
 
                     <div className="mt-3 min-w-0">
-                      <p className="break-words text-[15px] font-black leading-[1.15] tracking-[-0.02em] text-green-700 sm:text-[17px]">
+                      <p className="line-clamp-2 min-h-[34px] break-words text-[14px] font-black leading-[1.2] tracking-[-0.02em] text-green-700 sm:text-[15px]">
                         {formatHomePrice(product)}
                       </p>
 
-                      <p className="mt-2 line-clamp-2 min-h-10 break-words text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm">
+                      <p className="mt-2 line-clamp-2 min-h-10 text-[13px] font-bold leading-5 text-slate-800">
                         {product.name}
                       </p>
                     </div>
@@ -153,10 +154,10 @@ export default function RollbacksGrid({
       </div>
 
       <style>{`
-        @keyframes rollbackModuleEnter {
+        @keyframes rollbackEnter {
           from {
             opacity: 0;
-            transform: translateY(22px);
+            transform: translateY(12px);
           }
 
           to {
@@ -165,40 +166,23 @@ export default function RollbacksGrid({
           }
         }
 
-        @keyframes rollbackProductEnter {
-          from {
-            opacity: 0;
-            transform: translateY(14px) scale(0.98);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
         .rollback-module {
           opacity: 0;
-          animation: rollbackModuleEnter 600ms ease-out forwards;
-        }
-
-        .rollback-product {
-          opacity: 0;
-          animation: rollbackProductEnter 500ms ease-out forwards;
+          animation: rollbackEnter 420ms ease-out forwards;
         }
 
         .rollback-scroll {
           scrollbar-width: thin;
-          scrollbar-color: #94a3b8 #e2e8f0;
+          scrollbar-color: #94a3b8 transparent;
+          touch-action: pan-x;
         }
 
         .rollback-scroll::-webkit-scrollbar {
-          height: 7px;
+          height: 6px;
         }
 
         .rollback-scroll::-webkit-scrollbar-track {
-          border-radius: 999px;
-          background: #e2e8f0;
+          background: transparent;
         }
 
         .rollback-scroll::-webkit-scrollbar-thumb {
@@ -211,8 +195,7 @@ export default function RollbacksGrid({
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .rollback-module,
-          .rollback-product {
+          .rollback-module {
             opacity: 1;
             animation: none;
           }
