@@ -1,0 +1,82 @@
+import AdvertisingMosaic from "@/components/store-home/advertising-mosaic";
+import DepartmentGrid from "@/components/store-home/department-grid";
+import ProductCarousel from "@/components/store-home/product-carousel";
+import SellerStrip from "@/components/store-home/seller-strip";
+import ServiceStrip from "@/components/store-home/service-strip";
+
+import {
+  diversifyBySeller,
+  getHomeProducts,
+} from "@/lib/public-home-catalog";
+
+export default async function HomePage() {
+  const products =
+    await getHomeProducts();
+
+  const diversified =
+    diversifyBySeller(
+      products,
+      40,
+    );
+
+  const promotionProducts =
+    diversifyBySeller(
+      products,
+      3,
+    );
+
+  const newArrivals =
+    diversified.slice(
+      0,
+      12,
+    );
+
+  const marketplacePicks =
+    diversified.slice(
+      12,
+      24,
+    );
+
+  const moreProducts =
+    diversified.slice(
+      24,
+      36,
+    );
+
+  return (
+    <main className="min-h-screen bg-white pb-10">
+      <AdvertisingMosaic
+        products={promotionProducts}
+      />
+
+      <ProductCarousel
+        title="New arrivals"
+        subtitle="Fresh products from the RushPi marketplace."
+        products={newArrivals}
+        href="/products"
+      />
+
+      <DepartmentGrid />
+
+      <SellerStrip
+        products={products}
+      />
+
+      <ProductCarousel
+        title="Marketplace picks"
+        subtitle="Explore products from different RushPi sellers."
+        products={marketplacePicks}
+        href="/products"
+      />
+
+      <ProductCarousel
+        title="More to explore"
+        subtitle="More products selected from across the marketplace."
+        products={moreProducts}
+        href="/products"
+      />
+
+      <ServiceStrip />
+    </main>
+  );
+}

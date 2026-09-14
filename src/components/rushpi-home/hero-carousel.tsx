@@ -223,7 +223,7 @@ export default function HeroCarousel({
       );
 
       const floatingImages =
-        imageAreaRef.current.querySelectorAll(
+        imageAreaRef.current?.querySelectorAll(
           "[data-floating-image]",
         );
 
