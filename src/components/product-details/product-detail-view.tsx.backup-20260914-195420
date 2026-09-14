@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Heart,
-  Loader2,
   Minus,
   Plus,
   RotateCcw,
@@ -19,7 +18,6 @@ import {
   ZoomIn,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useMemo,
   useState,
@@ -63,8 +61,6 @@ export default function ProductDetailView({
   product,
   relatedProducts,
 }: ProductDetailViewProps) {
-  const router = useRouter();
-
   const images = useMemo(
     () => productImages(product),
     [product],
@@ -84,7 +80,6 @@ export default function ProductDetailView({
   const [quantity, setQuantity] = useState(1);
   const [saved, setSaved] = useState(false);
   const [added, setAdded] = useState(false);
-  const [addingToCart, setAddingToCart] = useState(false);
   const [zoomed, setZoomed] = useState(false);
 
   const activeImage = images[selectedImage];
@@ -136,17 +131,7 @@ export default function ProductDetailView({
     );
   }
 
-  async function addToCart() {
-    if (
-      addingToCart ||
-      !inStock
-    ) {
-      return;
-    }
-
-    setAddingToCart(true);
-    setAdded(false);
-
+  function addToCart() {
     const cartItem: CartItem = {
       productId: product.public_id,
       name: product.name,
@@ -158,74 +143,40 @@ export default function ProductDetailView({
 
     try {
       const currentCart = JSON.parse(
-        localStorage.getItem(
-          "rushpi_cart",
-        ) ?? "[]",
+        localStorage.getItem("rushpi_cart") ?? "[]",
       ) as CartItem[];
 
-      const existingIndex =
-        currentCart.findIndex(
-          (
-            item,
-          ) =>
-            item.productId ===
-            product.public_id,
-        );
+      const existingIndex = currentCart.findIndex(
+        (item) =>
+          item.productId === product.public_id,
+      );
 
-      if (
-        existingIndex >=
-        0
-      ) {
-        currentCart[
-          existingIndex
-        ].quantity += quantity;
+      if (existingIndex >= 0) {
+        currentCart[existingIndex].quantity += quantity;
       } else {
-        currentCart.push(
-          cartItem,
-        );
+        currentCart.push(cartItem);
       }
 
       localStorage.setItem(
         "rushpi_cart",
-        JSON.stringify(
-          currentCart,
-        ),
+        JSON.stringify(currentCart),
+      );
+
+      window.dispatchEvent(
+        new CustomEvent("rushpi-cart-updated"),
       );
     } catch {
       localStorage.setItem(
         "rushpi_cart",
-        JSON.stringify([
-          cartItem,
-        ]),
+        JSON.stringify([cartItem]),
       );
     }
 
-    window.dispatchEvent(
-      new CustomEvent(
-        "rushpi-cart-updated",
-      ),
-    );
-
     setAdded(true);
 
-    /*
-     * Keep the success state visible briefly,
-     * then take the customer directly to cart.
-     */
-    await new Promise<void>(
-      (
-        resolve,
-      ) => {
-        window.setTimeout(
-          resolve,
-          650,
-        );
-      },
-    );
-
-    router.push(
-      "/cart",
-    );
+    window.setTimeout(() => {
+      setAdded(false);
+    }, 2500);
   }
 
   return (
@@ -556,18 +507,13 @@ export default function ProductDetailView({
               <button
                 type="button"
                 onClick={addToCart}
-                disabled={
-                  !inStock ||
-                  addingToCart
-                }
+                disabled={!inStock}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#0754d8] px-5 py-3.5 text-base font-black text-white shadow-sm transition hover:bg-[#0647b8] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {addingToCart ? (
+                {added ? (
                   <>
-                    <Loader2 className="size-5 animate-spin" />
-                    {added
-                      ? "Added! Redirecting..."
-                      : "Adding to cart..."}
+                    <Check className="size-5" />
+                    Added to cart
                   </>
                 ) : (
                   <>
