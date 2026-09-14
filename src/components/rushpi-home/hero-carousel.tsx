@@ -222,10 +222,13 @@ export default function HeroCarousel({
         },
       );
 
-      const floatingImages =
-        imageAreaRef.current.querySelectorAll(
+      
+
+        const floatingImages =
+        imageAreaRef.current?.querySelectorAll(
           "[data-floating-image]",
-        );
+        ) ?? [];
+        
 
       if (floatingImages.length > 0) {
         gsap.fromTo(
