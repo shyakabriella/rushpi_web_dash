@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ShoppingBag,
 } from "lucide-react";
 import gsap from "gsap";
 import Link from "next/link";
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -28,39 +31,52 @@ type HeroCarouselProps = {
   products?: HomeProduct[];
 };
 
-type ProductView = {
-  label: "Front" | "Side" | "Back";
-  image: string;
-  rotation: number;
-  synthetic: boolean;
+type HeroTheme = {
+  background: string;
+  accent: string;
+  softAccent: string;
+  text: string;
+  mutedText: string;
+  buttonText: string;
 };
 
-const themes = [
+const themes: HeroTheme[] = [
   {
-    background: "bg-[#ffddb5]",
-    circle: "#fff3e2",
-    text: "text-[#3f2a00]",
-    subtext: "text-[#8b5e00]",
+    background:
+      "linear-gradient(120deg, #fff1d8 0%, #ffd9a4 52%, #ffc878 100%)",
+    accent: "#7c3f00",
+    softAccent: "rgba(255,255,255,0.42)",
+    text: "#2f1b00",
+    mutedText: "#754d16",
+    buttonText: "#ffffff",
   },
   {
-    background: "bg-[#d9ecff]",
-    circle: "#eff7ff",
-    text: "text-[#062f74]",
-    subtext: "text-[#4d6b99]",
+    background:
+      "linear-gradient(125deg, #dceeff 0%, #afd6ff 48%, #78b8ff 100%)",
+    accent: "#064bb1",
+    softAccent: "rgba(255,255,255,0.4)",
+    text: "#06265a",
+    mutedText: "#315c91",
+    buttonText: "#ffffff",
   },
   {
-    background: "bg-[#dff4e8]",
-    circle: "#f1fbf5",
-    text: "text-[#123d2a]",
-    subtext: "text-[#357354]",
+    background:
+      "linear-gradient(130deg, #ddf7e8 0%, #afe9ca 50%, #78d4a3 100%)",
+    accent: "#08653d",
+    softAccent: "rgba(255,255,255,0.42)",
+    text: "#073c27",
+    mutedText: "#347259",
+    buttonText: "#ffffff",
   },
-];
-
-const displayColors = [
-  "#fff3e2",
-  "#dcecff",
-  "#e3f5e9",
-  "#f4e3ff",
+  {
+    background:
+      "linear-gradient(125deg, #eee4ff 0%, #d2b8ff 48%, #b18aef 100%)",
+    accent: "#54209a",
+    softAccent: "rgba(255,255,255,0.4)",
+    text: "#32105f",
+    mutedText: "#664692",
+    buttonText: "#ffffff",
+  },
 ];
 
 function mediaImageUrl(
@@ -78,14 +94,17 @@ function mediaImageUrl(
   );
 }
 
-function createProductViews(product: HomeProduct): ProductView[] {
+function getProductImages(
+  product: HomeProduct,
+): string[] {
   const images: string[] = [];
-  const candidates = [
+
+  const mediaItems = [
     product.primary_image,
     ...(product.media ?? []),
   ];
 
-  for (const media of candidates) {
+  for (const media of mediaItems) {
     const image = mediaImageUrl(media);
 
     if (image && !images.includes(image)) {
@@ -95,287 +114,494 @@ function createProductViews(product: HomeProduct): ProductView[] {
 
   const fallback = homeProductImageUrl(product);
 
-  if (images.length === 0 && fallback) {
+  if (
+    fallback &&
+    !images.includes(fallback)
+  ) {
     images.push(fallback);
   }
 
-  if (images.length === 0) {
-    return [];
-  }
-
-  const labels: ProductView["label"][] = [
-    "Front",
-    "Side",
-    "Back",
-  ];
-
-  const rotations = [0, -55, 180];
-
-  return labels.map((label, index) => ({
-    label,
-    image: images[index] ?? images[0],
-    rotation: rotations[index],
-    synthetic: !images[index],
-  }));
+  return images;
 }
 
 export default function HeroCarousel({
   products = [],
 }: HeroCarouselProps) {
   const [current, setCurrent] = useState(0);
-  const [selectedView, setSelectedView] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   const heroRef = useRef<HTMLElement>(null);
-  const productImageRef = useRef<HTMLImageElement>(null);
-  const thumbnailAreaRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const imageAreaRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<number | null>(null);
 
   const product = products[current];
   const theme = themes[current % themes.length];
+  const layout = current % 3;
 
-  const views = useMemo(
-    () => (product ? createProductViews(product) : []),
+  const images = useMemo(
+    () => product ? getProductImages(product) : [],
     [product],
   );
 
-  const activeView = views[selectedView] ?? views[0];
+  const primaryImage = images[0];
+  const secondaryImages = images.slice(1, 3);
+
+  useEffect(() => {
+    if (
+      paused ||
+      products.length < 2
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setCurrent(
+        (value) => (value + 1) % products.length,
+      );
+    }, 6000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    paused,
+    products.length,
+  ]);
 
   useLayoutEffect(() => {
-    if (!productImageRef.current || !activeView) {
+    if (
+      !contentRef.current ||
+      !imageAreaRef.current
+    ) {
       return;
     }
 
     const context = gsap.context(() => {
-      gsap.killTweensOf(productImageRef.current);
+      const direction =
+        layout === 1 ? -55 : 55;
+
+      gsap.killTweensOf([
+        contentRef.current,
+        imageAreaRef.current,
+      ]);
 
       gsap.fromTo(
-        productImageRef.current,
+        contentRef.current,
         {
           autoAlpha: 0,
-          scale: 0.78,
-          x: 45,
-          rotateY: activeView.synthetic
-            ? activeView.rotation
-            : -25,
+          x: layout === 2 ? 0 : -direction,
+          y: layout === 2 ? 28 : 0,
         },
         {
           autoAlpha: 1,
-          scale: 1,
           x: 0,
-          rotateY: activeView.synthetic
-            ? activeView.rotation
-            : 0,
-          duration: 0.8,
+          y: 0,
+          duration: 0.72,
           ease: "power3.out",
         },
       );
 
-      gsap.to(productImageRef.current, {
-        y: -8,
-        duration: 2.2,
-        ease: "sine.inOut",
-        repeat: -1,
-        yoyo: true,
-      });
+      gsap.fromTo(
+        imageAreaRef.current,
+        {
+          autoAlpha: 0,
+          x: layout === 2 ? 0 : direction,
+          y: layout === 2 ? 35 : 0,
+          scale: 0.82,
+          rotate: layout === 2 ? -3 : 0,
+        },
+        {
+          autoAlpha: 1,
+          x: 0,
+          y: 0,
+          scale: 1,
+          rotate: 0,
+          duration: 0.9,
+          ease: "back.out(1.25)",
+        },
+      );
 
-      if (thumbnailAreaRef.current) {
+      const floatingImages =
+        imageAreaRef.current.querySelectorAll(
+          "[data-floating-image]",
+        );
+
+      if (floatingImages.length > 0) {
         gsap.fromTo(
-          thumbnailAreaRef.current.children,
+          floatingImages,
           {
             autoAlpha: 0,
-            x: -18,
-            scale: 0.8,
+            scale: 0.7,
+            y: 22,
           },
           {
             autoAlpha: 1,
-            x: 0,
             scale: 1,
-            duration: 0.45,
-            stagger: 0.1,
-            ease: "back.out(1.5)",
+            y: 0,
+            duration: 0.55,
+            delay: 0.3,
+            stagger: 0.12,
+            ease: "back.out(1.4)",
           },
         );
       }
     }, heroRef);
 
     return () => context.revert();
-  }, [activeView, current]);
+  }, [
+    current,
+    layout,
+  ]);
 
   if (!product) {
     return null;
   }
 
-  const changeProduct = (index: number) => {
+  function changeProduct(index: number) {
     setCurrent(index);
-    setSelectedView(0);
-    setSelectedColor(0);
-  };
+  }
 
-  const previous = () => {
-    const index =
-      current === 0 ? products.length - 1 : current - 1;
+  function previous() {
+    setCurrent(
+      (value) =>
+        value === 0
+          ? products.length - 1
+          : value - 1,
+    );
+  }
 
-    changeProduct(index);
-  };
+  function next() {
+    setCurrent(
+      (value) =>
+        (value + 1) % products.length,
+    );
+  }
 
-  const next = () => {
-    changeProduct((current + 1) % products.length);
-  };
+  function handleTouchStart(
+    event: React.TouchEvent<HTMLElement>,
+  ) {
+    touchStartRef.current =
+      event.touches[0]?.clientX ?? null;
+  }
+
+  function handleTouchEnd(
+    event: React.TouchEvent<HTMLElement>,
+  ) {
+    if (touchStartRef.current === null) {
+      return;
+    }
+
+    const end =
+      event.changedTouches[0]?.clientX ??
+      touchStartRef.current;
+
+    const distance =
+      touchStartRef.current - end;
+
+    if (Math.abs(distance) > 50) {
+      if (distance > 0) {
+        next();
+      } else {
+        previous();
+      }
+    }
+
+    touchStartRef.current = null;
+  }
+
+  const contentOrder =
+    layout === 1
+      ? "lg:order-2"
+      : "lg:order-1";
+
+  const imageOrder =
+    layout === 1
+      ? "lg:order-1"
+      : "lg:order-2";
 
   return (
     <section
       ref={heroRef}
-      className="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="mx-auto w-full max-w-[1800px] px-4 pt-4 sm:px-6 lg:px-8"
+      aria-roledescription="carousel"
+      aria-label="Featured RushPi products"
     >
       <div
-        className={[
-          "relative h-[420px] overflow-hidden rounded-[22px] shadow-sm sm:rounded-[28px]",
-          "sm:h-[400px] lg:h-[330px]",
-          theme.background,
-        ].join(" ")}
+        className="relative min-h-[520px] overflow-hidden rounded-[24px] shadow-sm sm:min-h-[500px] sm:rounded-[30px] lg:min-h-[430px]"
+        style={{
+          background: theme.background,
+        }}
       >
-        <div className="relative z-10 grid h-full grid-rows-[190px_1fr] gap-0 px-5 py-5 sm:grid-rows-[1fr_175px] sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:grid-rows-1 lg:gap-6 lg:px-10 lg:py-8">
-          <div className={`flex flex-col justify-center ${theme.text}`}>
-            <p className={`text-sm font-black ${theme.subtext}`}>
-              Featured product
-            </p>
+        <div
+          className="pointer-events-none absolute -left-24 -top-28 size-72 rounded-full blur-2xl"
+          style={{
+            backgroundColor: theme.softAccent,
+          }}
+        />
 
-            <h1 className="mt-2 max-w-[680px] text-[32px] font-black leading-[1.02] tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+        <div
+          className="pointer-events-none absolute -bottom-36 -right-24 size-96 rounded-full blur-3xl"
+          style={{
+            backgroundColor: theme.softAccent,
+          }}
+        />
+
+        <div
+          className={[
+            "relative z-10 grid min-h-[520px] items-center gap-3 px-6 pb-20 pt-8 sm:min-h-[500px] sm:px-10 lg:min-h-[430px] lg:grid-cols-2 lg:gap-10 lg:px-14 lg:py-12",
+            layout === 2
+              ? "lg:grid-cols-[0.9fr_1.1fr]"
+              : "",
+          ].join(" ")}
+        >
+          <div
+            ref={contentRef}
+            className={[
+              "relative z-20",
+              contentOrder,
+              layout === 2
+                ? "text-center lg:text-left"
+                : "",
+            ].join(" ")}
+            style={{
+              color: theme.text,
+            }}
+          >
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-[0.08em]"
+              style={{
+                backgroundColor: theme.softAccent,
+                color: theme.accent,
+              }}
+            >
+              <ShoppingBag className="size-3.5" />
+              {product.category?.name ??
+                "Featured product"}
+            </div>
+
+            <h1 className="mt-4 max-w-[680px] text-[34px] font-black capitalize leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-[58px]">
               {product.name}
             </h1>
 
-            <p className={`mt-3 text-sm font-bold ${theme.subtext}`}>
-              Sold by {homeSellerName(product)}
+            <p
+              className="mt-4 text-sm font-bold"
+              style={{
+                color: theme.mutedText,
+              }}
+            >
+              Available from {homeSellerName(product)}
             </p>
 
-            <p className="mt-2 text-2xl font-black">
+            <p className="mt-2 break-words text-[24px] font-black tracking-[-0.03em] sm:text-[30px]">
               {formatHomePrice(product)}
             </p>
 
-            <p className={`mt-3 hidden max-w-[580px] text-sm leading-6 sm:line-clamp-2 sm:block ${theme.subtext}`}>
+            <p
+              className="mt-4 line-clamp-2 max-w-[590px] text-sm leading-6 sm:text-base"
+              style={{
+                color: theme.mutedText,
+              }}
+            >
               {product.short_description?.trim() ||
-                "Explore this product from every angle and find the perfect choice for you."}
+                "Discover this featured product from a verified RushPi marketplace seller."}
             </p>
 
-            <div className="mt-4 sm:mt-5">
+            <div
+              className={[
+                "mt-6 flex flex-wrap items-center gap-3",
+                layout === 2
+                  ? "justify-center lg:justify-start"
+                  : "",
+              ].join(" ")}
+            >
               <Link
                 href={`/products/${product.public_id}`}
-                className="inline-flex rounded-full bg-[#0754d8] px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:scale-[1.03] sm:px-6 sm:py-3 sm:text-base"
+                className="group inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-black shadow-md transition duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:text-base"
+                style={{
+                  backgroundColor: theme.accent,
+                  color: theme.buttonText,
+                }}
               >
                 Shop now
+
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+
+              <Link
+                href="/products"
+                className="inline-flex rounded-full border-2 border-current px-6 py-2.5 text-sm font-black transition hover:bg-white/25 sm:text-base"
+              >
+                Explore products
               </Link>
             </div>
           </div>
 
-          <div className="relative min-h-0 [perspective:1200px]">
+          <div
+            ref={imageAreaRef}
+            className={[
+              "relative flex min-h-[230px] items-center justify-center sm:min-h-[250px] lg:min-h-[330px]",
+              imageOrder,
+            ].join(" ")}
+          >
             <div
-              ref={thumbnailAreaRef}
-              className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 flex-row gap-3 lg:bottom-auto lg:left-0 lg:top-1/2 lg:-translate-x-0 lg:-translate-y-1/2 lg:flex-col"
-            >
-              {views.map((view, index) => (
-                <button
-                  key={view.label}
-                  type="button"
-                  onClick={() => setSelectedView(index)}
-                  className={[
-                    "group relative grid size-14 place-items-center rounded-full border-2 bg-white p-1.5 shadow-lg transition",
-                    "sm:size-16 lg:size-20",
-                    selectedView === index
-                      ? "scale-105 border-[#0754d8]"
-                      : "border-white hover:scale-105",
-                  ].join(" ")}
-                  aria-label={`Show ${view.label} view`}
-                >
-                  <img
-                    src={view.image}
-                    alt={`${product.name} ${view.label} view`}
-                    className="h-full w-full rounded-full object-contain"
-                  />
+              className={[
+                "absolute rounded-full",
+                layout === 2
+                  ? "size-[270px] sm:size-[340px]"
+                  : "size-[250px] sm:size-[320px] lg:size-[360px]",
+              ].join(" ")}
+              style={{
+                backgroundColor: theme.softAccent,
+              }}
+            />
 
-                  <span className="absolute -bottom-1 rounded-full bg-slate-950 px-2 py-0.5 text-[9px] font-bold text-white">
-                    {view.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="absolute inset-x-7 bottom-14 top-0 z-10 flex items-center justify-center sm:inset-x-12 lg:inset-y-2 lg:left-[22%] lg:right-0">
-              {activeView ? (
+            {primaryImage ? (
+              <Link
+                href={`/products/${product.public_id}`}
+                className="relative z-10 flex h-[225px] w-full items-center justify-center sm:h-[265px] lg:h-[350px]"
+              >
                 <img
-                  ref={productImageRef}
-                  key={`${product.public_id}-${selectedView}`}
-                  src={activeView.image}
-                  alt={`${product.name} ${activeView.label} view`}
-                  className="block h-full max-h-[145px] w-full object-contain object-center drop-shadow-[0_25px_30px_rgba(0,0,0,0.22)] [transform-style:preserve-3d] sm:max-h-[165px] lg:max-h-[250px]"
-                />
-              ) : (
-                <div className="font-bold text-slate-500">
-                  No product image
-                </div>
-              )}
-            </div>
-
-            <div className="absolute right-2 top-1 z-30 flex gap-1.5 lg:bottom-2 lg:top-auto lg:gap-2">
-              {displayColors.map((color, index) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setSelectedColor(index)}
+                  key={`${product.public_id}-main`}
+                  src={primaryImage}
+                  alt={product.name}
                   className={[
-                    "size-5 rounded-full border-2 shadow-sm transition hover:scale-110 sm:size-6",
-                    selectedColor === index
-                      ? "scale-110 border-[#0754d8]"
-                      : "border-white",
+                    "h-full w-full object-contain object-center drop-shadow-[0_28px_28px_rgba(0,0,0,0.23)] transition-transform duration-500 hover:scale-[1.04]",
+                    layout === 2
+                      ? "max-h-[270px] lg:max-h-[330px]"
+                      : "max-h-[250px] lg:max-h-[345px]",
                   ].join(" ")}
-                  style={{ backgroundColor: color }}
-                  aria-label={`Select display colour ${index + 1}`}
                 />
-              ))}
-            </div>
+              </Link>
+            ) : (
+              <div className="relative z-10 font-bold text-slate-500">
+                Product image unavailable
+              </div>
+            )}
+
+            {secondaryImages[0] && (
+              <div
+                data-floating-image
+                className="absolute bottom-3 left-0 z-20 hidden size-24 items-center justify-center rounded-[20px] border border-white/70 bg-white/75 p-2 shadow-lg backdrop-blur-md sm:flex lg:size-28"
+              >
+                <img
+                  src={secondaryImages[0]}
+                  alt={`${product.name} additional view`}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            )}
+
+            {secondaryImages[1] && (
+              <div
+                data-floating-image
+                className="absolute right-0 top-3 z-20 hidden size-20 items-center justify-center rounded-[18px] border border-white/70 bg-white/75 p-2 shadow-lg backdrop-blur-md sm:flex lg:size-24"
+              >
+                <img
+                  src={secondaryImages[1]}
+                  alt={`${product.name} additional view`}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {products.length > 1 ? (
+        {products.length > 1 && (
           <>
-            <div className="absolute right-3 top-3 z-30 flex gap-2 sm:right-4 sm:top-4">
-              <button
-                type="button"
-                onClick={previous}
-                className="grid size-9 place-items-center rounded-full bg-white/90 shadow-sm transition hover:scale-105 sm:size-10"
-                aria-label="Previous product"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
+            <button
+              type="button"
+              onClick={previous}
+              className="absolute left-3 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-950 shadow-md backdrop-blur-sm transition duration-300 hover:scale-110 hover:bg-white sm:left-4 sm:size-11"
+              aria-label="Previous featured product"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
 
-              <button
-                type="button"
-                onClick={next}
-                className="grid size-9 place-items-center rounded-full bg-white/90 shadow-sm transition hover:scale-105 sm:size-10"
-                aria-label="Next product"
-              >
-                <ChevronRight className="size-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={next}
+              className="absolute right-3 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-950 shadow-md backdrop-blur-sm transition duration-300 hover:scale-110 hover:bg-white sm:right-4 sm:size-11"
+              aria-label="Next featured product"
+            >
+              <ChevronRight className="size-5" />
+            </button>
 
-            <div className="absolute bottom-3 left-1/2 z-30 hidden -translate-x-1/2 gap-2 sm:flex">
-              {products.map((item, index) => (
-                <button
-                  key={item.public_id}
-                  type="button"
-                  onClick={() => changeProduct(index)}
-                  aria-label={`Show product ${index + 1}`}
-                  className={[
-                    "h-2.5 rounded-full transition-all",
-                    current === index
-                      ? "w-8 bg-[#0754d8]"
-                      : "w-2.5 bg-white/70",
-                  ].join(" ")}
+            <div className="absolute inset-x-0 bottom-0 z-30">
+              <div className="flex items-center justify-center gap-2 px-5 pb-5">
+                {products.map((item, index) => (
+                  <button
+                    key={item.public_id}
+                    type="button"
+                    onClick={() => changeProduct(index)}
+                    aria-label={`Show ${item.name}`}
+                    aria-current={
+                      current === index
+                        ? "true"
+                        : undefined
+                    }
+                    className={[
+                      "h-2.5 rounded-full transition-all duration-300",
+                      current === index
+                        ? "w-9 bg-slate-950"
+                        : "w-2.5 bg-white/70 hover:bg-white",
+                    ].join(" ")}
+                  />
+                ))}
+              </div>
+
+              {!paused && (
+                <div
+                  key={current}
+                  className="hero-progress h-1 origin-left"
+                  style={{
+                    backgroundColor: theme.accent,
+                  }}
                 />
-              ))}
+              )}
             </div>
           </>
-        ) : null}
+        )}
       </div>
+
+      <style>{`
+        @keyframes heroProgress {
+          from {
+            transform: scaleX(0);
+          }
+
+          to {
+            transform: scaleX(1);
+          }
+        }
+
+        @keyframes heroBackgroundMove {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0);
+          }
+
+          50% {
+            transform: translate3d(12px, -8px, 0);
+          }
+        }
+
+        .hero-progress {
+          animation: heroProgress 6000ms linear forwards;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-progress {
+            animation: none;
+          }
+        }
+      `}</style>
     </section>
   );
 }
