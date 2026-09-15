@@ -5,7 +5,6 @@ import {
   HelpCircle,
   LogOut,
   X,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -70,18 +69,13 @@ export default function DashboardSidebar({
             className="group flex items-center gap-3"
             onClick={onClose}
           >
-            <span className="grid size-11 place-items-center rounded-full bg-amber-400 text-blue-950 shadow-lg transition group-hover:rotate-6">
-              <Zap className="size-6 fill-current" />
-            </span>
-
-            <span>
-              <span className="block text-xl font-black">
-                RushPi
-              </span>
-
-              <span className="block text-xs text-blue-200">
-                {roleInformation.label} Center
-              </span>
+            <span className="flex h-[62px] w-[180px] items-center overflow-hidden transition duration-300 group-hover:scale-[1.03]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/rushpii-03.png"
+                alt="RushPi"
+                className="h-full w-full object-contain object-left"
+              />
             </span>
           </Link>
 
