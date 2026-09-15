@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/rushpii-03.png"
+            src="/rushpii-01.png"
             alt="RushPi"
             className="h-full w-full object-contain"
           />
