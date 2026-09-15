@@ -13,7 +13,6 @@ import {
   Truck,
   UserRound,
   X,
-  Zap,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -312,7 +311,7 @@ export default function SiteHeader() {
               place-items-center
               rounded-full
               transition
-              hover:bg-white/15
+              hover:bg-white/10
               md:hidden
             "
             aria-label={
@@ -344,32 +343,26 @@ export default function SiteHeader() {
           >
             <span
               className="
-                grid size-9
-                place-items-center
-                rounded-full
-                bg-[#ffc220]
-                text-[#06357c]
+                flex h-[60px] w-[190px]
+                shrink-0
+                items-center
+                justify-start
+                overflow-hidden
                 transition
-                group-hover:rotate-6
+                duration-300
+                group-hover:scale-[1.03]
               "
             >
-              <Zap
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/rushpii-03.png"
+                alt="RushPi"
                 className="
-                  size-5
-                  fill-current
+                  h-full w-full
+                  object-contain
+                  object-left
                 "
               />
-            </span>
-
-            <span
-              className="
-                hidden text-[22px]
-                font-black
-                tracking-[-0.04em]
-                sm:block
-              "
-            >
-              RushPi
             </span>
           </Link>
 

@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   Smile,
   X,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -162,12 +161,13 @@ export default function SiteFooter() {
                 href="/"
                 className="group mb-7 flex items-center gap-3"
               >
-                <span className="grid size-11 place-items-center rounded-full bg-amber-400 text-blue-950 shadow-md transition duration-300 group-hover:rotate-6 group-hover:scale-105">
-                  <Zap className="size-6 fill-current" />
-                </span>
-
-                <span className="text-2xl font-black tracking-tight">
-                  RushPi
+                <span className="flex h-[60px] w-[190px] items-center justify-center overflow-hidden transition duration-300 group-hover:scale-105">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/rushpii-03.png"
+                    alt="RushPi"
+                    className="h-full w-full object-contain"
+                  />
                 </span>
               </Link>
 
