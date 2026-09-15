@@ -52,6 +52,13 @@ type CurrentLocation = {
   accuracy: number;
 };
 
+type DeliveryAddress = {
+  province: string;
+  district: string;
+  sector: string;
+  street: string;
+};
+
 const CART_KEY = "rushpi_cart";
 
 const fieldClass = `
@@ -125,6 +132,15 @@ export default function CheckoutPage() {
     useState(false);
   const [locationError, setLocationError] =
     useState("");
+  const [addressLoading, setAddressLoading] =
+    useState(false);
+  const [deliveryAddress, setDeliveryAddress] =
+    useState<DeliveryAddress>({
+      province: "",
+      district: "",
+      sector: "",
+      street: "",
+    });
 
   useEffect(() => {
     setItems(readCart());
@@ -165,6 +181,102 @@ export default function CheckoutPage() {
     items.find((item) => item.currency)?.currency ??
     "RWF";
 
+  function updateAddress(
+    field: keyof DeliveryAddress,
+    value: string,
+  ) {
+    setDeliveryAddress((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function findAddress(
+    latitude: number,
+    longitude: number,
+  ) {
+    setAddressLoading(true);
+
+    try {
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        lat: String(latitude),
+        lon: String(longitude),
+        addressdetails: "1",
+        zoom: "18",
+      });
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Address lookup failed.");
+      }
+
+      const result = await response.json();
+      const address = result.address ?? {};
+
+      const detectedProvince =
+        address.state ??
+        address.city ??
+        address.region ??
+        "";
+
+      const provinceValues = [
+        "Kigali",
+        "Northern Province",
+        "Southern Province",
+        "Eastern Province",
+        "Western Province",
+      ];
+
+      const province =
+        provinceValues.find((value) =>
+          detectedProvince
+            .toLowerCase()
+            .includes(
+              value
+                .replace(" Province", "")
+                .toLowerCase(),
+            ),
+        ) ?? "";
+
+      setDeliveryAddress({
+        province,
+        district:
+          address.city_district ??
+          address.county ??
+          address.municipality ??
+          "",
+        sector:
+          address.suburb ??
+          address.quarter ??
+          address.town ??
+          address.village ??
+          "",
+        street:
+          address.road ??
+          address.neighbourhood ??
+          address.hamlet ??
+          address.village ??
+          result.display_name ??
+          "",
+      });
+    } catch {
+      setLocationError(
+        "Location was captured, but the written address could not be detected. Please enter it manually.",
+      );
+    } finally {
+      setAddressLoading(false);
+    }
+  }
+
   function captureCurrentLocation() {
     setLocationError("");
 
@@ -179,14 +291,21 @@ export default function CheckoutPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCurrentLocation({
+        const location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: Math.round(
             position.coords.accuracy,
           ),
-        });
+        };
+
+        setCurrentLocation(location);
         setLocationLoading(false);
+
+        void findAddress(
+          location.latitude,
+          location.longitude,
+        );
       },
       (error) => {
         const message =
@@ -412,7 +531,9 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={captureCurrentLocation}
-                    disabled={locationLoading}
+                    disabled={
+                      locationLoading || addressLoading
+                    }
                     className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0758d9] px-5 text-sm font-semibold text-white transition hover:bg-[#064bb8] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Navigation
@@ -425,9 +546,11 @@ export default function CheckoutPage() {
 
                     {locationLoading
                       ? "Getting location..."
-                      : currentLocation
-                        ? "Update location"
-                        : "Use current location"}
+                      : addressLoading
+                        ? "Finding address..."
+                        : currentLocation
+                          ? "Update location"
+                          : "Use current location"}
                   </button>
                 </div>
 
@@ -466,7 +589,13 @@ export default function CheckoutPage() {
                   <select
                     required
                     name="province"
-                    defaultValue=""
+                    value={deliveryAddress.province}
+                    onChange={(event) =>
+                      updateAddress(
+                        "province",
+                        event.target.value,
+                      )
+                    }
                     className={fieldClass}
                   >
                     <option value="" disabled>
@@ -494,6 +623,13 @@ export default function CheckoutPage() {
                   <input
                     required
                     name="district"
+                    value={deliveryAddress.district}
+                    onChange={(event) =>
+                      updateAddress(
+                        "district",
+                        event.target.value,
+                      )
+                    }
                     placeholder="Example: Gasabo"
                     className={fieldClass}
                   />
@@ -503,6 +639,13 @@ export default function CheckoutPage() {
                   <input
                     required
                     name="sector"
+                    value={deliveryAddress.sector}
+                    onChange={(event) =>
+                      updateAddress(
+                        "sector",
+                        event.target.value,
+                      )
+                    }
                     placeholder="Example: Remera"
                     className={fieldClass}
                   />
@@ -512,6 +655,13 @@ export default function CheckoutPage() {
                   <input
                     required
                     name="street"
+                    value={deliveryAddress.street}
+                    onChange={(event) =>
+                      updateAddress(
+                        "street",
+                        event.target.value,
+                      )
+                    }
                     placeholder="Street, village or landmark"
                     className={fieldClass}
                   />
