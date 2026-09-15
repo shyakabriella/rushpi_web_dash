@@ -128,6 +128,11 @@ export const dashboardNavigation: Record<
           icon: PackageSearch,
         },
         {
+          label: "Product Orders",
+          href: "/admin/orders",
+          icon: ShoppingBag,
+        },
+        {
           label: "Product moderation",
           href: "/admin/moderation",
           icon: ClipboardCheck,
