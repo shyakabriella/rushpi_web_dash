@@ -8,6 +8,7 @@ import {
   CreditCard,
   LockKeyhole,
   MapPin,
+  Navigation,
   Package,
   Phone,
   ShoppingBag,
@@ -44,6 +45,12 @@ type PaymentMethod =
   | "airtel_money"
   | "card"
   | "cash";
+
+type CurrentLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+};
 
 const CART_KEY = "rushpi_cart";
 
@@ -112,6 +119,13 @@ export default function CheckoutPage() {
     useState<DeliveryMethod>("standard");
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("mtn_momo");
+  const [currentLocation, setCurrentLocation] =
+    useState<CurrentLocation | null>(null);
+  const [locationLoading, setLocationLoading] =
+    useState(false);
+  const [locationError, setLocationError] =
+    useState("");
+
   useEffect(() => {
     setItems(readCart());
     setReady(true);
@@ -151,6 +165,50 @@ export default function CheckoutPage() {
     items.find((item) => item.currency)?.currency ??
     "RWF";
 
+  function captureCurrentLocation() {
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError(
+        "Location is not supported by this device or browser.",
+      );
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: Math.round(
+            position.coords.accuracy,
+          ),
+        });
+        setLocationLoading(false);
+      },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "Location permission was denied. Allow location access and try again."
+            : error.code === error.POSITION_UNAVAILABLE
+              ? "Your current location could not be determined."
+              : error.code === error.TIMEOUT
+                ? "Location request took too long. Please try again."
+                : "Current location could not be captured.";
+
+        setLocationError(message);
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      },
+    );
+  }
+
   function submitCheckout(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -167,6 +225,10 @@ export default function CheckoutPage() {
       district: String(form.get("district") ?? ""),
       sector: String(form.get("sector") ?? ""),
       street: String(form.get("street") ?? ""),
+      latitude: currentLocation?.latitude ?? null,
+      longitude: currentLocation?.longitude ?? null,
+      locationAccuracy:
+        currentLocation?.accuracy ?? null,
       instructions: String(
         form.get("instructions") ?? "",
       ),
@@ -333,6 +395,71 @@ export default function CheckoutPage() {
                 title="Delivery address"
                 description="Tell us where you want to receive your products."
               />
+
+              <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-950">
+                      Use your device location
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-600">
+                      This helps the delivery driver find you
+                      more easily.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={captureCurrentLocation}
+                    disabled={locationLoading}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0758d9] px-5 text-sm font-semibold text-white transition hover:bg-[#064bb8] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Navigation
+                      className={`h-4 w-4 ${
+                        locationLoading
+                          ? "animate-pulse"
+                          : ""
+                      }`}
+                    />
+
+                    {locationLoading
+                      ? "Getting location..."
+                      : currentLocation
+                        ? "Update location"
+                        : "Use current location"}
+                  </button>
+                </div>
+
+                {currentLocation && (
+                  <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm text-emerald-700">
+                    <p className="flex items-center gap-2 font-semibold">
+                      <Check className="h-4 w-4" />
+                      Current location captured
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      Accuracy: approximately{" "}
+                      {currentLocation.accuracy} metres
+                    </p>
+
+                    <a
+                      href={`https://www.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-xs font-semibold text-[#0758d9] hover:underline"
+                    >
+                      Preview location on Google Maps
+                    </a>
+                  </div>
+                )}
+
+                {locationError && (
+                  <p className="mt-3 text-sm font-medium text-red-600">
+                    {locationError}
+                  </p>
+                )}
+              </div>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <Field label="Province or city">
