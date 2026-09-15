@@ -9,6 +9,7 @@ import {
   LogIn,
   Mail,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FormEvent,
@@ -329,12 +330,12 @@ export default function LoginForm() {
           Remember me
         </label>
 
-        <button
-          type="button"
+        <Link
+          href="/forgot-password"
           className="text-sm font-black text-blue-700 underline underline-offset-4 hover:text-blue-900"
         >
           Forgot password?
-        </button>
+        </Link>
       </div>
 
       <button
