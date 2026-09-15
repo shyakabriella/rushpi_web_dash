@@ -210,7 +210,7 @@ export const dashboardNavigation: Record<
       title: "Sales",
       items: [
         {
-          label: "Orders",
+          label: "Product Orders",
           href: "/seller/orders",
           icon: ShoppingBag,
         },

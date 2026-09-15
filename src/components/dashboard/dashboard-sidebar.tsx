@@ -89,17 +89,17 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        <div className="dashboard-sidebar-scroll flex-1 overflow-y-auto px-4 py-5">
+        <div className="dashboard-sidebar-scroll flex-1 overflow-y-auto px-4 py-3">
           {navigation.map((group) => (
             <div
               key={group.title}
-              className="mb-7"
+              className="mb-3 last:mb-0"
             >
-              <p className="mb-3 px-3 text-[11px] font-black uppercase tracking-[0.2em] text-blue-200">
+              <p className="mb-1.5 px-3 text-[11px] font-black uppercase tracking-[0.2em] text-blue-200">
                 {group.title}
               </p>
 
-              <nav className="space-y-1.5">
+              <nav className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active =
