@@ -90,6 +90,7 @@ export const dashboardNavigation: Record<
           label: "Dashboard",
           href: "/admin/dashboard",
           icon: LayoutDashboard,
+  LayoutPanelTop,
         },
       ],
     },
@@ -139,11 +140,11 @@ export const dashboardNavigation: Record<
           icon: ClipboardCheck,
         },
         {
+        {
           label: "Homepage campaigns",
           href: "/admin/homepage-campaigns",
           icon: LayoutPanelTop,
         },
-        {
           label: "Service management",
           href: "/admin/services",
           icon: Wrench,
@@ -192,6 +193,7 @@ export const dashboardNavigation: Record<
           label: "Dashboard",
           href: "/seller/dashboard",
           icon: LayoutDashboard,
+  LayoutPanelTop,
         },
       ],
     },
@@ -205,6 +207,11 @@ export const dashboardNavigation: Record<
           icon: PackageSearch,
         },
         {
+        {
+          label: "Homepage campaigns",
+          href: "/admin/homepage-campaigns",
+          icon: LayoutPanelTop,
+        },
           label: "Service management",
           href: "/seller/services",
           icon: Wrench,
@@ -269,8 +276,14 @@ export const dashboardNavigation: Record<
           label: "Dashboard",
           href: "/dealer/dashboard",
           icon: LayoutDashboard,
+  LayoutPanelTop,
         },
         {
+        {
+          label: "Homepage campaigns",
+          href: "/admin/homepage-campaigns",
+          icon: LayoutPanelTop,
+        },
           label: "Service management",
           href: "/dealer/services",
           icon: Wrench,
@@ -292,6 +305,7 @@ export const dashboardNavigation: Record<
           label: "Dashboard",
           href: "/commissioner/dashboard",
           icon: LayoutDashboard,
+  LayoutPanelTop,
         },
       ],
     },
