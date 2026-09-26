@@ -1692,11 +1692,11 @@ export default function ProductManager({
       );
 
       /*
-       * 7. New products are always submitted.
-       * Updated products are also resubmitted because approved/rejected
+       * 7. Complete products are automatically published.
+       * Updated products are also published again because approved/rejected
        * products can return to draft when catalog information changes.
        *
-       * If the backend says the current status cannot be submitted,
+       * If the backend says the current status cannot be published,
        * preserve the successful changes and show a save confirmation.
        */
       let submitted = false;
@@ -1723,9 +1723,9 @@ export default function ProductManager({
       const message =
         editMode
           ? submitted
-            ? "Product updated successfully and sent for review."
+            ? "Product updated and published successfully."
             : "Product updated successfully."
-          : "Product listed successfully and sent for review.";
+          : "Product listed and published successfully.";
 
       setSuccess(message);
 
@@ -1906,7 +1906,7 @@ export default function ProductManager({
         <p className="mt-2 text-sm text-slate-500">
           {editMode
             ? "Update product information, specifications, price, stock, images and return period from the same form."
-            : "Fill in the product information below and submit it in one step."}
+            : "Fill in the product information below and publish it in one step."}
         </p>
 
         {editMode &&
