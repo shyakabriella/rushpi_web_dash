@@ -39,6 +39,23 @@ type CatalogOption = {
   label?: string;
 };
 
+type BrandModelOption = {
+  public_id: string;
+  name: string;
+};
+
+type BrandSeriesOption = {
+  public_id: string;
+  name: string;
+  models?: BrandModelOption[];
+};
+
+type BrandOption = {
+  public_id: string;
+  name: string;
+  series?: BrandSeriesOption[];
+};
+
 type SpecOption = {
   value: string | number;
   label: string;
@@ -68,7 +85,7 @@ type FormOptionsResponse = {
   success?: boolean;
   data?: {
     categories?: CatalogOption[];
-    brands?: CatalogOption[];
+    brands?: BrandOption[];
     specifications?: Specification[];
   };
 };
@@ -129,6 +146,16 @@ type ProductDetail = {
 
   brand?: {
     public_id?: string | null;
+  } | null;
+
+  brand_series?: {
+    public_id?: string | null;
+    name?: string | null;
+  } | null;
+
+  brand_model?: {
+    public_id?: string | null;
+    name?: string | null;
   } | null;
 
   variants?: ProductVariant[] | null;
@@ -425,7 +452,7 @@ export default function ProductManager({
     brands,
     setBrands,
   ] =
-    useState<CatalogOption[]>(
+    useState<BrandOption[]>(
       [],
     );
 
@@ -458,6 +485,45 @@ export default function ProductManager({
     brand,
     setBrand,
   ] = useState("");
+
+  const [
+    brandSeries,
+    setBrandSeries,
+  ] = useState("");
+
+  const [
+    brandModel,
+    setBrandModel,
+  ] = useState("");
+
+  const selectedBrand = useMemo(
+    () =>
+      brands.find(
+        (item) =>
+          item.public_id === brand,
+      ) ?? null,
+    [brand, brands],
+  );
+
+  const availableSeries =
+    selectedBrand?.series ?? [];
+
+  const selectedSeries = useMemo(
+    () =>
+      availableSeries.find(
+        (item) =>
+          item.public_id ===
+          brandSeries,
+      ) ?? null,
+    [
+      availableSeries,
+      brandSeries,
+    ],
+  );
+
+  const availableModels =
+    selectedSeries?.models ?? [];
+
 
   const [
     condition,
@@ -765,6 +831,16 @@ export default function ProductManager({
 
     setBrand(
       product.brand
+        ?.public_id ?? "",
+    );
+
+    setBrandSeries(
+      product.brand_series
+        ?.public_id ?? "",
+    );
+
+    setBrandModel(
+      product.brand_model
         ?.public_id ?? "",
     );
 
@@ -1489,6 +1565,13 @@ export default function ProductManager({
           category,
         brand_public_id:
           brand || null,
+
+        series_public_id:
+          brandSeries || null,
+
+        model_public_id:
+          brandModel || null,
+
         name:
           name.trim(),
         short_description:
@@ -1932,13 +2015,13 @@ export default function ProductManager({
             <Field label="Brand">
               <select
                 value={brand}
-                onChange={(
-                  event,
-                ) =>
+                onChange={(event) => {
                   setBrand(
                     event.target.value,
-                  )
-                }
+                  );
+                  setBrandSeries("");
+                  setBrandModel("");
+                }}
                 className="input"
               >
                 <option value="">
@@ -1961,6 +2044,65 @@ export default function ProductManager({
                 )}
               </select>
             </Field>
+
+            {availableSeries.length > 0 && (
+              <Field label="Series">
+                <select
+                  value={brandSeries}
+                  onChange={(event) => {
+                    setBrandSeries(
+                      event.target.value,
+                    );
+                    setBrandModel("");
+                  }}
+                  className="input"
+                >
+                  <option value="">
+                    Select series
+                  </option>
+
+                  {availableSeries.map(
+                    (item) => (
+                      <option
+                        key={item.public_id}
+                        value={item.public_id}
+                      >
+                        {item.name}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </Field>
+            )}
+
+            {availableModels.length > 0 && (
+              <Field label="Model">
+                <select
+                  value={brandModel}
+                  onChange={(event) =>
+                    setBrandModel(
+                      event.target.value,
+                    )
+                  }
+                  className="input"
+                >
+                  <option value="">
+                    Select model
+                  </option>
+
+                  {availableModels.map(
+                    (item) => (
+                      <option
+                        key={item.public_id}
+                        value={item.public_id}
+                      >
+                        {item.name}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </Field>
+            )}
 
             <Field
               label="Condition"
