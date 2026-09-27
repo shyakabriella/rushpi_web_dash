@@ -1,0 +1,165 @@
+import { ArrowRight, PackageOpen } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import type { HomepageCampaign } from "@/types/homepage-campaign";
+
+type AnimatedCampaignBannerProps = {
+  campaign: HomepageCampaign;
+  className?: string;
+};
+
+const productPositions = [
+  "right-[22%] top-5 rotate-[-5deg] sm:right-[27%]",
+  "right-4 top-10 rotate-[5deg] sm:right-8",
+  "bottom-4 right-[30%] rotate-[3deg] sm:right-[34%]",
+  "bottom-3 right-3 rotate-[-4deg] sm:right-10",
+];
+
+function BannerLink({
+  campaign,
+  className,
+  children,
+}: {
+  campaign: HomepageCampaign;
+  className: string;
+  children: ReactNode;
+}) {
+  const url = campaign.destination_url;
+
+  if (!url) {
+    return <div className={className}>{children}</div>;
+  }
+
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className={className}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={url} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+export default function AnimatedCampaignBanner({
+  campaign,
+  className = "",
+}: AnimatedCampaignBannerProps) {
+  const products = (campaign.products ?? [])
+    .filter((product) => product.image_url)
+    .slice(0, 4);
+
+  return (
+    <BannerLink
+      campaign={campaign}
+      className={[
+        "group relative isolate block min-h-[260px]",
+        "overflow-hidden rounded-3xl",
+        "border border-slate-200 shadow-sm",
+        className,
+      ].join(" ")}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(120deg, ${
+            campaign.background_color || "#eff6ff"
+          } 0%, #ffffff 55%, #dbeafe 100%)`,
+        }}
+      />
+
+      <div className="absolute -left-20 -top-24 size-72 rounded-full bg-white/50 blur-3xl" />
+      <div className="absolute -bottom-28 right-20 size-80 rounded-full bg-blue-300/25 blur-3xl" />
+
+      <div className="relative z-20 flex min-h-[inherit] max-w-[56%] flex-col justify-center p-6 sm:p-8 lg:p-10">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">
+          Featured campaign
+        </p>
+
+        <h2
+          className="mt-3 text-2xl font-black leading-tight tracking-[-0.04em] sm:text-3xl"
+          style={{
+            color: campaign.text_color || "#0f172a",
+          }}
+        >
+          {campaign.title}
+        </h2>
+
+        {campaign.subtitle ? (
+          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-600 sm:text-base">
+            {campaign.subtitle}
+          </p>
+        ) : null}
+
+        <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-md transition group-hover:bg-blue-700">
+          {campaign.button_text || "Shop now"}
+
+          <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+        </span>
+      </div>
+
+      <div className="absolute inset-y-0 right-0 hidden w-[48%] sm:block">
+        {products.length > 0 ? (
+          products.map((product, index) => (
+            <div
+              key={product.public_id}
+              className={[
+                "campaign-product-float absolute",
+                "w-28 overflow-hidden rounded-2xl",
+                "border border-white/80 bg-white p-2",
+                "shadow-xl shadow-blue-950/15",
+                "sm:w-32 lg:w-36",
+                productPositions[index],
+              ].join(" ")}
+              style={{
+                animationDelay: `${index * 0.7}s`,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.image_url ?? ""}
+                alt={product.name}
+                className="aspect-square w-full rounded-xl bg-slate-50 object-contain p-1"
+              />
+
+              <p className="mt-2 line-clamp-1 text-xs font-black text-slate-800">
+                {product.name}
+              </p>
+
+              <p className="mt-1 text-[11px] font-bold text-blue-700">
+                {product.price?.formatted ?? "View product"}
+              </p>
+            </div>
+          ))
+        ) : (
+          <div className="grid h-full place-items-center text-slate-300">
+            <PackageOpen className="size-14" />
+          </div>
+        )}
+      </div>
+
+      {products.length > 0 ? (
+        <div className="relative z-20 grid grid-cols-3 gap-2 px-5 pb-5 sm:hidden">
+          {products.slice(0, 3).map((product) => (
+            <div
+              key={product.public_id}
+              className="rounded-xl bg-white p-2 shadow-md"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.image_url ?? ""}
+                alt={product.name}
+                className="aspect-square w-full object-contain"
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </BannerLink>
+  );
+}

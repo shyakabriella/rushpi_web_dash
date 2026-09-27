@@ -1,16 +1,11 @@
-import type {
-  CreateProductOrderInput,
-  ProductOrderResult,
-} from "@/types/product-order";
-
 const API = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "https://rushpi.asyncafrica.com/api"
 ).replace(/\/+$/, "");
 
 export async function createProductOrder(
-  input: CreateProductOrderInput,
-): Promise<ProductOrderResult> {
+  input: Record<string, unknown>,
+) {
   const response = await fetch(
     `${API}/product-orders`,
     {
@@ -26,14 +21,14 @@ export async function createProductOrder(
   const result = await response.json();
 
   if (!response.ok) {
-    const validationMessage = result?.errors
+    const errors = result?.errors
       ? Object.values(result.errors)
           .flat()
           .join(" ")
-      : null;
+      : "";
 
     throw new Error(
-      validationMessage ||
+      errors ||
         result?.message ||
         "Unable to create your order.",
     );

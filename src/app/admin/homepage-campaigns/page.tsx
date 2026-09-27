@@ -14,6 +14,8 @@ import {
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { CampaignProductSettings } from "@/components/admin/campaign-product-settings";
+
 import {
   createCampaign,
   deleteCampaign,
@@ -35,6 +37,14 @@ const EMPTY_FORM: HomepageCampaignForm = {
   link_type: "none",
   link_value: "",
   card_size: "medium",
+  layout_type: "banner_products",
+  product_source: "newest",
+  product_limit: "8",
+  show_products: true,
+  category_public_id: "",
+  brand_public_id: "",
+  seller_public_id: "",
+  product_public_ids: [],
   position: "0",
   starts_at: "",
   ends_at: "",
@@ -71,6 +81,14 @@ function formFromCampaign(campaign: HomepageCampaign): HomepageCampaignForm {
     link_type: campaign.link_type,
     link_value: campaign.link_value ?? "",
     card_size: campaign.card_size,
+    layout_type: campaign.layout_type ?? "banner_products",
+    product_source: campaign.product_source ?? "newest",
+    product_limit: String(campaign.product_limit ?? 8),
+    show_products: campaign.show_products ?? true,
+    category_public_id: campaign.category?.public_id ?? "",
+    brand_public_id: campaign.brand?.public_id ?? "",
+    seller_public_id: campaign.seller?.public_id ?? "",
+    product_public_ids: campaign.manual_product_public_ids ?? [],
     position: String(campaign.position),
     starts_at: toDateTimeInput(campaign.starts_at),
     ends_at: toDateTimeInput(campaign.ends_at),
@@ -138,7 +156,7 @@ export default function HomepageCampaignsPage() {
   function openEditModal(campaign: HomepageCampaign) {
     setEditing(campaign);
     setForm(formFromCampaign(campaign));
-    setDesktopPreview(campaign.desktop_image_url);
+    setDesktopPreview(campaign.desktop_image_url ?? null);
     setMobilePreview(campaign.mobile_image_url ?? null);
     setModalOpen(true);
   }
@@ -186,11 +204,6 @@ export default function HomepageCampaignsPage() {
   async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!editing && !form.desktop_image) {
-      toast.error("Choose a desktop campaign image.");
-      return;
-    }
-
     setSaving(true);
 
     try {
@@ -203,7 +216,12 @@ export default function HomepageCampaignsPage() {
         toast.success("Campaign created.");
       }
 
-      closeModal();
+      setModalOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
+      setDesktopPreview(null);
+      setMobilePreview(null);
+
       await loadCampaigns();
     } catch (exception) {
       toast.error(
@@ -328,7 +346,11 @@ export default function HomepageCampaignsPage() {
                 <div className="relative aspect-[16/9] overflow-hidden bg-slate-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={campaign.desktop_image_url}
+                    src={
+                      campaign.desktop_image_url ??
+                      campaign.products?.[0]?.image_url ??
+                      ""
+                    }
                     alt={campaign.title}
                     className="size-full object-cover transition duration-500 hover:scale-105"
                   />
@@ -418,7 +440,8 @@ export default function HomepageCampaignsPage() {
                     {editing ? "Edit campaign" : "Create campaign"}
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Control the promotional card shown on the homepage.
+                    Choose a layout and automatically display approved seller
+                    products.
                   </p>
                 </div>
 
@@ -439,13 +462,11 @@ export default function HomepageCampaignsPage() {
                     value={form.title}
                     onChange={(value) => updateField("title", value)}
                   />
-
                   <Input
                     label="Short description"
                     value={form.subtitle}
                     onChange={(value) => updateField("subtitle", value)}
                   />
-
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       label="Button text"
@@ -460,7 +481,6 @@ export default function HomepageCampaignsPage() {
                       onChange={(value) => updateField("position", value)}
                     />
                   </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <Select
                       label="Card size"
@@ -495,8 +515,11 @@ export default function HomepageCampaignsPage() {
                         ["custom", "Custom URL"],
                       ]}
                     />
-                  </div>
-
+                  </div>{" "}
+                  <CampaignProductSettings
+                    form={form}
+                    updateField={updateField}
+                  />
                   {form.link_type !== "none" ? (
                     <Input
                       label="Link value"
@@ -509,7 +532,6 @@ export default function HomepageCampaignsPage() {
                       onChange={(value) => updateField("link_value", value)}
                     />
                   ) : null}
-
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       label="Starts at"
@@ -525,7 +547,6 @@ export default function HomepageCampaignsPage() {
                       onChange={(value) => updateField("ends_at", value)}
                     />
                   </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <ColorInput
                       label="Background"
@@ -541,7 +562,6 @@ export default function HomepageCampaignsPage() {
                       onChange={(value) => updateField("text_color", value)}
                     />
                   </div>
-
                   <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
                     <input
                       type="checkbox"
@@ -560,7 +580,7 @@ export default function HomepageCampaignsPage() {
                 <div className="space-y-4">
                   <ImagePicker
                     label="Desktop image"
-                    required={!editing}
+
                     preview={desktopPreview}
                     onChange={(file) => selectImage("desktop", file)}
                   />
@@ -756,7 +776,7 @@ function ImagePicker({
   required?: boolean;
 }) {
   return (
-    <label className="block cursor-pointer">
+    <label className="hidden">
       <span className="mb-1.5 block text-sm font-bold text-slate-700">
         {label}
       </span>

@@ -5,15 +5,17 @@ import {
   Check,
   ChevronRight,
   CreditCard,
-  Edit3,
   LockKeyhole,
   MapPin,
   PackageCheck,
+  Pencil,
+  ShieldCheck,
   ShoppingBag,
   Truck,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { createProductOrder } from "@/lib/product-order-api";
 import {
   useEffect,
   useMemo,
@@ -73,27 +75,25 @@ export default function ReviewOrderPage() {
     useState<CheckoutDetails | null>(null);
   const [ready, setReady] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
 
   useEffect(() => {
     try {
-      const savedCart = JSON.parse(
+      const cart = JSON.parse(
         localStorage.getItem("rushpi_cart") ??
           "[]",
       );
 
-      const savedCheckout = JSON.parse(
+      const checkout = JSON.parse(
         localStorage.getItem(
           "rushpi_checkout",
         ) ?? "null",
       );
 
-      setItems(
-        Array.isArray(savedCart)
-          ? savedCart
-          : [],
-      );
-
-      setDetails(savedCheckout);
+      setItems(Array.isArray(cart) ? cart : []);
+      setDetails(checkout);
     } catch {
       setItems([]);
       setDetails(null);
@@ -113,25 +113,69 @@ export default function ReviewOrderPage() {
     [items],
   );
 
-  function finishOrder() {
-    /*
-     * Frontend stage:
-     * The Laravel order request will be added here.
-     */
-    setConfirmed(true);
+  async function finishOrder() {
+    if (submitting || !details) {
+      return;
+    }
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const order = await createProductOrder({
+        first_name: details.firstName,
+        last_name: details.lastName,
+        email: details.email,
+        phone: details.phone,
+        payment_method: details.paymentMethod,
+        delivery_method: details.deliveryMethod,
+        delivery_province: details.province,
+        delivery_district: details.district,
+        delivery_sector: details.sector,
+        delivery_street: details.street,
+        delivery_instructions:
+          details.instructions || null,
+        items: items.map((item) => ({
+          product_public_id: item.productId,
+          quantity: item.quantity,
+        })),
+      });
+
+      setOrderNumber(order.order_number);
+
+      localStorage.removeItem("rushpi_cart");
+      localStorage.removeItem("rushpi_checkout");
+
+      window.dispatchEvent(
+        new CustomEvent("rushpi-cart-updated"),
+      );
+
+      setConfirmed(true);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Unable to create your order.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (!ready) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 py-10">
-        <div className="mx-auto max-w-7xl animate-pulse">
-          <div className="h-10 w-64 rounded bg-slate-200" />
-          <div className="mt-8 h-96 rounded-3xl bg-white" />
+      <main className="min-h-screen bg-white px-4 py-8">
+        <div className="mx-auto max-w-5xl animate-pulse">
+          <div className="h-6 w-60 rounded bg-slate-200" />
+          <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_330px]">
+            <div className="h-[500px] rounded bg-slate-100" />
+            <div className="h-80 rounded bg-slate-100" />
+          </div>
         </div>
       </main>
     );
@@ -139,24 +183,24 @@ export default function ReviewOrderPage() {
 
   if (!details || items.length === 0) {
     return (
-      <main className="min-h-[70vh] bg-slate-50 px-4 py-14">
-        <section className="mx-auto flex max-w-xl flex-col items-center rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-          <ShoppingBag className="h-14 w-14 text-[#0758d9]" />
+      <main className="min-h-[70vh] bg-white px-4 py-14">
+        <section className="mx-auto max-w-md text-center">
+          <ShoppingBag className="mx-auto h-12 w-12 text-[#0758d9]" />
 
-          <h1 className="mt-6 text-3xl font-bold text-slate-950">
+          <h1 className="mt-5 text-2xl font-bold text-slate-950">
             Checkout information not found
           </h1>
 
-          <p className="mt-3 text-slate-600">
-            Return to checkout and enter your delivery
-            information.
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Return to checkout and complete your customer
+            and delivery information.
           </p>
 
           <Link
             href="/checkout"
-            className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#0758d9] px-7 font-bold text-white"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#0758d9] px-6 text-sm font-bold text-white"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
             Return to checkout
           </Link>
         </section>
@@ -166,24 +210,30 @@ export default function ReviewOrderPage() {
 
   if (confirmed) {
     return (
-      <main className="min-h-[75vh] bg-slate-50 px-4 py-14">
-        <section className="mx-auto flex max-w-2xl flex-col items-center rounded-3xl border border-emerald-200 bg-white px-6 py-16 text-center shadow-sm">
-          <span className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            <PackageCheck className="h-12 w-12" />
+      <main className="min-h-[70vh] bg-white px-4 py-14">
+        <section className="mx-auto max-w-lg text-center">
+          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <PackageCheck className="h-10 w-10" />
           </span>
 
-          <h1 className="mt-7 text-3xl font-extrabold text-slate-950">
-            Your order is ready
+          <h1 className="mt-6 text-3xl font-extrabold text-slate-950">
+            Order confirmed
           </h1>
 
-          <p className="mt-3 max-w-lg leading-7 text-slate-600">
-            The checkout frontend is complete. The final
-            backend submission will be connected in the
-            next development step.
+          <p className="mt-3 leading-7 text-slate-600">
+            Your order was submitted successfully.
           </p>
 
-          <div className="mt-7 rounded-2xl bg-blue-50 px-6 py-4">
-            <p className="text-sm text-slate-600">
+          <p className="mt-3 text-sm text-slate-500">
+            Order number
+          </p>
+
+          <p className="mt-1 text-lg font-extrabold text-slate-950">
+            {orderNumber}
+          </p>
+
+          <div className="mx-auto mt-6 max-w-xs border-y border-slate-200 py-4">
+            <p className="text-sm text-slate-500">
               Order total
             </p>
 
@@ -197,7 +247,7 @@ export default function ReviewOrderPage() {
 
           <Link
             href="/"
-            className="mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#0758d9] px-8 font-bold text-white transition hover:bg-[#064bb8]"
+            className="mt-7 inline-flex min-h-11 items-center rounded-lg bg-[#0758d9] px-7 text-sm font-bold text-white"
           >
             Continue shopping
           </Link>
@@ -207,50 +257,78 @@ export default function ReviewOrderPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:py-12">
-      <div className="mx-auto max-w-7xl">
-        <Link
-          href="/checkout"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-[#0758d9]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to checkout
-        </Link>
+    <main className="min-h-screen bg-white px-4 py-6 sm:px-6 lg:py-8">
+      <div className="mx-auto max-w-5xl">
+        <nav className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+          <Link
+            href="/cart"
+            className="transition hover:text-[#0758d9]"
+          >
+            1. Shopping cart
+          </Link>
 
-        <div className="mt-5">
-          <p className="text-sm font-bold uppercase tracking-wider text-[#0758d9]">
-            Final step
-          </p>
+          <ChevronRight className="h-3.5 w-3.5" />
 
-          <h1 className="mt-1 text-3xl font-extrabold text-slate-950 sm:text-4xl">
-            Review your order
-          </h1>
+          <Link
+            href="/checkout"
+            className="transition hover:text-[#0758d9]"
+          >
+            2. Delivery details
+          </Link>
 
-          <p className="mt-2 text-slate-600">
-            Check your information before finishing the
-            order.
-          </p>
-        </div>
+          <ChevronRight className="h-3.5 w-3.5" />
 
-        <div className="mt-8 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_410px]">
-          <div className="space-y-6">
-            <ReviewSection
+          <span className="text-slate-950">
+            3. Confirm and finish
+          </span>
+        </nav>
+
+        <div className="mt-8 grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-14">
+          <section>
+            <Link
+              href="/checkout"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-[#0758d9]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to checkout
+            </Link>
+
+            <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-950">
+              Confirm and finish
+            </h1>
+
+            <div className="mt-6 flex items-start gap-3 border border-slate-200 px-4 py-3.5">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#0758d9]" />
+
+              <div>
+                <p className="text-sm font-bold text-slate-950">
+                  Your information is protected
+                </p>
+
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Review your order carefully before
+                  confirming.
+                </p>
+              </div>
+            </div>
+
+            <ReviewRow
               icon={UserRound}
               title="Contact information"
-              editHref="/checkout"
+              href="/checkout"
             >
-              <p className="font-bold text-slate-950">
+              <p className="font-semibold text-slate-950">
                 {details.firstName} {details.lastName}
               </p>
 
               <p className="mt-1">{details.phone}</p>
               <p>{details.email}</p>
-            </ReviewSection>
+            </ReviewRow>
 
-            <ReviewSection
+            <ReviewRow
               icon={MapPin}
               title="Delivery address"
-              editHref="/checkout"
+              href="/checkout"
             >
               <p className="font-semibold text-slate-950">
                 {details.street}, {details.sector}
@@ -262,40 +340,47 @@ export default function ReviewOrderPage() {
               </p>
 
               {details.instructions && (
-                <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
-                  {details.instructions}
+                <p className="mt-2 text-xs italic text-slate-500">
+                  Note: {details.instructions}
                 </p>
               )}
-            </ReviewSection>
+            </ReviewRow>
 
-            <ReviewSection
+            <ReviewRow
               icon={Truck}
               title="Delivery method"
-              editHref="/checkout"
+              href="/checkout"
             >
-              <p className="font-bold text-slate-950">
-                {readableLabel(
-                  details.deliveryMethod,
-                )}
-              </p>
-
-              <p className="mt-1">
-                Delivery fee:{" "}
-                {details.deliveryFee === 0
-                  ? "Free"
-                  : money(
-                      details.deliveryFee,
-                      details.currency,
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-slate-950">
+                    {readableLabel(
+                      details.deliveryMethod,
                     )}
-              </p>
-            </ReviewSection>
+                  </p>
 
-            <ReviewSection
+                  <p className="mt-1">
+                    Delivery fee
+                  </p>
+                </div>
+
+                <p className="font-bold text-slate-950">
+                  {details.deliveryFee === 0
+                    ? "Free"
+                    : money(
+                        details.deliveryFee,
+                        details.currency,
+                      )}
+                </p>
+              </div>
+            </ReviewRow>
+
+            <ReviewRow
               icon={CreditCard}
               title="Payment method"
-              editHref="/checkout"
+              href="/checkout"
             >
-              <p className="font-bold text-slate-950">
+              <p className="font-semibold text-slate-950">
                 {readableLabel(
                   details.paymentMethod,
                 )}
@@ -303,116 +388,128 @@ export default function ReviewOrderPage() {
 
               <p className="mt-1">
                 Payment instructions will be provided
-                after order confirmation.
+                after confirmation.
               </p>
-            </ReviewSection>
-          </div>
+            </ReviewRow>
 
-          <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-28">
-            <div className="border-b border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-950">
-                  Your products
-                </h2>
+            <section className="border-b border-slate-200 py-6">
+              <h2 className="text-lg font-bold text-slate-950">
+                Cancellation and return policy
+              </h2>
 
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[#0758d9]">
-                  {totalQuantity} items
-                </span>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                You can request cancellation before the
+                seller begins processing the order.
+                Returns remain subject to RushPi&apos;s
+                return policy and the product condition.
+              </p>
+            </section>
+
+            <div className="pt-6">
+              <p className="max-w-xl text-xs leading-5 text-slate-600">
+                By selecting Confirm and finish, you agree
+                to RushPi&apos;s terms of service, payment
+                conditions, delivery policy and return
+                policy.
+              </p>
+
+              {submitError && (
+                <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  {submitError}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={finishOrder}
+                disabled={submitting}
+                className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#0758d9] px-7 text-sm font-bold text-white transition hover:bg-[#064bb8] hover:shadow-md"
+              >
+                <LockKeyhole className="h-4 w-4" />
+                {submitting
+                  ? "Submitting order..."
+                  : "Confirm and finish"}
+              </button>
+            </div>
+          </section>
+
+          <aside className="border border-slate-300 bg-white p-5 shadow-sm lg:sticky lg:top-24">
+            <div className="flex gap-4 border-b border-slate-200 pb-5">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-slate-100">
+                {items[0]?.image ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={items[0].image}
+                    alt={items[0].name}
+                    className="h-full w-full object-contain p-1"
+                  />
+                ) : (
+                  <ShoppingBag className="h-7 w-7 text-slate-300" />
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-sm font-bold leading-5 text-slate-950">
+                  {items[0]?.name}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {totalQuantity}{" "}
+                  {totalQuantity === 1
+                    ? "item"
+                    : "items"}{" "}
+                  in this order
+                </p>
+
+                {items.length > 1 && (
+                  <p className="mt-2 text-xs font-semibold text-[#0758d9]">
+                    + {items.length - 1} more product
+                    {items.length > 2 ? "s" : ""}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="max-h-[310px] space-y-5 overflow-y-auto p-6">
-              {items.map((item) => (
-                <div
-                  key={item.productId}
-                  className="flex gap-4"
-                >
-                  <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
-                    {item.image ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-full w-full object-contain p-1.5"
-                      />
-                    ) : (
-                      <ShoppingBag className="h-7 w-7 text-slate-300" />
-                    )}
-
-                    <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-950 px-1 text-[10px] font-bold text-white">
-                      {item.quantity}
-                    </span>
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm font-semibold text-slate-950">
-                      {item.name}
-                    </p>
-
-                    <p className="mt-2 text-sm font-bold text-[#0758d9]">
-                      {money(
-                        Number(item.price || 0) *
-                          Number(item.quantity || 0),
-                        item.currency ??
-                          details.currency,
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-slate-200 p-6">
-              <PriceRow
-                label="Subtotal"
+            <div className="space-y-3 border-b border-slate-200 py-5 text-sm">
+              <SummaryRow
+                label={`Products (${totalQuantity})`}
                 value={money(
                   details.subtotal,
                   details.currency,
                 )}
               />
 
-              <div className="mt-3">
-                <PriceRow
-                  label="Delivery"
-                  value={
-                    details.deliveryFee === 0
-                      ? "Free"
-                      : money(
-                          details.deliveryFee,
-                          details.currency,
-                        )
-                  }
-                />
-              </div>
+              <SummaryRow
+                label={readableLabel(
+                  details.deliveryMethod,
+                )}
+                value={
+                  details.deliveryFee === 0
+                    ? "Free"
+                    : money(
+                        details.deliveryFee,
+                        details.currency,
+                      )
+                }
+              />
+            </div>
 
-              <div className="my-5 border-t border-slate-200" />
+            <div className="flex items-center justify-between gap-4 pt-5">
+              <span className="text-sm font-bold text-slate-950">
+                Total ({details.currency})
+              </span>
 
-              <div className="flex items-end justify-between gap-4">
-                <span className="font-bold text-slate-950">
-                  Total
-                </span>
+              <span className="text-base font-extrabold text-slate-950">
+                {money(
+                  details.total,
+                  details.currency,
+                )}
+              </span>
+            </div>
 
-                <span className="text-2xl font-extrabold text-[#0758d9]">
-                  {money(
-                    details.total,
-                    details.currency,
-                  )}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={finishOrder}
-                className="mt-6 flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-[#0758d9] px-6 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#064bb8] hover:shadow-lg"
-              >
-                Finish order
-                <ChevronRight className="h-5 w-5" />
-              </button>
-
-              <div className="mt-5 flex items-center justify-center gap-2 text-xs text-slate-500">
-                <LockKeyhole className="h-3.5 w-3.5" />
-                Secure order confirmation
-              </div>
+            <div className="mt-4 flex items-center gap-2 bg-blue-50 px-3 py-2.5 text-xs font-medium text-[#0758d9]">
+              <Check className="h-4 w-4" />
+              Final amount includes delivery
             </div>
           </aside>
         </div>
@@ -425,40 +522,38 @@ type IconType = React.ComponentType<{
   className?: string;
 }>;
 
-function ReviewSection({
+function ReviewRow({
   icon: Icon,
   title,
-  editHref,
+  href,
   children,
 }: {
   icon: IconType;
   title: string;
-  editHref: string;
+  href: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="border-b border-slate-200 py-5">
       <div className="flex items-start gap-4">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0758d9]">
-          <Icon className="h-5 w-5" />
-        </span>
+        <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[#0758d9]" />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-bold text-slate-950">
+            <h2 className="text-base font-bold text-slate-950">
               {title}
             </h2>
 
             <Link
-              href={editHref}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[#0758d9] hover:underline"
+              href={href}
+              className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#0758d9] hover:underline"
             >
-              <Edit3 className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" />
               Edit
             </Link>
           </div>
 
-          <div className="mt-3 leading-6 text-slate-600">
+          <div className="mt-2 text-sm leading-5 text-slate-600">
             {children}
           </div>
         </div>
@@ -467,7 +562,7 @@ function ReviewSection({
   );
 }
 
-function PriceRow({
+function SummaryRow({
   label,
   value,
 }: {
@@ -475,7 +570,7 @@ function PriceRow({
   value: string;
 }) {
   return (
-    <div className="flex justify-between gap-4 text-sm text-slate-600">
+    <div className="flex justify-between gap-4 text-slate-600">
       <span>{label}</span>
 
       <span className="font-semibold text-slate-950">

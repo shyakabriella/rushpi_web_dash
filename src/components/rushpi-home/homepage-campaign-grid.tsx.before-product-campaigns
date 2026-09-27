@@ -1,0 +1,143 @@
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import type { HomepageCampaign } from "@/types/homepage-campaign";
+
+type HomepageCampaignGridProps = {
+  campaigns: HomepageCampaign[];
+};
+
+const sizeClasses = {
+  large: "lg:col-span-6 lg:row-span-2",
+  medium: "lg:col-span-6 lg:row-span-1",
+  small: "lg:col-span-3 lg:row-span-1",
+} as const;
+
+function CampaignLink({
+  campaign,
+  className,
+  children,
+}: {
+  campaign: HomepageCampaign;
+  className: string;
+  children: ReactNode;
+}) {
+  const url = campaign.destination_url;
+
+  if (!url) {
+    return <article className={className}>{children}</article>;
+  }
+
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return (
+      <a
+        href={url}
+        className={className}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={campaign.title}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={url} className={className} aria-label={campaign.title}>
+      {children}
+    </Link>
+  );
+}
+
+function CampaignCard({ campaign }: { campaign: HomepageCampaign }) {
+  const layoutClass = sizeClasses[campaign.card_size];
+  const className = [
+    "group relative isolate min-h-[280px]",
+    "overflow-hidden rounded-2xl bg-slate-100",
+    "shadow-sm ring-1 ring-black/5",
+    "transition duration-300 hover:-translate-y-1",
+    "hover:shadow-xl focus-visible:outline-none",
+    "focus-visible:ring-2 focus-visible:ring-blue-600",
+    "md:min-h-[300px]",
+    layoutClass,
+  ].join(" ");
+
+  return (
+    <CampaignLink campaign={campaign} className={className}>
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundColor: campaign.background_color || "#f1f5f9",
+        }}
+      />
+
+      <picture>
+        {campaign.mobile_image_url ? (
+          <source
+            media="(max-width: 639px)"
+            srcSet={campaign.mobile_image_url}
+          />
+        ) : null}
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={campaign.desktop_image_url}
+          alt=""
+          className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.03]"
+        />
+      </picture>
+
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/20" />
+
+      <div className="relative flex h-full min-h-[inherit] flex-col items-start p-6 text-white sm:p-7">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/80">
+          Featured
+        </p>
+
+        <h2 className="mt-2 max-w-md text-2xl font-black leading-tight tracking-[-0.035em] sm:text-3xl">
+          {campaign.title}
+        </h2>
+
+        {campaign.subtitle ? (
+          <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-white/90">
+            {campaign.subtitle}
+          </p>
+        ) : null}
+
+        {campaign.destination_url ? (
+          <span className="mt-5 inline-flex items-center gap-2 border-b-2 border-white pb-1 text-sm font-black">
+            {campaign.button_text || "Shop now"}
+
+            <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+          </span>
+        ) : null}
+      </div>
+    </CampaignLink>
+  );
+}
+
+export default function HomepageCampaignGrid({
+  campaigns,
+}: HomepageCampaignGridProps) {
+  if (campaigns.length === 0) {
+    return null;
+  }
+
+  const orderedCampaigns = [...campaigns].sort(
+    (first, second) => first.position - second.position,
+  );
+
+  return (
+    <section
+      className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8"
+      aria-label="Homepage promotions"
+    >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:auto-rows-[300px] lg:grid-cols-12 lg:grid-flow-dense">
+        {orderedCampaigns.map((campaign) => (
+          <CampaignCard key={campaign.public_id} campaign={campaign} />
+        ))}
+      </div>
+    </section>
+  );
+}
