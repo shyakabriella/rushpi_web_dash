@@ -10,6 +10,7 @@ import type {
 import {
   formatHomePrice,
   homeProductImageUrl,
+  homeSellerName,
 } from "@/lib/public-home-catalog";
 
 type RollbacksGridProps = {
@@ -214,6 +215,19 @@ export default function RollbacksGrid({
 
                       <p className="mt-2 line-clamp-2 min-h-10 text-[13px] font-bold leading-5 text-slate-800">
                         {product.name}
+                      </p>
+
+                      {product.category?.name ? (
+                        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.03em] text-slate-400">
+                          {product.category.name}
+                          {product.brand?.name
+                            ? ` \u00b7 ${product.brand.name}`
+                            : ""}
+                        </p>
+                      ) : null}
+
+                      <p className="mt-1 truncate text-[10.5px] font-semibold text-slate-500">
+                        {homeSellerName(product)}
                       </p>
                     </div>
                   </Link>

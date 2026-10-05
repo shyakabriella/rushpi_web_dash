@@ -46,6 +46,7 @@ export type HomeProduct = {
     public_id: string;
     name: string;
     trading_name?: string | null;
+    logo_url?: string | null;
   } | null;
   price?: {
     minimum?: string | number | null;
@@ -61,6 +62,8 @@ export type HomeProduct = {
     available_quantity?: number;
     stock_status?: string | null;
   } | null;
+  created_at?: string | null;
+  approved_at?: string | null;
 };
 
 type HomeProductsPagination = {
@@ -146,6 +149,23 @@ export function homeSellerName(
     product?.seller?.name ??
     "RushPi seller"
   );
+}
+
+export function formatCondition(
+  condition?: string | null,
+): string | null {
+  if (!condition) {
+    return null;
+  }
+
+  return condition
+    .split("_")
+    .filter(Boolean)
+    .map(
+      (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
 }
 
 export async function getHomeProducts(): Promise<HomeProduct[]> {

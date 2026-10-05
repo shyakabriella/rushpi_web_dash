@@ -112,34 +112,35 @@ export function allocateHomeProducts(
     rotateDaily(uniqueProducts(products)),
   );
 
-  const usedIds = new Set<string>();
+  function take(count: number, offset: number): HomeProduct[] {
+    if (pool.length === 0) {
+      return [];
+    }
 
-  function take(count: number): HomeProduct[] {
     const selected: HomeProduct[] = [];
 
-    for (const product of pool) {
-      if (usedIds.has(product.public_id)) {
-        continue;
-      }
-
-      usedIds.add(product.public_id);
-      selected.push(product);
-
-      if (selected.length >= count) {
-        break;
-      }
+    for (let i = 0; i < count; i++) {
+      selected.push(pool[(offset + i) % pool.length]);
     }
 
     return selected;
   }
 
+  let cursor = 0;
+
+  function takeNext(count: number): HomeProduct[] {
+    const selected = take(count, cursor);
+    cursor += count;
+    return selected;
+  }
+
   return {
-    heroSlides: take(4),
-    discover: take(10),
-    rollbacks: take(16),
-    spotlight: take(4),
-    trending: take(10),
-    more: take(10),
-    usedProductIds: Array.from(usedIds),
+    heroSlides: takeNext(4),
+    discover: takeNext(10),
+    rollbacks: takeNext(16),
+    spotlight: takeNext(4),
+    trending: takeNext(10),
+    more: takeNext(10),
+    usedProductIds: pool.map((product) => product.public_id),
   };
 }

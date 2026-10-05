@@ -184,10 +184,25 @@ export function productImages(
   return images;
 }
 
+function parseDescriptionBullets(
+  description: string | null | undefined,
+): string[] {
+  if (!description) {
+    return [];
+  }
+
+  return description
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("-") || line.startsWith("\u2022"))
+    .map((line) => line.replace(/^[-\u2022]\s*/, "").trim())
+    .filter((line) => line.length > 0);
+}
+
 export function productFeatures(
   product: ProductDetail,
 ): string[] {
-  const features = [
+  const explicitFeatures = [
     ...(product.key_features ?? []),
     ...(product.features ?? []),
   ].filter(
@@ -196,8 +211,16 @@ export function productFeatures(
       feature.trim().length > 0,
   );
 
-  if (features.length > 0) {
-    return Array.from(new Set(features));
+  if (explicitFeatures.length > 0) {
+    return Array.from(new Set(explicitFeatures));
+  }
+
+  const descriptionBullets = parseDescriptionBullets(
+    product.description,
+  );
+
+  if (descriptionBullets.length > 0) {
+    return descriptionBullets;
   }
 
   return [

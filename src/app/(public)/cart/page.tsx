@@ -10,16 +10,8 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type CartItem = {
-  productId: string;
-  name: string;
-  image?: string;
-  price?: number | string;
-  currency?: string;
-  quantity: number;
-};
-
-const CART_KEY = "rushpi_cart";
+import type { CartItem } from "@/lib/cart";
+import { CART_EVENT, getStoredCart, saveCart as saveCartItems } from "@/lib/cart";
 
 function formatMoney(
   value: number,
@@ -40,35 +32,6 @@ function formatMoney(
 function getPrice(item: CartItem) {
   const price = Number(item.price);
   return Number.isFinite(price) ? price : 0;
-}
-
-function getStoredCart(): CartItem[] {
-  try {
-    const stored = JSON.parse(
-      window.localStorage.getItem(CART_KEY) ?? "[]",
-    );
-
-    if (!Array.isArray(stored)) {
-      return [];
-    }
-
-    return stored
-      .filter(
-        (item): item is CartItem =>
-          item &&
-          typeof item.productId === "string" &&
-          typeof item.name === "string",
-      )
-      .map((item) => ({
-        ...item,
-        quantity: Math.max(
-          1,
-          Number(item.quantity) || 1,
-        ),
-      }));
-  } catch {
-    return [];
-  }
 }
 
 export default function CartPage() {
@@ -107,15 +70,7 @@ export default function CartPage() {
 
   function saveCart(nextItems: CartItem[]) {
     setItems(nextItems);
-
-    window.localStorage.setItem(
-      CART_KEY,
-      JSON.stringify(nextItems),
-    );
-
-    window.dispatchEvent(
-      new CustomEvent("rushpi-cart-updated"),
-    );
+    saveCartItems(nextItems);
   }
 
   function changeQuantity(

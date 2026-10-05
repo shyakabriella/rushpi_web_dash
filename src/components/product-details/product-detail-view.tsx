@@ -86,6 +86,7 @@ export default function ProductDetailView({
   const [added, setAdded] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(true);
 
   const activeImage = images[selectedImage];
   const rating = getRating(product);
@@ -437,33 +438,44 @@ export default function ProductDetailView({
               )}
 
               <div className="mt-7 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setFeaturesOpen((open) => !open)}
+                  aria-expanded={featuresOpen}
+                  className="flex w-full items-center justify-between px-5 py-4 text-left"
+                >
                   <h2 className="text-lg font-black">
-                    Key item features
+                    About this item
                   </h2>
 
-                  <ChevronDown className="size-5" />
-                </div>
+                  <ChevronDown
+                    className={`size-5 transition-transform duration-300 ${
+                      featuresOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-                <div className="border-t border-slate-200 px-5 py-5">
-                  {features.length > 0 ? (
-                    <ul className="space-y-3">
-                      {features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="flex gap-3 text-[15px] leading-6 text-slate-700"
-                        >
-                          <Check className="mt-0.5 size-5 shrink-0 text-green-600" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      More product features will be added soon.
-                    </p>
-                  )}
-                </div>
+                {featuresOpen ? (
+                  <div className="border-t border-slate-200 px-5 py-5">
+                    {features.length > 0 ? (
+                      <ul className="space-y-3">
+                        {features.map((feature) => (
+                          <li
+                            key={feature}
+                            className="flex gap-3 text-[15px] leading-6 text-slate-700"
+                          >
+                            <Check className="mt-0.5 size-5 shrink-0 text-green-600" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">
+                        More product features will be added soon.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

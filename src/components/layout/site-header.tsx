@@ -17,6 +17,7 @@ import {
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CART_EVENT, getCartCount } from "@/lib/cart";
 import {
   FormEvent,
   useEffect,
@@ -108,6 +109,24 @@ export default function SiteHeader() {
 
   const [catalogLoading, setCatalogLoading] =
     useState(true);
+
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    function syncCartCount() {
+      setCartCount(getCartCount());
+    }
+
+    syncCartCount();
+
+    window.addEventListener(CART_EVENT, syncCartCount);
+    window.addEventListener("storage", syncCartCount);
+
+    return () => {
+      window.removeEventListener(CART_EVENT, syncCartCount);
+      window.removeEventListener("storage", syncCartCount);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -775,7 +794,7 @@ export default function SiteHeader() {
                   text-[#052e72]
                 "
               >
-                0
+                {cartCount > 9 ? "9+" : cartCount}
               </span>
             </span>
 

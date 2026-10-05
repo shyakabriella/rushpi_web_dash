@@ -1,18 +1,25 @@
+"use client";
+
 import {
+  Check,
   Heart,
   Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import type {
   HomeProduct,
 } from "@/lib/public-home-catalog";
 
 import {
+  formatCondition,
   formatHomePrice,
   homeProductImageUrl,
   homeSellerName,
 } from "@/lib/public-home-catalog";
+
+import { addToCart } from "@/lib/cart";
 
 export default function ProductCard({
   product,
@@ -20,6 +27,31 @@ export default function ProductCard({
   product: HomeProduct;
 }) {
   const image = homeProductImageUrl(product);
+  const condition = formatCondition(product.condition);
+  const isNewCondition =
+    !condition || condition.toLowerCase() === "new";
+
+  const [justAdded, setJustAdded] = useState(false);
+
+  function handleAdd() {
+    const numericPrice = Number(product.price?.minimum);
+
+    addToCart({
+      productId: product.public_id,
+      name: product.name,
+      image,
+      price: Number.isFinite(numericPrice)
+        ? numericPrice
+        : undefined,
+      currency: product.price?.currency ?? "RWF",
+    });
+
+    setJustAdded(true);
+
+    window.setTimeout(() => {
+      setJustAdded(false);
+    }, 1500);
+  }
 
   return (
     <article className="group min-w-0">
@@ -41,6 +73,12 @@ export default function ProductCard({
           )}
         </Link>
 
+        {!isNewCondition ? (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-slate-700 shadow-sm">
+            {condition}
+          </span>
+        ) : null}
+
         <button
           type="button"
           aria-label="Save product"
@@ -50,28 +88,50 @@ export default function ProductCard({
         </button>
       </div>
 
-      <div className="pt-3">
-        <p className="text-[18px] font-black leading-tight text-slate-950">
+      <div className="pt-2">
+        <p className="text-[16px] font-black leading-tight text-slate-950">
           {formatHomePrice(product)}
         </p>
 
         <Link
           href={`/products/${product.public_id}`}
-          className="mt-1.5 line-clamp-2 block min-h-[40px] text-[13px] font-medium leading-[1.4] text-slate-700 hover:underline"
+          className="mt-1 line-clamp-2 block min-h-[32px] text-[12.5px] font-medium leading-[1.3] text-slate-700 hover:underline"
         >
           {product.name}
         </Link>
 
-        <p className="mt-2 truncate text-[11px] font-semibold text-slate-500">
+        {product.category?.name ? (
+          <p className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-[0.03em] text-slate-400">
+            {product.category.name}
+            {product.brand?.name ? ` · ${product.brand.name}` : ""}
+          </p>
+        ) : null}
+
+        <p className="mt-0.5 truncate text-[10.5px] font-semibold text-slate-500">
           {homeSellerName(product)}
         </p>
 
         <button
           type="button"
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full border-2 border-[#0754d8] px-4 py-1.5 text-sm font-black text-[#0754d8] transition hover:bg-[#0754d8] hover:text-white"
+          onClick={handleAdd}
+          className={[
+            "mt-2 inline-flex items-center gap-1.5 rounded-full border-2 px-3.5 py-1 text-[13px] font-black transition",
+            justAdded
+              ? "border-emerald-600 bg-emerald-600 text-white"
+              : "border-[#0754d8] text-[#0754d8] hover:bg-[#0754d8] hover:text-white",
+          ].join(" ")}
         >
-          <Plus className="size-4" />
-          Add
+          {justAdded ? (
+            <>
+              <Check className="size-4" />
+              Added
+            </>
+          ) : (
+            <>
+              <Plus className="size-4" />
+              Add
+            </>
+          )}
         </button>
       </div>
     </article>
