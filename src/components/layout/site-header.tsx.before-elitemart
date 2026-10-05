@@ -282,7 +282,7 @@ export default function SiteHeader() {
           MAIN BLUE HEADER
       ==================================================== */}
 
-      <div className="bg-[#263540] text-white">
+      <div className="bg-[#0754d8] text-white">
         <div
           className="
             mx-auto flex
@@ -355,8 +355,8 @@ export default function SiteHeader() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/elitemart-logo.svg"
-                alt="EliteMart Mall"
+                src="/rushpii-03.png"
+                alt="RushPi"
                 className="
                   h-full w-full
                   object-contain
@@ -394,7 +394,7 @@ export default function SiteHeader() {
                 className="
                   size-5
                   shrink-0
-                  text-[#ff9a4d]
+                  text-[#ffc220]
                 "
               />
 
@@ -403,7 +403,7 @@ export default function SiteHeader() {
                   className="
                     block text-[11px]
                     leading-3
-                    text-brand-steel
+                    text-blue-100
                   "
                 >
                   Pickup or delivery?
@@ -439,7 +439,7 @@ export default function SiteHeader() {
                 z-[100]
                 w-[310px]
                 rounded-2xl
-                border border-brand-steel
+                border border-slate-200
                 bg-white
                 p-5
                 text-slate-950
@@ -459,8 +459,8 @@ export default function SiteHeader() {
                     shrink-0
                     place-items-center
                     rounded-full
-                    bg-brand-mist
-                    text-brand-ink
+                    bg-blue-50
+                    text-blue-700
                   "
                 >
                   <Truck className="size-5" />
@@ -494,12 +494,12 @@ export default function SiteHeader() {
                 className="
                   mt-4 w-full
                   rounded-full
-                  bg-[#263540]
+                  bg-[#0754d8]
                   px-4 py-2.5
                   text-sm font-black
                   text-white
                   transition
-                  hover:bg-[#1c2832]
+                  hover:bg-[#0647ba]
                 "
               >
                 Select location
@@ -520,7 +520,7 @@ export default function SiteHeader() {
           >
             <label className="relative block">
               <span className="sr-only">
-                Search EliteMart Mall products
+                Search RushPi products
               </span>
 
               <input
@@ -531,7 +531,7 @@ export default function SiteHeader() {
                     event.target.value,
                   )
                 }
-                placeholder="Search everything at EliteMart Mall"
+                placeholder="Search everything at RushPi"
                 className="
                   h-[44px]
                   w-full
@@ -548,7 +548,7 @@ export default function SiteHeader() {
                   outline-none
                   placeholder:font-normal
                   placeholder:text-slate-500
-                  focus:border-[#ff9a4d]
+                  focus:border-[#ffc220]
                 "
               />
 
@@ -563,8 +563,8 @@ export default function SiteHeader() {
                   -translate-y-1/2
                   place-items-center
                   rounded-full
-                  bg-[#ff9a4d]
-                  text-[#1a252d]
+                  bg-[#ffc220]
+                  text-[#052e72]
                   transition
                   hover:scale-105
                 "
@@ -603,7 +603,7 @@ export default function SiteHeader() {
                   className="
                     block text-[10px]
                     leading-3
-                    text-brand-steel
+                    text-blue-100
                   "
                 >
                   Sell, deal or earn
@@ -615,7 +615,7 @@ export default function SiteHeader() {
                     font-bold
                   "
                 >
-                  Earn with EliteMart Mall
+                  Earn with RushPi
                 </span>
               </span>
 
@@ -638,7 +638,7 @@ export default function SiteHeader() {
                 w-[320px]
                 rounded-2xl
                 border
-                border-brand-steel
+                border-slate-200
                 bg-white
                 p-2
                 text-slate-950
@@ -651,7 +651,7 @@ export default function SiteHeader() {
                     text-sm font-black
                   "
                 >
-                  Earn with EliteMart Mall
+                  Earn with RushPi
                 </p>
 
                 <p
@@ -719,7 +719,7 @@ export default function SiteHeader() {
                 className="
                   block text-[10px]
                   leading-3
-                  text-brand-steel
+                  text-blue-100
                 "
               >
                 Sign in
@@ -768,11 +768,11 @@ export default function SiteHeader() {
                   grid min-w-[18px]
                   place-items-center
                   rounded-full
-                  bg-[#ff9a4d]
+                  bg-[#ffc220]
                   px-1
                   text-[10px]
                   font-black
-                  text-[#1a252d]
+                  text-[#052e72]
                 "
               >
                 0
@@ -810,7 +810,7 @@ export default function SiteHeader() {
                   event.target.value,
                 )
               }
-              placeholder="Search everything at EliteMart Mall"
+              placeholder="Search everything at RushPi"
               className="
                 h-[42px]
                 w-full
@@ -835,8 +835,8 @@ export default function SiteHeader() {
                 -translate-y-1/2
                 place-items-center
                 rounded-full
-                bg-[#ff9a4d]
-                text-[#1a252d]
+                bg-[#ffc220]
+                text-[#052e72]
               "
             >
               <Search className="size-4" />
@@ -878,7 +878,7 @@ export default function SiteHeader() {
                 icon={
                   <Store className="size-5" />
                 }
-                label="Sell on EliteMart Mall"
+                label="Sell on RushPi"
                 onClick={() =>
                   setMobileMenuOpen(false)
                 }
@@ -922,7 +922,7 @@ export default function SiteHeader() {
                 <MapPin
                   className="
                     size-5
-                    text-[#ff9a4d]
+                    text-[#ffc220]
                   "
                 />
 
@@ -942,7 +942,7 @@ export default function SiteHeader() {
         className="
           relative
           border-b
-          border-brand-steel
+          border-slate-200
           bg-white
         "
       >
@@ -982,7 +982,7 @@ export default function SiteHeader() {
               font-black
               text-slate-900
               transition
-              hover:text-[#263540]
+              hover:text-[#0754d8]
             "
           >
             <Menu className="size-4" />
@@ -995,7 +995,7 @@ export default function SiteHeader() {
                   size-1.5
                   animate-pulse
                   rounded-full
-                  bg-brand-orange
+                  bg-blue-500
                 "
               />
             ) : (
@@ -1030,13 +1030,13 @@ export default function SiteHeader() {
               font-bold
               text-slate-700
               transition
-              hover:text-[#263540]
+              hover:text-[#0754d8]
             "
           >
             <Sparkles
               className="
                 size-4
-                text-[#e07a2e]
+                text-[#d89400]
               "
             />
 
@@ -1052,7 +1052,7 @@ export default function SiteHeader() {
               font-semibold
               text-slate-700
               transition
-              hover:text-[#263540]
+              hover:text-[#0754d8]
             "
           >
             New Arrivals
@@ -1074,7 +1074,7 @@ export default function SiteHeader() {
                   font-semibold
                   text-slate-700
                   transition
-                  hover:text-[#263540]
+                  hover:text-[#0754d8]
                 "
               >
                 {category.name}
@@ -1091,7 +1091,7 @@ export default function SiteHeader() {
               font-semibold
               text-slate-700
               transition
-              hover:text-[#263540]
+              hover:text-[#0754d8]
             "
           >
             Deals
@@ -1115,7 +1115,7 @@ export default function SiteHeader() {
                 font-bold
                 text-slate-700
                 transition
-                hover:text-[#263540]
+                hover:text-[#0754d8]
               "
             >
               More
@@ -1139,7 +1139,7 @@ export default function SiteHeader() {
                 w-60
                 rounded-2xl
                 border
-                border-brand-steel
+                border-slate-200
                 bg-white
                 p-2
                 shadow-2xl
@@ -1162,8 +1162,8 @@ export default function SiteHeader() {
                       font-semibold
                       text-slate-700
                       transition
-                      hover:bg-brand-mist
-                      hover:text-brand-ink
+                      hover:bg-blue-50
+                      hover:text-blue-700
                     "
                   >
                     {category.name}
@@ -1181,8 +1181,8 @@ export default function SiteHeader() {
                   font-semibold
                   text-slate-700
                   transition
-                  hover:bg-brand-mist
-                  hover:text-brand-ink
+                  hover:bg-blue-50
+                  hover:text-blue-700
                 "
               >
                 All products
@@ -1219,7 +1219,7 @@ export default function SiteHeader() {
                 top-full
                 z-[60]
                 border-t
-                border-brand-steel
+                border-slate-200
                 bg-white
                 shadow-2xl
               "
@@ -1253,7 +1253,7 @@ export default function SiteHeader() {
                           className="
                             rounded-xl
                             border
-                            border-brand-steel
+                            border-slate-200
                             p-4
                           "
                         >
@@ -1280,11 +1280,11 @@ export default function SiteHeader() {
                             <span
                               className="
                                 rounded-full
-                                bg-brand-mist
+                                bg-blue-50
                                 px-2 py-1
                                 text-[10px]
                                 font-bold
-                                text-brand-ink
+                                text-blue-700
                               "
                             >
                               {department.products_count ??
@@ -1321,8 +1321,8 @@ export default function SiteHeader() {
                                     font-medium
                                     text-slate-600
                                     transition
-                                    hover:bg-brand-mist
-                                    hover:text-brand-ink
+                                    hover:bg-blue-50
+                                    hover:text-blue-700
                                   "
                                 >
                                   <span>
@@ -1392,7 +1392,7 @@ function PartnerLink({
     | "emerald";
 }) {
   const styles = {
-    blue: "bg-brand-mist text-brand-ink",
+    blue: "bg-blue-50 text-blue-700",
     violet:
       "bg-violet-50 text-violet-700",
     emerald:

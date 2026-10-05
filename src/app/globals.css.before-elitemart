@@ -1431,11 +1431,3 @@ details:not([open]) > .rushpi-dropdown-panel {
     animation: none;
   }
 }
-
-/* EliteMart Mall brand palette */
-@theme {
-  --color-brand-mist: #e8eeee;
-  --color-brand-steel: #bec8d2;
-  --color-brand-ink: #263540;
-  --color-brand-orange: #ff9a4d;
-}
