@@ -43,15 +43,14 @@ export default function AnimatedCampaignBanner({
   campaign,
   className = "",
 }: AnimatedCampaignBannerProps) {
-  const products = (campaign.products ?? [])
-    .filter((product) => product.image_url)
-    .slice(0, 4);
+  const featuredProduct = (campaign.products ?? []).find(
+    (product) => product.image_url,
+  );
 
   return (
-    <BannerLink
-      campaign={campaign}
+    <div
       className={[
-        "group relative isolate block overflow-hidden rounded-3xl",
+        "group relative isolate flex flex-col overflow-hidden rounded-3xl",
         "border border-slate-200 bg-white shadow-sm",
         "min-h-[250px]",
         className,
@@ -60,26 +59,22 @@ export default function AnimatedCampaignBanner({
       <div
         className="absolute inset-0"
         style={{
-          background: `linear-gradient(
-            110deg,
-            ${campaign.background_color || "#ffffff"} 0%,
-            #ffffff 48%,
-            #eff6ff 72%,
-            #dbeafe 100%
-          )`,
+          background: `linear-gradient(160deg, ${campaign.background_color || "#eef2ff"} 0%, #ffffff 70%)`,
         }}
       />
 
-      <div className="absolute -right-20 -top-24 size-80 rounded-full bg-blue-200/40 blur-3xl" />
-      <div className="absolute -bottom-32 right-[30%] size-72 rounded-full bg-cyan-100/50 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-blue-200/30 blur-3xl" />
 
-      <div className="relative z-20 flex min-h-[inherit] max-w-full flex-col justify-center px-6 py-8 sm:max-w-[50%] sm:px-8 lg:px-12">
+      <BannerLink
+        campaign={campaign}
+        className="relative z-20 flex flex-col px-6 pt-7 sm:px-8"
+      >
         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700 sm:text-xs">
           Featured campaign
         </p>
 
         <h2
-          className="mt-3 text-2xl font-black leading-tight tracking-[-0.04em] sm:text-3xl"
+          className="mt-3 text-2xl font-black leading-tight tracking-[-0.04em]"
           style={{
             color: campaign.text_color || "#0f172a",
           }}
@@ -88,7 +83,7 @@ export default function AnimatedCampaignBanner({
         </h2>
 
         {campaign.subtitle ? (
-          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-600 sm:text-base">
+          <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
             {campaign.subtitle}
           </p>
         ) : null}
@@ -98,68 +93,27 @@ export default function AnimatedCampaignBanner({
 
           <ArrowRight className="size-4 transition duration-300 group-hover:translate-x-1" />
         </span>
-      </div>
+      </BannerLink>
 
-      <div className="absolute inset-y-0 right-0 hidden w-[50%] items-center px-5 sm:flex lg:px-8">
-        {products.length > 0 ? (
-          <div className="grid w-full grid-cols-3 items-center gap-3 lg:grid-cols-4">
-            {products.map((product, index) => (
-              <div
-                key={product.public_id}
-                className={[
-                  "campaign-product-float min-w-0 rounded-2xl",
-                  "border border-white bg-white/95 p-2.5",
-                  "shadow-lg shadow-blue-950/10",
-                  "transition duration-300 group-hover:shadow-xl",
-                  index === 3 ? "hidden lg:block" : "",
-                ].join(" ")}
-                style={{
-                  animationDelay: `${index * 0.45}s`,
-                }}
-              >
-                <div className="aspect-square overflow-hidden rounded-xl bg-slate-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={product.image_url ?? ""}
-                    alt={product.name}
-                    className="size-full object-contain p-2"
-                  />
-                </div>
-
-                <p className="mt-2 line-clamp-1 text-[11px] font-extrabold text-slate-800 lg:text-xs">
-                  {product.name}
-                </p>
-
-                <p className="mt-1 truncate text-[10px] font-black text-blue-700 lg:text-[11px]">
-                  {product.price?.formatted ?? "View product"}
-                </p>
-              </div>
-            ))}
-          </div>
+      <div className="relative z-10 mt-auto flex items-center justify-center px-6 pb-6 pt-8">
+        {featuredProduct ? (
+          <Link
+            href={`/products/${featuredProduct.slug}`}
+            className="flex h-[170px] w-full max-w-[260px] items-center justify-center rounded-2xl border border-white bg-white/90 p-4 shadow-lg shadow-blue-950/10 transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={featuredProduct.image_url ?? ""}
+              alt={featuredProduct.name}
+              className="size-full object-contain"
+            />
+          </Link>
         ) : (
-          <div className="grid w-full place-items-center text-slate-300">
-            <PackageOpen className="size-14" />
+          <div className="grid size-full place-items-center text-slate-300">
+            <PackageOpen className="size-12" />
           </div>
         )}
       </div>
-
-      {products.length > 0 ? (
-        <div className="relative z-20 grid grid-cols-3 gap-2 px-5 pb-5 sm:hidden">
-          {products.slice(0, 3).map((product) => (
-            <div
-              key={product.public_id}
-              className="overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-md"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={product.image_url ?? ""}
-                alt={product.name}
-                className="aspect-square w-full rounded-lg bg-slate-50 object-contain p-1"
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </BannerLink>
+    </div>
   );
 }

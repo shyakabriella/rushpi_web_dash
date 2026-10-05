@@ -14,6 +14,9 @@ import {
   useState,
 } from "react";
 
+import type { VerifiedSeller } from "@/lib/verified-sellers";
+import { Store } from "lucide-react";
+
 const footerLinks = [
   {
     label: "All Categories",
@@ -97,7 +100,46 @@ const footerLinks = [
   },
 ];
 
-export default function SiteFooter() {
+function PartnerBadge({
+  seller,
+}: {
+  seller: VerifiedSeller;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const showFallback = !seller.logoUrl || imageFailed;
+
+  const content = showFallback ? (
+    <span className="flex items-center gap-3 text-base font-black text-slate-700 transition duration-300 hover:text-slate-950">
+      <span className="grid size-20 shrink-0 place-items-center rounded-2xl bg-slate-100">
+        <Store className="size-9 text-slate-400" />
+      </span>
+      {seller.name}
+    </span>
+  ) : (
+    <span className="block h-24 w-56 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition duration-300 hover:shadow-md sm:h-28 sm:w-64">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={seller.logoUrl}
+        alt={seller.name}
+        onError={() => setImageFailed(true)}
+        className="block h-full w-full object-contain p-3 transition duration-300 hover:scale-105"
+      />
+    </span>
+  );
+
+  return (
+    <span className="shrink-0" title={seller.name}>
+      {content}
+    </span>
+  );
+}
+
+export default function SiteFooter({
+  sellers = [],
+}: {
+  sellers?: VerifiedSeller[];
+}) {
   const [feedbackOpen, setFeedbackOpen] =
     useState(false);
 
@@ -126,6 +168,23 @@ export default function SiteFooter() {
   return (
     <>
       <footer className="relative">
+        {/* Partners section */}
+        {sellers.length > 0 ? (
+          <section className="border-t border-slate-200 bg-white px-4 py-6 sm:px-6">
+            <div className="mx-auto max-w-[1600px]">
+              <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                Our trusted partners
+              </p>
+
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+                {sellers.map((seller) => (
+                  <PartnerBadge key={seller.publicId} seller={seller} />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {/* Feedback section */}
         <section className="border-t border-blue-100 bg-[#eaf2ff] px-4 py-10 sm:px-6 sm:py-12">
           <div className="mx-auto flex max-w-[1600px] flex-col items-center text-center">
