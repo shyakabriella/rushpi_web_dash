@@ -102,43 +102,43 @@ const sellerTerms = [
   "I will not list counterfeit, stolen, prohibited or misleading products.",
   "I will keep product prices, descriptions and available stock accurate.",
   "I will process confirmed orders and communicate honestly with customers.",
-  "I will follow RushPi return, refund, payment and marketplace policies.",
-  "RushPi may review, reject or suspend accounts involved in fraud or policy violations.",
+  "I will follow EliteMart Mall return, refund, payment and marketplace policies.",
+  "EliteMart Mall may review, reject or suspend accounts involved in fraud or policy violations.",
   "Applicable marketplace fees or commissions may be deducted from completed transactions.",
 ];
 
 const inputClassName = [
   "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
-  "px-4 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+  "border border-brand-steel bg-white",
+  "px-4 text-sm font-medium text-brand-ink",
+  "caret-brand-ink outline-none transition",
+  "placeholder:font-normal placeholder:text-brand-ink/70",
+  "hover:border-brand-ink/70",
+  "focus:border-brand-ink focus:ring-4 focus:ring-brand-mist",
 ].join(" ");
 
 const iconInputClassName = [
   "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
-  "pl-12 pr-4 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+  "border border-brand-steel bg-white",
+  "pl-12 pr-4 text-sm font-medium text-brand-ink",
+  "caret-brand-ink outline-none transition",
+  "placeholder:font-normal placeholder:text-brand-ink/70",
+  "hover:border-brand-ink/70",
+  "focus:border-brand-ink focus:ring-4 focus:ring-brand-mist",
 ].join(" ");
 
 const passwordInputClassName = [
   "h-[52px] w-full rounded-2xl",
-  "border border-slate-400 bg-white",
-  "pl-12 pr-12 text-sm font-medium text-slate-950",
-  "caret-blue-700 outline-none transition",
-  "placeholder:font-normal placeholder:text-slate-500",
-  "hover:border-slate-500",
-  "focus:border-blue-700 focus:ring-4 focus:ring-blue-100",
+  "border border-brand-steel bg-white",
+  "pl-12 pr-12 text-sm font-medium text-brand-ink",
+  "caret-brand-ink outline-none transition",
+  "placeholder:font-normal placeholder:text-brand-ink/70",
+  "hover:border-brand-ink/70",
+  "focus:border-brand-ink focus:ring-4 focus:ring-brand-mist",
 ].join(" ");
 
 const labelClassName =
-  "text-sm font-black text-slate-950";
+  "text-sm font-black text-brand-ink";
 
 function normalizeErrors(
   errors: RegisterResponse["errors"],
@@ -250,7 +250,7 @@ export default function SellerRegisterForm() {
 
     if (!formData.termsAccepted) {
       setGeneralError(
-        "You must accept the RushPi seller terms and conditions.",
+        "You must accept the EliteMart Mall seller terms and conditions.",
       );
 
       return;
@@ -384,7 +384,7 @@ export default function SellerRegisterForm() {
 
   if (submitted) {
     return (
-      <section className="rounded-3xl border border-emerald-300 bg-white p-6 text-center text-slate-950 shadow-[0_18px_55px_rgba(15,23,42,0.10)] sm:p-9">
+      <section className="rounded-3xl border border-emerald-300 bg-white p-6 text-center text-brand-ink shadow-[0_18px_55px_rgba(15,23,42,0.10)] sm:p-9">
         <span className="mx-auto grid size-20 place-items-center rounded-full bg-emerald-100 text-emerald-700">
           <CheckCircle2 className="size-10" />
         </span>
@@ -393,25 +393,25 @@ export default function SellerRegisterForm() {
           Application received
         </p>
 
-        <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+        <h2 className="mt-3 text-3xl font-black tracking-tight text-brand-ink">
           Seller registration submitted
         </h2>
 
-        <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-slate-700">
+        <p className="mx-auto mt-4 max-w-lg font-medium leading-7 text-brand-ink">
           {successMessage}
         </p>
 
-        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-left">
+        <div className="mt-6 rounded-2xl border border-brand-steel bg-brand-mist p-5 text-left">
           <div className="flex items-start gap-3">
-            <BadgeCheck className="mt-0.5 size-5 shrink-0 text-blue-700" />
+            <BadgeCheck className="mt-0.5 size-5 shrink-0 text-brand-ink" />
 
             <div>
-              <p className="font-black text-slate-950">
+              <p className="font-black text-brand-ink">
                 What happens next?
               </p>
 
-              <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-                RushPi will review your seller
+              <p className="mt-1 text-sm font-medium leading-6 text-brand-ink">
+                EliteMart Mall will review your seller
                 information. Additional verification
                 documents may be requested before
                 your products can be published.
@@ -423,14 +423,14 @@ export default function SellerRegisterForm() {
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href="/login"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-blue-700 px-6 text-sm font-black text-white transition hover:bg-blue-800"
+            className="inline-flex h-12 items-center justify-center rounded-full bg-brand-ink px-6 text-sm font-black text-white transition hover:bg-brand-ink"
           >
             Continue to sign in
           </Link>
 
           <Link
             href="/"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-slate-400 bg-white px-6 text-sm font-black text-slate-950 transition hover:border-blue-600 hover:text-blue-700"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-brand-steel bg-white px-6 text-sm font-black text-brand-ink transition hover:border-brand-ink hover:text-brand-ink"
           >
             Return to marketplace
           </Link>
@@ -442,7 +442,7 @@ export default function SellerRegisterForm() {
   return (
     <form
       onSubmit={submitRegistration}
-      className="space-y-7 text-slate-950"
+      className="space-y-7 text-brand-ink"
     >
       {generalError && (
         <div
@@ -457,18 +457,18 @@ export default function SellerRegisterForm() {
       )}
 
       {/* Personal information */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      <section className="rounded-3xl border border-brand-steel bg-white p-5 text-brand-ink shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-100 text-blue-800">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-mist text-brand-ink">
             <UserRound className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-black text-brand-ink">
               Personal information
             </h2>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+            <p className="mt-1 text-sm font-medium leading-6 text-brand-ink">
               Enter the details of the person
               responsible for this seller account.
             </p>
@@ -482,7 +482,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <UserRound className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type="text"
@@ -509,7 +509,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type="email"
@@ -536,7 +536,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <Phone className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <Phone className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type="tel"
@@ -560,19 +560,19 @@ export default function SellerRegisterForm() {
       </section>
 
       {/* Seller information */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      <section className="rounded-3xl border border-brand-steel bg-white p-5 text-brand-ink shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-800">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-mist text-brand-ink">
             <Store className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-black text-brand-ink">
               Seller information
             </h2>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
-              Tell RushPi whether you are
+            <p className="mt-1 text-sm font-medium leading-6 text-brand-ink">
+              Tell EliteMart Mall whether you are
               registering a shop or selling as
               an individual.
             </p>
@@ -589,18 +589,18 @@ export default function SellerRegisterForm() {
               name="sellerType"
               value={formData.sellerType}
               onChange={updateTextField}
-              className={`${inputClassName} appearance-none text-slate-950`}
+              className={`${inputClassName} appearance-none text-brand-ink`}
             >
               <option
                 value="shop_owner"
-                className="text-slate-950"
+                className="text-brand-ink"
               >
                 Shop or registered business
               </option>
 
               <option
                 value="individual_seller"
-                className="text-slate-950"
+                className="text-brand-ink"
               >
                 Individual product owner
               </option>
@@ -613,7 +613,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type="text"
@@ -694,7 +694,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type="text"
@@ -730,7 +730,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <PackageCheck className="pointer-events-none absolute left-4 top-4 size-5 text-slate-600" />
+              <PackageCheck className="pointer-events-none absolute left-4 top-4 size-5 text-brand-ink/70" />
 
               <textarea
                 name="productCategories"
@@ -741,7 +741,7 @@ export default function SellerRegisterForm() {
                 required
                 rows={4}
                 placeholder="Example: mobile phones, laptops, accessories and home electronics"
-                className="w-full resize-none rounded-2xl border border-slate-400 bg-white py-3 pl-12 pr-4 text-sm font-medium leading-6 text-slate-950 caret-blue-700 outline-none transition placeholder:font-normal placeholder:text-slate-500 hover:border-slate-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+                className="w-full resize-none rounded-2xl border border-brand-steel bg-white py-3 pl-12 pr-4 text-sm font-medium leading-6 text-brand-ink caret-brand-ink outline-none transition placeholder:font-normal placeholder:text-brand-ink/70 hover:border-brand-ink/70 focus:border-brand-ink focus:ring-4 focus:ring-brand-mist"
               />
             </span>
           </label>
@@ -749,18 +749,18 @@ export default function SellerRegisterForm() {
       </section>
 
       {/* Account security */}
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 text-slate-950 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
+      <section className="rounded-3xl border border-brand-steel bg-white p-5 text-brand-ink shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-7">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
             <LockKeyhole className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-black text-brand-ink">
               Account security
             </h2>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+            <p className="mt-1 text-sm font-medium leading-6 text-brand-ink">
               Create a secure password containing
               at least eight characters.
             </p>
@@ -774,7 +774,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type={
@@ -799,7 +799,7 @@ export default function SellerRegisterForm() {
                     (current) => !current,
                   )
                 }
-                className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+                className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-brand-ink transition hover:bg-brand-mist hover:text-brand-ink"
                 aria-label={
                   showPassword
                     ? "Hide password"
@@ -827,7 +827,7 @@ export default function SellerRegisterForm() {
             </span>
 
             <span className="relative mt-2 block">
-              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-600" />
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-ink/70" />
 
               <input
                 type={
@@ -863,33 +863,33 @@ export default function SellerRegisterForm() {
       </section>
 
       {/* Terms and conditions */}
-      <section className="rounded-3xl border border-blue-300 bg-blue-50 p-5 text-slate-950 sm:p-7">
+      <section className="rounded-3xl border border-brand-orange bg-brand-mist p-5 text-brand-ink sm:p-7">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-ink text-white">
             <FileCheck2 className="size-5" />
           </span>
 
           <div>
-            <h2 className="text-xl font-black text-slate-950">
+            <h2 className="text-xl font-black text-brand-ink">
               Seller terms and conditions
             </h2>
 
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-700">
+            <p className="mt-1 text-sm font-medium leading-6 text-brand-ink">
               Review these requirements before
               submitting your seller application.
             </p>
           </div>
         </div>
 
-        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-blue-200 bg-white p-5 text-slate-950">
+        <div className="mt-6 max-h-72 overflow-y-auto rounded-2xl border border-brand-steel bg-white p-5 text-brand-ink">
           <ol className="space-y-4">
             {sellerTerms.map(
               (term, index) => (
                 <li
                   key={term}
-                  className="flex items-start gap-3 text-sm font-medium leading-6 text-slate-800"
+                  className="flex items-start gap-3 text-sm font-medium leading-6 text-brand-ink"
                 >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-100 text-xs font-black text-blue-800">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-mist text-xs font-black text-brand-ink">
                     {index + 1}
                   </span>
 
@@ -901,7 +901,7 @@ export default function SellerRegisterForm() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-brand-steel bg-white p-4 text-brand-ink transition hover:border-brand-orange">
             <input
               type="checkbox"
               name="termsAccepted"
@@ -910,16 +910,16 @@ export default function SellerRegisterForm() {
               }
               onChange={updateCheckbox}
               required
-              className="mt-1 size-5 shrink-0 accent-blue-700"
+              className="mt-1 size-5 shrink-0 accent-brand-ink"
             />
 
-            <span className="text-sm font-semibold leading-6 text-slate-900">
+            <span className="text-sm font-semibold leading-6 text-brand-ink">
               I have read and accept the
-              RushPi seller terms and conditions.
+              EliteMart Mall seller terms and conditions.
             </span>
           </label>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 transition hover:border-blue-400">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-brand-steel bg-white p-4 text-brand-ink transition hover:border-brand-orange">
             <input
               type="checkbox"
               name="informationConfirmed"
@@ -929,14 +929,14 @@ export default function SellerRegisterForm() {
               }
               onChange={updateCheckbox}
               required
-              className="mt-1 size-5 shrink-0 accent-blue-700"
+              className="mt-1 size-5 shrink-0 accent-brand-ink"
             />
 
-            <span className="text-sm font-semibold leading-6 text-slate-900">
+            <span className="text-sm font-semibold leading-6 text-brand-ink">
               I confirm that the information
               provided in this application is
               accurate and can be verified by
-              RushPi.
+              EliteMart Mall.
             </span>
           </label>
         </div>
@@ -949,7 +949,7 @@ export default function SellerRegisterForm() {
           !formData.termsAccepted ||
           !formData.informationConfirmed
         }
-        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:text-white disabled:shadow-none"
+        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand-ink px-6 text-sm font-black text-white shadow-lg shadow-brand-ink/20 transition hover:-translate-y-0.5 hover:bg-brand-ink disabled:cursor-not-allowed disabled:bg-brand-steel disabled:text-white disabled:shadow-none"
       >
         {submitting ? (
           <>
@@ -964,11 +964,11 @@ export default function SellerRegisterForm() {
         )}
       </button>
 
-      <p className="text-center text-sm font-medium text-slate-800">
+      <p className="text-center text-sm font-medium text-brand-ink">
         Already registered?{" "}
         <Link
           href="/login"
-          className="font-black text-blue-700 underline underline-offset-4 hover:text-blue-900"
+          className="font-black text-brand-ink underline underline-offset-4 hover:text-brand-ink"
         >
           Sign in to your account
         </Link>

@@ -21,7 +21,7 @@ import {
 
 const API = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://rushpi.asyncafrica.com/api"
+  "http://127.0.0.1:8000/api"
 ).replace(/\/+$/, "");
 
 export default function ResetPasswordPage() {
@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/rushpii-01.png"
+              src="/elitemart-logo.svg"
               alt="RushPi"
               className="h-full w-full object-contain object-left"
             />
@@ -233,7 +233,7 @@ export default function ResetPasswordPage() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/rushpii-01.png"
+                src="/elitemart-logo-dark.svg"
                 alt="RushPi"
                 className="h-full w-full object-contain"
               />

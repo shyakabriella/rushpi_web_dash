@@ -182,12 +182,12 @@ class ApiRequestError extends Error {
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://rushpi.asyncafrica.com/api"
+  "http://127.0.0.1:8000/api"
 ).replace(/\/+$/, "");
 
 const STORAGE_BASE_URL = (
   process.env.NEXT_PUBLIC_STORAGE_URL ??
-  "https://rushpi.asyncafrica.com/storage"
+  "http://127.0.0.1:8000/storage"
 ).replace(/\/+$/, "");
 
 /* =========================================================

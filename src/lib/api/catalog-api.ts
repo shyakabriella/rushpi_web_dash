@@ -2,7 +2,7 @@ import type { HomeProduct } from "@/lib/public-home-catalog";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  "https://rushpi.asyncafrica.com/api"
+  "http://127.0.0.1:8000/api"
 ).replace(/\/+$/, "");
 
 export type CatalogProductsParams = {

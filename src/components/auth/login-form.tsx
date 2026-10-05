@@ -245,12 +245,12 @@ export default function LoginForm() {
       )}
 
       <label className="block">
-        <span className="text-sm font-black text-slate-800">
+        <span className="text-sm font-black text-brand-ink">
           Email address
         </span>
 
         <span className="relative mt-2 block">
-          <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+          <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-steel" />
 
           <input
             type="email"
@@ -261,18 +261,18 @@ export default function LoginForm() {
             autoComplete="email"
             required
             placeholder="you@example.com"
-            className="h-14 w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-4 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+            className="h-14 w-full rounded-2xl border border-brand-steel bg-white pl-12 pr-4 text-brand-ink outline-none transition placeholder:text-brand-steel focus:border-brand-ink focus:ring-4 focus:ring-brand-mist"
           />
         </span>
       </label>
 
       <label className="block">
-        <span className="text-sm font-black text-slate-800">
+        <span className="text-sm font-black text-brand-ink">
           Password
         </span>
 
         <span className="relative mt-2 block">
-          <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+          <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-steel" />
 
           <input
             type={
@@ -288,7 +288,7 @@ export default function LoginForm() {
             required
             minLength={6}
             placeholder="Enter your password"
-            className="h-14 w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-14 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+            className="h-14 w-full rounded-2xl border border-brand-steel bg-white pl-12 pr-14 text-brand-ink outline-none transition placeholder:text-brand-steel focus:border-brand-ink focus:ring-4 focus:ring-brand-mist"
           />
 
           <button
@@ -298,7 +298,7 @@ export default function LoginForm() {
                 (current) => !current,
               )
             }
-            className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
+            className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-xl text-brand-ink/70 transition hover:bg-brand-mist hover:text-brand-ink"
             aria-label={
               showPassword
                 ? "Hide password"
@@ -315,7 +315,7 @@ export default function LoginForm() {
       </label>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-600">
+        <label className="flex cursor-pointer items-center gap-3 text-sm text-brand-ink/70">
           <input
             type="checkbox"
             checked={remember}
@@ -324,7 +324,7 @@ export default function LoginForm() {
                 event.target.checked,
               )
             }
-            className="size-4 rounded border-slate-300 accent-blue-700"
+            className="size-4 rounded border-brand-steel accent-brand-ink"
           />
 
           Remember me
@@ -332,7 +332,7 @@ export default function LoginForm() {
 
         <Link
           href="/forgot-password"
-          className="text-sm font-black text-blue-700 underline underline-offset-4 hover:text-blue-900"
+          className="text-sm font-black text-brand-ink underline underline-offset-4 hover:text-brand-ink"
         >
           Forgot password?
         </Link>
@@ -341,7 +341,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-blue-700 px-6 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-65"
+        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand-ink px-6 text-sm font-black text-white shadow-lg shadow-brand-ink/20 transition hover:-translate-y-0.5 hover:bg-brand-ink hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-65"
       >
         {submitting ? (
           <>

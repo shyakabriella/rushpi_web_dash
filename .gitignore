@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Large downloadable app files
 public/downloads/*.apk
+
+*.before-*
+*.backup-*
+tsconfig.tsbuildinfo
+.env*.local
